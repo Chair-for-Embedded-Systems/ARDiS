@@ -249,19 +249,21 @@ def executeMigration(newmap, pids):
 
 
 def run_simple(base_map, workdir=None, metrics = False):
+    global end_of_experiment
+    end_of_experiment = False
     global mapping
     mapping = list(base_map)
     if (metrics):    
         if (workdir!=None):
             mon.setworkdir(workdir)
         mon.start()
+    start = timer()
     print("Current mapping: " + str(base_map))
     ta,tb,tc,td,te,tf = makeThreads(base_map)
     pids = getPIDs(mapping)
     print("PIDs: ", pids)
     waiter =  threading.Thread(target=waitForThreads, args=(ta,tb,tc,td,te,tf,))
     waiter.start()
-    start = timer()
 
     global end_of_experiment
     while not end_of_experiment:
