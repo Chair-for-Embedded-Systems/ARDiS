@@ -41,8 +41,9 @@ def launchApp(app_name, core):
     command = str_cmd.split(" ")
     #print(str_cmd)
     p = subprocess.Popen(command,  stdout=subprocess.PIPE)
+    start = timer()
     p.wait()
-    #TODO: measure execution time for the process.
+    end = timer()
     global mapping
     core = -1
     app_short = app_name[5:]
@@ -54,6 +55,7 @@ def launchApp(app_name, core):
         mapping[idcore] = mapping[idcore]+"*"
     #TODO: print and possibly record execution time.
     print("[Core " + str(idcore) +"]: " + app_name + " finished execution!" )
+    print("[Core " + str(idcore) +"]: " + app_name + "'s execution time = " + str(round(end - start,2)) + "s" )
         
 
         
@@ -265,7 +267,7 @@ def run_simple(base_map, workdir=None, metrics = False):
     while not end_of_experiment:
         curr = timer()
         if (int(curr - start) % 5 == 0):
-            print("**************  Current map: ", mapping, "*******************")
+            print("Current map:", mapping)
             time.sleep(1)
         time.sleep(0.1)
 
