@@ -265,7 +265,7 @@ def run_simple(base_map, workdir=None, metrics = False):
     waiter =  threading.Thread(target=waitForThreads, args=(ta,tb,tc,td,te,tf,))
     waiter.start()
 
-    global end_of_experiment
+
     while not end_of_experiment:
         curr = timer()
         if (int(curr - start) % 5 == 0):
