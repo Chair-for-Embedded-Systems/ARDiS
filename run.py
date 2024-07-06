@@ -14,15 +14,6 @@ lock = threading.Lock()
 end_of_experiment = False
 
 
-available_apps = ['spec-gcc', 'spec-milc', 'spec-bzip2', 'spec-sphinx3', 'spec-astar', 'spec-lbm',
-                  'spec-bwaves', 'spec-mcf', 'spec-zeusmp',  'spec-namd', 'spec-h264ref', 'spec-gobmk',
-                  'spec-povray', 'spec-gromacs', 'spec-cactusADM', 'spec-omnetpp', 'spec-hmmer', 'spec-leslie3d',
-                  'parsec-blackscholes', 'parsec-bodytrack', 'parsec-canneal', 'parsec-dedup', 'parsec-facesim',
-                  'parsec-ferret', 'parsec-fluidanimate', 'parsec-freqmine', 'parsec-streamcluster',
-                  'parsec-swaptions', 'parsec-vips', 'parsec-x264']
-
-
-
 def runProc(app_str):
     command = app_str.split(" ")
     p = subprocess.Popen(command,  stdout=subprocess.PIPE)
@@ -59,34 +50,22 @@ def launchApp(app_name, core):
         
 
         
-
+# Create a thread for each application in the mapping
 def makeThreads(mapping):
+    threads = []
+    #TODO replace the core number (index for now) with the actual core number
+    for idx in range(len(mapping)):
+        threads.append(threading.Thread(target=launchApp, args=(mapping[idx], idx)))
     #creating threads
-    a = threading.Thread(target=launchApp, args=(mapping[0], 0))
-    b = threading.Thread(target=launchApp, args=(mapping[1], 1))
-    c = threading.Thread(target=launchApp, args=(mapping[2], 2))
-    d = threading.Thread(target=launchApp, args=(mapping[3], 3))
-    e = threading.Thread(target=launchApp, args=(mapping[4], 4))
-    f = threading.Thread(target=launchApp, args=(mapping[5], 5))
     print("Launching workload")
+    for tidx in range(len(threads)):
+        threads[tidx].start()
+    return threads
 
-    a.start()
-    b.start()
-    c.start()
-    d.start()
-    e.start()
-    f.start()
-
-    return a,b,c,d,e,f
-
-
-def waitForThreads(a, b, c, d, e, f):
-    a.join()
-    b.join()
-    c.join()
-    d.join()
-    e.join()
-    f.join()
+# Wait for all threads to finish
+def waitForThreads(threads):
+    for tidx in range(len(threads)):
+        threads[tidx].join()
     global end_of_experiment
     end_of_experiment = True
     print("END!")
@@ -120,11 +99,10 @@ def getProcessName(app_str):
         name = app_str
     return name
 
-
+# Generate a random mapping of unique applications to cores
 def generateApps():
     apps = []
-    attack_core = randrange(6)
-    while len(apps) < 6:
+    while len(apps) < system_cores:
         candidate = available_apps[randrange(len(available_apps))]
         if candidate not in apps:
             apps.append(candidate)
@@ -180,27 +158,15 @@ def getPIDThread(proc):
 def getPIDs(mapping):
     procs = getProcessNamesFromMap(mapping)
     #print(procs)
-    pids = [-1,-1,-1,-1,-1,-1]
-    a = RetThread(target=getPIDThread, args=(procs[0],))
-    b = RetThread(target=getPIDThread, args=(procs[1],))
-    c = RetThread(target=getPIDThread, args=(procs[2],))
-    d = RetThread(target=getPIDThread, args=(procs[3],))
-    e = RetThread(target=getPIDThread, args=(procs[4],))
-    f = RetThread(target=getPIDThread, args=(procs[5],))
+    pids = []
+    thread_workers = []
+    for proc in procs:
+        thread_workers.append(RetThread(target=getPIDThread, args=(proc,)))
     #print("[Thread team]: getting pids in parallel")
-    a.start()
-    b.start()
-    c.start()
-    d.start()
-    e.start()
-    f.start()
-
-    pids[0] = a.join()
-    pids[1] = b.join()
-    pids[2] = c.join()
-    pids[3] = d.join()
-    pids[4] = e.join()
-    pids[5] = f.join()
+    for tidx in range(len(thread_workers)):
+        thread_workers[tidx].start()
+    for tidx in range(len(thread_workers)):
+        pids.append(thread_workers[tidx].join())
 
     return pids
 
@@ -259,10 +225,12 @@ def run_simple(base_map, workdir=None, metrics = False):
         mon.start()
     start = timer()
     print("Current mapping: " + str(base_map))
-    ta,tb,tc,td,te,tf = makeThreads(base_map)
+
+    threads = makeThreads(base_map)
     pids = getPIDs(mapping)
     print("PIDs: ", pids)
-    waiter =  threading.Thread(target=waitForThreads, args=(ta,tb,tc,td,te,tf,))
+    
+    waiter =  threading.Thread(target=waitForThreads, args=(threads,))
     waiter.start()
 
 
@@ -287,7 +255,7 @@ if __name__ == "__main__":
     premaps = []
 
     mappfile=open("results/maps.txt", "w")
-    for x in range(NUM_WORKLOADS):
+    for x in range(workloads):
        premaps.append(generateApps())
     mappfile.write(str(premaps))
     mappfile.close()

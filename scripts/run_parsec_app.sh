@@ -1,5 +1,5 @@
 #!/bin/bash
-PARSECBASE=/home/jetson/mitecca/parsec-benchmark/
+PARSECBASE=/home/jef/ARDIS/parsec-benchmark/
 SCRIPTPTH=`pwd`
 
 # set parsec enviroment if it hasn't been done yet
