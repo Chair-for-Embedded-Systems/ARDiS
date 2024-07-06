@@ -255,13 +255,20 @@ def run_simple(base_map, workdir=None, metrics = False):
         mon.start()
     print("Current mapping: " + str(base_map))
     ta,tb,tc,td,te,tf = makeThreads(base_map)
+    pids = getPIDs(mapping)
+    print("PIDs: ", pids)
+    waiter =  threading.Thread(target=waitForThreads, args=(ta,tb,tc,td,te,tf,))
+    waiter.start()
     start = timer()
-    ta.join()
-    tb.join()
-    tc.join()
-    td.join()
-    te.join()
-    tf.join()
+
+    global end_of_experiment
+    while not end_of_experiment:
+        curr = timer()
+        if (int(curr - start) % 5 == 0):
+            print("**************  Current map: ", mapping, "*******************")
+            time.sleep(1)
+        time.sleep(0.1)
+
     if metrics:
         mon.stop()
     end = timer()
