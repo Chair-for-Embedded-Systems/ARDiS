@@ -20,19 +20,8 @@ def generateRandomApps():
 
 def run_simple(base_map, workdir=None):
     print("Running workload with mapping: ", base_map)
-    # Start the workload
-    engine.startWorkload(base_map) 
-    # Get the PIDs of the applications
-    pids = engine.getProcessIds()
-    print("PIDs: ", pids)
-
-    while engine.running:
-        # print the current mapping every 5 seconds
-        if (int(engine.getElapsedTime()) % 5 == 0):
-            print("Current map:", engine.mapping)
-            time.sleep(1)
-        time.sleep(0.1)
-
+    # Execute the workload
+    engine.executeWorkload(base_map) 
     print("Experiment finished sucessfully!")
 
 if __name__ == "__main__":
@@ -44,7 +33,7 @@ if __name__ == "__main__":
     for idx in range(len(premaps)):
         print("Running workload ", idx + 1)
         run_simple(premaps[idx])
-        print("Workload ", idx, " finished")
+        print("Workload ", idx + 1, " finished")
     
 
 

@@ -25,7 +25,7 @@ class Engine:
         self.startime = 0
         self.endtime = 0       
 
-    def launchApp(self, app_name, core):
+    def __launchApp(self, app_name, core):
         app_str = getFullPath(app_name)
         str_cmd = "taskset -c " + str(core) + " " + app_str + " " + str(core)
         command = str_cmd.split(" ")
@@ -46,13 +46,13 @@ class Engine:
         print("[Core " + str(idcore) +"]: " + app_name + " finished execution!" )
         print("[Core " + str(idcore) +"]: " + app_name + "'s execution time = " + str(round(end - start,2)) + "s" )
         
-    # Create a thread for each application in the self.mapping 
-    def makeThreads(self, mapping ):
+    # Create a thread for each application in the mapping 
+    def __makeThreads(self, mapping):
         self.mapping  = mapping
         threads = []
         #TODO replace the core number (index for now) with the actual core number
-        for idx in range(len(self.mapping )):
-            threads.append(threading.Thread(target=self.launchApp, args=(self.mapping [idx], idx)))
+        for idx in range(len(self.mapping)):
+            threads.append(threading.Thread(target=self.__launchApp, args=(self.mapping[idx], idx)))
         #creating threads
         print("Launching workload")
         for tidx in range(len(threads)):
@@ -61,7 +61,7 @@ class Engine:
         return threads
 
     # Wait for all threads to finish
-    def waitForThreads(self, threads):
+    def __waitForThreads(self, threads):
         for tidx in range(len(threads)):
             threads[tidx].join()
         self.running = False
@@ -69,16 +69,31 @@ class Engine:
         print("END!")
         print("Total execution time of workload = ", str(round(self.endtime - self.startime, 2)) + "s")
 
-    def startWorkload(self, mapping):
-        threads = self.makeThreads(mapping)
-        waiter = threading.Thread(target=self.waitForThreads, args=(threads,))
+   
+    def executeWorkload(self, mapping):
+        threads = self.__makeThreads(mapping)
+        waiter = threading.Thread(target=self.__waitForThreads, args=(threads,))
         waiter.start()
         self.startime = timer()
+        self.mainLoop()
+        
       
     def getProcessIds(self):
         return getPIDs(self.mapping)
     
     def getElapsedTime(self):
         return timer() - self.startime
+    
+    def mainLoop(self):
+        # Print the PIDs of the applications
+        pids = self.getProcessIds()
+        print("PIDs: ", pids)
+        # Add any periodic actions here
+        while self.running:
+            # print the current mapping every 5 seconds
+            if (int(self.getElapsedTime()) % 5 == 0):
+                print("Current map:", self.mapping)
+                time.sleep(0.5)
+            time.sleep(action_interval)
 
 

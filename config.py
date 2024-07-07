@@ -7,7 +7,8 @@ available_apps = [#'spec-gcc', 'spec-milc', 'spec-bzip2', 'spec-sphinx3', 'spec-
                   #'spec-povray', 'spec-gromacs', 'spec-cactusADM', 'spec-omnetpp', 'spec-hmmer', 'spec-leslie3d',
                   'parsec-blackscholes', 'parsec-bodytrack', 'parsec-canneal', 'parsec-dedup', 'parsec-facesim',
                   'parsec-ferret', 'parsec-fluidanimate', 'parsec-freqmine', 'parsec-streamcluster',
-                  'parsec-swaptions', 'parsec-vips', 
+                  'parsec-swaptions', 
+                  #'parsec-vips', 
                   #'parsec-x264'
                   ]
 
@@ -15,3 +16,5 @@ available_apps = [#'spec-gcc', 'spec-milc', 'spec-bzip2', 'spec-sphinx3', 'spec-
 system_cores = 6
 # Number of workloads to run in the experiment
 num_workloads = 2
+# Interval in seconds to perform actions in the experiment
+action_interval = 0.1
