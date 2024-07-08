@@ -4,6 +4,7 @@ from core.mapping import *
 import threading
 import subprocess
 from timeit import default_timer as timer
+import math
 
 lock = threading.Lock()
 
@@ -97,9 +98,14 @@ class Engine:
                 print("END!")
                 print("Total execution time of workload = ", str(round(self.endtime - self.startime, 2)) + "s")
             else:
-                if (int(self.getElapsedTime()) % 5 == 0):
-                    print("Current map:", self.mapping)
-                    time.sleep(0.5)
+                if round(self.getElapsedTime(),1) % 5 == 0:
+                    print("[" + str(round(self.getElapsedTime(),2)) + "s]: Current map")
+                    map = ""
+                    for app, core in self.mapping.items():
+                        if app in self.__active_threads:
+                            map += app + ", " + str(core) + "  | "
+                    print(map)
+                    time.sleep(0.6)
                 time.sleep(action_interval)
 
 
