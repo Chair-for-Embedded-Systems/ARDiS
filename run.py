@@ -1,40 +1,45 @@
 from config import *
 from core.engine import *
+from core.scheduler import *
 import time
 from timeit import default_timer as timer
 from random import randrange
 
 
-engine = Engine()
-
-# Generate a random mapping of unique applications to cores
-def generateRandomApps():
-    apps = []
-    while len(apps) < system_cores:
-        candidate = available_apps[randrange(len(available_apps))]
-        if candidate not in apps:
-            apps.append(candidate)
-    return apps
 
 
+class Experiment:
+    def __init__(self, name="", applications=[]):
+        self.__name = name
+        self.__applications = applications
+        self.__engine = Engine()
+        self.__scheduler = Scheduler()
 
-def run_simple(base_map, workdir=None):
-    print("Running workload with mapping: ", base_map)
-    # Execute the workload
-    engine.executeWorkload(base_map) 
-    print("Experiment finished sucessfully!")
+    # Generate a random list of N unique applications to execute
+    def generateRandomApps(self, N_apps):
+        while len(self.__applications) < N_apps:
+            candidate = available_apps[randrange(len(available_apps))]
+            if candidate not in self.__applications:
+                self.__applications.append(candidate)
+   
+    # Execute the experiment and wait for it to finish
+    def executeExperiment(self):
+        self.__scheduler.createSchedule(self.__applications)
+        #TODO: for now we are passing the schedule to the engine
+        # if we want a periodic schedule policy we need to pass the scheduler to the engine, probably
+        self.__engine.executeWorkload(self.__applications, self.__scheduler.schedule)
+
+
 
 if __name__ == "__main__":
-    premaps = []
+    # Create an experiment object
+    exp = Experiment("Simple Experiment")
+    # Generate a random list of workloads
+    exp.generateRandomApps(4)
+    # Run the experiment
+    exp.executeExperiment()
 
-    for x in range(num_workloads):
-       premaps.append(generateRandomApps())
 
-    for idx in range(len(premaps)):
-        print("Running workload ", idx + 1)
-        run_simple(premaps[idx])
-        print("Workload ", idx + 1, " finished")
-    
 
 
     
