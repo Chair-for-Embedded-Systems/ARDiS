@@ -13,7 +13,7 @@ class Experiment:
     def __init__(self, name="", applications=[]):
         self.__name = name
         self.__applications = applications
-        self.__engine = Engine()
+        self.__engine = Engine(self.__name)
         #self.__scheduler = Scheduler()
         # Create a schedule with a delay in the arrival time of 2.5 seconds between each application
         # use 0 for all applications to arrive at the same time

@@ -1,6 +1,7 @@
 from config import *
 from core.procworker import *
 from core.mapping import *
+from core.reporter import *
 import threading
 import subprocess
 from timeit import default_timer as timer
@@ -27,14 +28,16 @@ def getCoreByApp(mapping, core):
     return None
 
 class Engine:
-    def __init__(self):
+    def __init__(self, experiment_name):
         self.running = False
         self.startime = 0
         self.endtime = 0
+        self.__last_print_time = None
         self.mapping = {}
         self.__threads = {}
         self.__active_threads = []  
         self.__mappingPolicy = MappingPolicy()
+        self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
             
 
     def __start(self):
@@ -55,13 +58,17 @@ class Engine:
         with lock:
             self.mapping[app_name] = -1
         print("[Core " + str(core) +"]: " + app_name + " finished execution!" )
+        self.reporter.logEvent("[Core " + str(core) +"]: " + app_name + " finished execution!" )
         print("[Core " + str(core) +"]: " + app_name + "'s execution time = " + str(round(end - start,2)) + "s" )
+        self.reporter.logEvent("[Core " + str(core) +"]: " + app_name + "'s execution time = " + str(round(end - start,2)) + "s" )
+        self.reporter.logExecutionTime(app_name, core, end - start)
         
     # Create a thread for each application in the mapping 
     def __makeThreads(self):
         for app, core in self.mapping.items():
             self.__threads[app] = threading.Thread(target=self.__launchApp, args=(app, core))
             print("Thread for " + app + " created!")
+            self.reporter.logEvent("Thread for " + app + " created!")
     
     #TODO: logic for getting PIDs is not done yet
     def getProcessIds(self):
@@ -74,6 +81,7 @@ class Engine:
         self.__threads[app].start()
         self.__active_threads.append(app)
         print("Thread for " + app + " started!")
+        self.reporter.logEvent("Thread for " + app + " started!")
 
 
     def executeWorkload(self, applications, schedule):
@@ -96,16 +104,24 @@ class Engine:
                 self.running = False
                 self.endtime = timer()
                 print("END!")
-                print("Total execution time of workload = ", str(round(self.endtime - self.startime, 2)) + "s")
+                print("Total execution time of experiment = ", str(round(self.endtime - self.startime, 2)) + "s")
+                self.reporter.logEvent("Total execution time of experiment = " + str(round(self.endtime - self.startime, 2)) + "s")
+                break
             else:
-                if round(self.getElapsedTime(),1) % 5 == 0:
-                    print("[" + str(round(self.getElapsedTime(),2)) + "s]: Current map")
-                    map = ""
-                    for app, core in self.mapping.items():
-                        if app in self.__active_threads:
-                            map += app + ", " + str(core) + "  | "
-                    print(map)
-                    time.sleep(0.6)
-                time.sleep(action_interval)
+                # Print the current mapping every 5 seconds
+                current_time = self.getElapsedTime()
+                if round(current_time, 1) % 5 == 0:
+                    if self.__last_print_time  is None or current_time - self.__last_print_time  >= 5:
+                        print("[" + str(round(current_time, 2)) + "s]: Current map")
+                        map = ""
+                        for app, core in self.mapping.items():
+                            if app in self.__active_threads:
+                                map += app + ", " + str(core) + "  | "
+                        print(map)
+                        # hack to make sure we only print once
+                        self.__last_print_time  = current_time
+            time.sleep(action_interval)
 
 
+#5.35
+53
