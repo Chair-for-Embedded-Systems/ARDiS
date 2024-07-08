@@ -26,16 +26,23 @@ class Engine:
         self.endtime = 0       
 
     def __launchApp(self, app_name, core):
+        # Build the full application execution command from the corresponding script
         app_str = getFullPath(app_name)
         str_cmd = "taskset -c " + str(core) + " " + app_str + " " + str(core)
         command = str_cmd.split(" ")
-        #print(str_cmd)
+        # Execute the application
         p = subprocess.Popen(command,  stdout=subprocess.PIPE)
         start = timer()
         p.wait()
         end = timer()
         core = -1
-        app_short = app_name[5:]
+        #TODO: probably need a cleaner way to do this
+        app_short = app_name
+        if "spec" or "parsec" in app_name:
+            app_short = app_name[5:]
+        #TODO: the mapping itself is just a list of apps for now
+        # we need to adapt the structure of the mapping to  explicitly
+        # include the core for each app
         for idx in range(len(self.mapping )):
             if app_short in self.mapping [idx]:
                 core = idx
@@ -62,8 +69,10 @@ class Engine:
 
     # Wait for all threads to finish
     def __waitForThreads(self, threads):
+        # Barrier here to wait for all threads to finish
         for tidx in range(len(threads)):
             threads[tidx].join()
+        # Threads have finished, set running to false
         self.running = False
         self.endtime = timer()
         print("END!")
