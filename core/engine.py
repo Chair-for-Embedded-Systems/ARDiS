@@ -80,13 +80,15 @@ class Engine:
     def __startThread(self,  app):
         self.__threads[app].start()
         self.__active_threads.append(app)
-        print("Thread for " + app + " started!")
-        self.reporter.logEvent("Thread for " + app + " started!")
+        print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
+        self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
 
 
     def executeWorkload(self, applications, schedule):
         # Execute the mapping policy 
         self.mapping = self.__mappingPolicy.executeMapping(applications)
+        self.reporter.logEvent("Mapping: " + str(self.mapping))
+        print("Mapping: " + str(self.mapping))
         # Create the threads each application.
         self.__makeThreads()	
         # then start the workload execution
@@ -103,7 +105,8 @@ class Engine:
             if not any([thread.is_alive() for thread in self.__threads.values()]) and len(self.__active_threads) == len(self.mapping.keys()):
                 self.running = False
                 self.endtime = timer()
-                print("END!")
+                print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
+                self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
                 print("Total execution time of experiment = ", str(round(self.endtime - self.startime, 2)) + "s")
                 self.reporter.logEvent("Total execution time of experiment = " + str(round(self.endtime - self.startime, 2)) + "s")
                 break
@@ -121,7 +124,3 @@ class Engine:
                         # hack to make sure we only print once
                         self.__last_print_time  = current_time
             time.sleep(action_interval)
-
-
-#5.35
-53
