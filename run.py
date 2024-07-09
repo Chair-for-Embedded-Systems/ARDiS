@@ -25,6 +25,9 @@ class Experiment:
             candidate = available_apps[randrange(len(available_apps))]
             if candidate not in self.__applications:
                 self.__applications.append(candidate)
+    
+    def setApplications(self, applications):
+        self.__applications = applications
    
     # Execute the experiment and wait for it to finish
     def executeExperiment(self):
@@ -39,7 +42,9 @@ if __name__ == "__main__":
     # Create an experiment object
     exp = Experiment("Simple Experiment")
     # Generate a random list of applications
-    exp.generateRandomApps(4)
+    # exp.generateRandomApps(system_cores)
+    # Manually set the applications to execute
+    exp.setApplications(['parsec-ferret', 'parsec-canneal', 'parsec-streamcluster', 'parsec-freqmine'])
     # Run the experiment
     exp.executeExperiment()
 

@@ -5,7 +5,6 @@ from core.reporter import *
 import threading
 import subprocess
 from timeit import default_timer as timer
-import math
 
 lock = threading.Lock()
 
@@ -35,7 +34,8 @@ class Engine:
         self.__last_print_time = None
         self.mapping = {}
         self.__threads = {}
-        self.__active_threads = []  
+        self.__active_threads = []
+        self.PIDs = {}  
         self.__mappingPolicy = MappingPolicy()
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
             
@@ -55,6 +55,8 @@ class Engine:
         p.wait()
         end = timer()
         core = self.mapping[app_name]
+        #TODO: since this is now a dictionary, the writing access should be thread safe
+        # keeping the lock until properly evaluated
         with lock:
             self.mapping[app_name] = -1
         print("[Core " + str(core) +"]: " + app_name + " finished execution!" )
@@ -70,9 +72,12 @@ class Engine:
             print("Thread for " + app + " created!")
             self.reporter.logEvent("Thread for " + app + " created!")
     
-    #TODO: logic for getting PIDs is not done yet
-    def getProcessIds(self):
-        return getPIDs(self.mapping.keys())
+    def getProcessID(self, app):
+        PID = getPIDOfApp(app)
+        # writing to the dictionary should be thread safe, no need for lock here
+        self.PIDs[app] = PID
+        print("[" + str(round(self.getElapsedTime(), 2)) + "s]: PID of " + app + " is " + str(PID))
+        self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: PID of " + app + " is " + str(PID))
     
     def getElapsedTime(self):
         return timer() - self.startime
@@ -100,6 +105,10 @@ class Engine:
                 if schedule[app] <= self.getElapsedTime() and app not in self.__active_threads:
                     # Start the thread
                     self.__startThread(app)
+                    #TODO while very unlikely, we might have a race condition here 
+                    Thread(target=self.getProcessID, args=(app,)).start()
+                    # using the pool executor should avoid race conditions but the performance is a bit worse
+                    # self.__executor.submit(self.getProcessID, app)
 
             # Check if all threads are done before finishing
             if not any([thread.is_alive() for thread in self.__threads.values()]) and len(self.__active_threads) == len(self.mapping.keys()):

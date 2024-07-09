@@ -42,7 +42,6 @@ def getPIDThread(proc):
     str_cmd = "taskset -c 0 pidof " + proc
     command = str_cmd.split(" ")
     pid = -1
-    #print(str_cmd)
     tries = 0
     while not found:
         p = subprocess.run(command,capture_output=True)
@@ -54,24 +53,13 @@ def getPIDThread(proc):
         except:
             tries+=1
             time.sleep(0.005)
-            if tries >= 200:
+            if tries >= 1000:
                 print("Warning: Process ", proc, " has probably finished")
                 found = True
     return pid
 
 
-#this is an overkill, I am not sorry.
-def getPIDs(mapping):
-    procs = getProcessNamesFromMap(mapping)
-    #print(procs)
-    pids = []
-    thread_workers = []
-    for proc in procs:
-        thread_workers.append(RetThread(target=getPIDThread, args=(proc,)))
-    #print("[Thread team]: getting pids in parallel")
-    for tidx in range(len(thread_workers)):
-        thread_workers[tidx].start()
-    for tidx in range(len(thread_workers)):
-        pids.append(thread_workers[tidx].join())
-
-    return pids
+def getPIDOfApp(app):
+    proc = getProcessName(app)
+    pid = getPIDThread(proc)
+    return pid
