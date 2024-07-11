@@ -27,7 +27,7 @@ def getCoreByApp(mapping, core):
     return None
 
 class Engine:
-    def __init__(self, experiment_name):
+    def __init__(self, experiment_name, mapping_policy = MappingPolicy()):
         self.running = False
         self.startime = 0
         self.endtime = 0
@@ -36,7 +36,7 @@ class Engine:
         self.__threads = {}
         self.__active_threads = []
         self.PIDs = {}  
-        self.__mappingPolicy = MappingPolicy()
+        self.__mapping_policy = mapping_policy
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
             
 
@@ -91,7 +91,7 @@ class Engine:
 
     def executeWorkload(self, applications, schedule):
         # Execute the mapping policy 
-        self.mapping = self.__mappingPolicy.executeMapping(applications)
+        self.mapping = self.__mapping_policy.executeMapping(applications)
         self.reporter.logEvent("Mapping: " + str(self.mapping))
         print("Mapping: " + str(self.mapping))
         # Create the threads each application.
