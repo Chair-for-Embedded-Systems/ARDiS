@@ -1,5 +1,5 @@
 #!/bin/bash
-PARSECBASE=/home/jef/ARDIS/parsec-benchmark/
+PARSECBASE=/home/sikmoh00/Subjects/RealHardware/parsec-3.0/
 SCRIPTPTH=`pwd`
 
 # set parsec enviroment if it hasn't been done yet
@@ -10,4 +10,4 @@ if [ -z $xxPARSECDIRxx ] ; then
 fi
 
 # run app $1 on core $2
-taskset -c $2 parsecmgmt -a run -i simlarge -n 1 -p $1
+taskset -c $2 nice -n 0 parsecmgmt -a run -i native -n 1 -p $1
