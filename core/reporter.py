@@ -5,7 +5,7 @@ class Reporter():
         # Format the current date and time
         datetime_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         # Construct the directory name
-        dir_name = f"{experiment_name.replace(' ', '_')}_{datetime_str}/"
+        dir_name = f"{datetime_str}_{experiment_name.replace(' ', '_')}/"
         # Create the full path for the new directory
         self.workdir = os.path.join(os.path.abspath(results_dir), dir_name)
         # Create the directory, including any necessary parent directories
