@@ -2,6 +2,7 @@ from config import *
 from core.engine import *
 from core.scheduler import *
 from core.policies.consecutive_schedule import *
+from core.dvfs import *
 import time
 from timeit import default_timer as timer
 from random import randrange
@@ -35,6 +36,9 @@ class Experiment:
         #TODO: for now we are passing the schedule to the engine
         # if we want a periodic schedule policy we need to pass the scheduler to the engine, probably
         self.__engine.executeWorkload(self.__applications, self.__scheduler.schedule)
+    
+    def setInitialFrequency(self, frequency):
+        self.__engine.setStaticFrequency(frequency)
 
 
 
@@ -45,6 +49,7 @@ if __name__ == "__main__":
     # exp.generateRandomApps(system_cores)
     # Manually set the applications to execute
     exp.setApplications(['parsec-ferret', 'parsec-canneal', 'parsec-streamcluster', 'parsec-freqmine'])
+    exp.setInitialFrequency(1500)
     # Run the experiment
     exp.executeExperiment()
 

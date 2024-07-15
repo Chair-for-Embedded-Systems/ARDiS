@@ -2,6 +2,7 @@ from config import *
 from core.procworker import *
 from core.mapping import *
 from core.reporter import *
+from core.dvfs import *
 import threading
 import subprocess
 from timeit import default_timer as timer
@@ -37,7 +38,12 @@ class Engine:
         self.__active_threads = []
         self.PIDs = {}  
         self.__mapping_policy = mapping_policy
+        #TODO: replace for argument
+        self.__dvfs_policy = DVFSPolicy(True)
+        #default frequency  = 2000 MHz
+        self.__static_frequency  = 2000
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
+
             
 
     def __start(self):
@@ -88,12 +94,18 @@ class Engine:
         print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
         self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
 
+    def setStaticFrequency(self, frequency):
+        self.__static_frequency = frequency
 
     def executeWorkload(self, applications, schedule):
         # Execute the mapping policy 
         self.mapping = self.__mapping_policy.executeMapping(applications)
         self.reporter.logEvent("Mapping: " + str(self.mapping))
         print("Mapping: " + str(self.mapping))
+        # Set the static frequency for all soon-to-be-used cores
+        self.__dvfs_policy.setInitialFrequency(self.mapping.values(), self.__static_frequency)
+        self.reporter.logEvent("Initial core frequency: " + str(self.__static_frequency))
+        print("Initial core frequency: " + str(self.__static_frequency))
         # Create the threads each application.
         self.__makeThreads()	
         # then start the workload execution
