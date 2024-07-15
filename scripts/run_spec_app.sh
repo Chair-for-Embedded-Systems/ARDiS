@@ -13,4 +13,4 @@ if [ -z $SPECBIN ] ; then
 fi
 
 # run app $1 on core $2
-taskset -c $2 runspec --iterations 1 --size train --action onlyrun --config $CONFIGFILE --noreportable  $1
+taskset -c $2 nice -n 0 runspec --iterations 1 --size train --action onlyrun --config $CONFIGFILE --noreportable  $1
