@@ -1,7 +1,7 @@
 #!/bin/bash
-SPECPBASE=/home/jetson/mitecca/spec/cpu2006
+SPECPBASE=/home/sikmoh00/Subjects/RealHardware/cpu2006/
 SPECPBIN=$SPECPBASE/bin
-CONFIGARM=linux64-arm64-gcc.cfg
+CONFIGFILE=ubuntu_aarch64.cfg
 
 SCRIPTPTH=`pwd`
 
@@ -13,4 +13,4 @@ if [ -z $SPECBIN ] ; then
 fi
 
 # run app $1 on core $2
-taskset -c $2 runspec --iterations 1 --size train --action onlyrun --config $CONFIGARM --noreportable  $1
+taskset -c $2 runspec --iterations 1 --size train --action onlyrun --config $CONFIGFILE --noreportable  $1
