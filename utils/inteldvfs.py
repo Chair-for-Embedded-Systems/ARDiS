@@ -109,10 +109,12 @@ class CPUFrequencyManager:
 
             self.__write_msr(core, MSR_HWP_REQUEST, hwp_request)
             #let's write it also to the other logical core
-            if (core < 16 and core %2 == 0):
+            if core < 16:
+                # this case, due to hyperthreading, we need to write to the other logical core
+                extra_core = core + 1 if core %2 == 0 else core - 1
                 if self.__debug:
-                    print("Setting pstate to", pstate, "for core", core + 1)
-                self.__write_msr(core + 1, MSR_HWP_REQUEST, hwp_request)
+                    print("Setting pstate to", pstate, "for core", extra_core)
+                self.__write_msr(extra_core, MSR_HWP_REQUEST, hwp_request)
 
             # Verify the write
             if self.__debug:
