@@ -54,10 +54,11 @@ def runExample():
 
 
 def runRandomExample():
+    num_random_apps = 4
     # Create an experiment object
     exp = Experiment("Simple Experiment with Random Applications")
     # Generate a random list of applications
-    exp.generateRandomApps(system_cores)
+    exp.generateRandomApps(num_random_apps)
     # Set the initial frequency of the cores
     exp.setInitialFrequency(2900)
     # Run the experiment
