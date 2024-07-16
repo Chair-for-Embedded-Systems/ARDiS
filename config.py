@@ -3,7 +3,7 @@ UTILS_DIR="./utils"
 
 # List of available applications on the system
 available_apps = ['spec-GemsFDTD','spec-gcc', 'spec-milc', 'spec-bzip2', 'spec-sphinx3', 'spec-astar', 'spec-lbm',
-                  'spec-bwaves', 'spec-mcf', 'spec-zeusmp',  'spec-namd', 'spec-h264ref', 'spec-gobmk',
+                  'spec-bwaves', 'spec-mcf', 'spec-zeusmp', 'spec-namd', 'spec-h264ref', 'spec-gobmk', 'spec-libquantum',
                   'spec-povray', 'spec-gromacs', 'spec-cactusADM', 'spec-omnetpp', 'spec-hmmer', 'spec-leslie3d',
                   'parsec-blackscholes', 'parsec-bodytrack', 'parsec-canneal', 'parsec-dedup', 'parsec-facesim',
                   'parsec-ferret', 'parsec-fluidanimate', 'parsec-freqmine', 'parsec-streamcluster',
