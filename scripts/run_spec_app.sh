@@ -1,7 +1,7 @@
 #!/bin/bash
 SPECPBASE=/home/sikmoh00/Subjects/RealHardware/cpu2006/
 SPECPBIN=$SPECPBASE/bin
-CONFIGFILE=ubuntu_aarch64.cfg
+CONFIGFILE=mytest.cfg
 
 SCRIPTPTH=`pwd`
 
