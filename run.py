@@ -15,11 +15,11 @@ class Experiment:
     def __init__(self, name="", applications=[]):
         self.__name = name
         self.__applications = applications
-        self.__engine = Engine(self.__name, IntelMotivationalExample(False))
+        self.__engine = Engine(self.__name, IntelMotivationalExample(True))
         #self.__scheduler = Scheduler()
         # Create a schedule with a delay in the arrival time of 2.5 seconds between each application
         # use 0 for all applications to arrive at the same time
-        self.__scheduler = ConsecutiveScheduler(2.5)
+        self.__scheduler = ConsecutiveScheduler(0)
 
     # Generate a random list of N unique applications to execute
     def generateRandomApps(self, N_apps):
@@ -52,7 +52,6 @@ def runExample():
     # Run the experiment
     exp.executeExperiment()
 
-
 def runRandomExample():
     num_random_apps = 4
     # Create an experiment object
@@ -65,9 +64,17 @@ def runRandomExample():
     exp.executeExperiment()
 
 def runMotivationalExample():
-    exp = Experiment("Motivational Example")
-    exp.setApplications(['parsec-ferret', 'parsec-canneal', 'parsec-streamcluster', 'parsec-freqmine'])
-    exp.setInitialFrequency(2900)
+    exp = Experiment("motivECores0")
+   # exp.setApplications(['spec-omnetpp'])
+    exp.setApplications(['spec-omnetpp', 'spec-libquantum'])
+    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD'])
+    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc'])
+    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm'])
+    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf'])
+    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves'])
+    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves', 'spec-gcc'])
+    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves', 'spec-gcc', 'spec-leslie3d'])
+    exp.setInitialFrequency(1800)
     exp.executeExperiment()
 
 if __name__ == "__main__":
