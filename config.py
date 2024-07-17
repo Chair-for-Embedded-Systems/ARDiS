@@ -21,3 +21,6 @@ intel_e_core_ids = [16, 17, 18, 19, 20, 21, 22, 23]
 num_workloads = 2
 # Interval in seconds to perform actions in the experiment
 action_interval = 0.1
+
+# List of cores to use for explicit mapping
+explicit_mapping_cores = [2, 16, 17, 18]

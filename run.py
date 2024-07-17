@@ -2,6 +2,7 @@ from config import *
 from core.engine import *
 from core.scheduler import *
 from core.policies.consecutive_schedule import *
+from core.policies.explicit_mapping import *
 from core.dvfs import *
 import time
 from timeit import default_timer as timer
@@ -11,10 +12,10 @@ from random import randrange
 
 
 class Experiment:
-    def __init__(self, name="", applications=[]):
+    def __init__(self, name="", applications=[], mapping_policy=MappingPolicy()):
         self.__name = name
         self.__applications = applications
-        self.__engine = Engine(self.__name)
+        self.__engine = Engine(self.__name, mapping_policy=mapping_policy)
         #self.__scheduler = Scheduler()
         # Create a schedule with a delay in the arrival time of 2.5 seconds between each application
         # use 0 for all applications to arrive at the same time
@@ -44,7 +45,7 @@ class Experiment:
 
 if __name__ == "__main__":
     # Create an experiment object
-    exp = Experiment("Simple Experiment")
+    exp = Experiment("Simple Experiment", mapping_policy=ExplicitMapping(explicit_mapping_cores))
     # Generate a random list of applications
     # exp.generateRandomApps(system_cores)
     # Manually set the applications to execute
