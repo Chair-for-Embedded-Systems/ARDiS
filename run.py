@@ -21,7 +21,6 @@ class Experiment:
         # Create a schedule with a delay in the arrival time of 2.5 seconds between each application
         # use 0 for all applications to arrive at the same time
         self.__scheduler = ConsecutiveScheduler(0)
-        self.__scheduler = ConsecutiveScheduler(0)
 
     # Generate a random list of N unique applications to execute
     def generateRandomApps(self, N_apps):
