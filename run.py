@@ -16,7 +16,7 @@ class Experiment:
     def __init__(self, name="", applications=[], mapping_policy=MappingPolicy()):
         self.__name = name
         self.__applications = applications
-        self.__engine = Engine(self.__name, mapping_policy=mapping_policy, debug=True)
+        self.__engine = Engine(self.__name, mapping_policy=mapping_policy, debug=False)
         #self.__scheduler = Scheduler()
         # Create a schedule with a delay in the arrival time of 2.5 seconds between each application
         # use 0 for all applications to arrive at the same time
@@ -42,6 +42,13 @@ class Experiment:
     def setInitialFrequency(self, frequency):
         self.__engine.setStaticFrequency(frequency)
 
+    
+    def __str__(self):
+        return f"Experiment {self.__name} with applications {self.__applications}"
+    
+    def __repr__(self):
+        return self.__str__()
+
 
 def runExample():
    # Create an experiment object
@@ -65,28 +72,31 @@ def runRandomExample():
     exp.executeExperiment()
 
 def runMotivationalExample():
-    exp = Experiment("motivECores0")
-   # exp.setApplications(['spec-omnetpp'])
-    exp.setApplications(['spec-omnetpp', 'spec-libquantum'])
-    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD'])
-    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc'])
-    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm'])
-    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf'])
-    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves'])
-    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves', 'spec-gcc'])
-    #exp.setApplications(['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves', 'spec-gcc', 'spec-leslie3d'])
-    exp.setInitialFrequency(1800)
-    exp.executeExperiment()
+
+    motivationalDetails = {
+        "total": 8,
+        "exp_types": [
+            {
+                "name": "motivECores",
+                "mapping_policy": IntelMotivationalExample()
+            },
+            {
+                "name": "motivPCores",
+                "mapping_policy": IntelMotivationalExample(False)
+            }
+        ],
+        "applications": ['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves', 'spec-gcc', 'spec-leslie3d'],
+    }
+
+    for exp in motivationalDetails['exp_types']:
+        for exp_number in range(0, motivationalDetails['total']):
+            experiment = Experiment(exp['name'] + str(exp_number), mapping_policy=exp['mapping_policy'])
+            experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
+            experiment.setInitialFrequency(2500)
+            print(experiment)
+
 
 if __name__ == "__main__":
     #runExample()
     #runRandomExample()
     runMotivationalExample()
-
-
-
-
-    
-
-
-
