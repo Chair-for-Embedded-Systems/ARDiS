@@ -44,7 +44,7 @@ class Experiment:
 
     
     def __str__(self):
-        return f"Experiment {self.__name} with applications {self.__applications}"
+        return f"Experiment {self.__name} with applications {self.__applications} and engine {self.__engine}"
     
     def __repr__(self):
         return self.__str__()
@@ -77,11 +77,11 @@ def runMotivationalExample():
         "total": 8,
         "exp_types": [
             {
-                "name": "motivECores",
+                "name": "motivECores_2GHz",
                 "mapping_policy": IntelMotivationalExample()
             },
             {
-                "name": "motivPCores",
+                "name": "motivPCores_2GHz",
                 "mapping_policy": IntelMotivationalExample(False)
             }
         ],
@@ -92,8 +92,9 @@ def runMotivationalExample():
         for exp_number in range(0, motivationalDetails['total']):
             experiment = Experiment(exp['name'] + str(exp_number), mapping_policy=exp['mapping_policy'])
             experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
-            experiment.setInitialFrequency(2500)
+            experiment.setInitialFrequency(2000)
             print(experiment)
+            experiment.executeExperiment()
 
 
 if __name__ == "__main__":
