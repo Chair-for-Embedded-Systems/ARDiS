@@ -145,3 +145,9 @@ class Engine:
                         # hack to make sure we only print once
                         self.__last_print_time  = current_time
             time.sleep(action_interval)
+        
+        def __str__(self):
+                return f"Engine with mapping {self.mapping} and DVFS policy {self.__dvfs_policy}"
+            
+        def __repr__(self):
+                return self.__str__()
