@@ -23,4 +23,4 @@ num_workloads = 2
 action_interval = 0.1
 
 # List of cores to use for explicit mapping
-explicit_mapping_cores = [2, 16, 17, 18]
+explicit_mapping_cores = [2, 4, 17, 23]

@@ -98,23 +98,39 @@ class CPUFrequencyManager:
         pstate = self.__frequency_to_pstate(core, frequency)
         hwp_request = self.__read_msr(core, MSR_HWP_REQUEST)
         if hwp_request is not None:
-            if self.__debug:
-                print(f"Original HWP_REQUEST value: {hwp_request:#x}")
-                print("Setting pstate to", pstate, "for core", core)
             hwp_request = (
             (pstate & 0xFF) |                    # Minimum Performance
             ((pstate & 0xFF) << 8) |             # Maximum Performance
             ((0x80 & 0xFF) << 24)  # Energy Performance Preference
             )
 
-            self.__write_msr(core, MSR_HWP_REQUEST, hwp_request)
-            #let's write it also to the other logical core
-            if core < 16:
+            #If it's a p-core. let's write to both logical cores
+            if core  in intel_p_core_ids:
                 # this case, due to hyperthreading, we need to write to the other logical core
                 extra_core = core + 1 if core %2 == 0 else core - 1
                 if self.__debug:
-                    print("Setting pstate to", pstate, "for core", extra_core)
+                    print("Setting pstate to", pstate, "for cores", core, extra_core)
+                self.__write_msr(core, MSR_HWP_REQUEST, hwp_request)
                 self.__write_msr(extra_core, MSR_HWP_REQUEST, hwp_request)
+            # if it's an e-core, we need to write to all cores from the cluster   
+            elif core in intel_e_core_ids:
+                #TODO: check batch write
+                if core < intel_e_core_ids[4]:
+                    if self.__debug:
+                        print(f"Original HWP_REQUEST value: {hwp_request:#x}")
+                        print("Setting pstate to", pstate, "for cores", intel_e_core_ids[:4])
+                    self.__write_msr(intel_e_core_ids[0], MSR_HWP_REQUEST, hwp_request)
+                    self.__write_msr(intel_e_core_ids[1], MSR_HWP_REQUEST, hwp_request)
+                    self.__write_msr(intel_e_core_ids[2], MSR_HWP_REQUEST, hwp_request)
+                    self.__write_msr(intel_e_core_ids[3], MSR_HWP_REQUEST, hwp_request)
+                else:
+                    if self.__debug:
+                        print(f"Original HWP_REQUEST value: {hwp_request:#x}")
+                        print("Setting pstate to", pstate, "for cores", intel_e_core_ids[4:])
+                    self.__write_msr(intel_e_core_ids[4], MSR_HWP_REQUEST, hwp_request)
+                    self.__write_msr(intel_e_core_ids[5], MSR_HWP_REQUEST, hwp_request)
+                    self.__write_msr(intel_e_core_ids[6], MSR_HWP_REQUEST, hwp_request)
+                    self.__write_msr(intel_e_core_ids[7], MSR_HWP_REQUEST, hwp_request)
 
             # Verify the write
             if self.__debug:
