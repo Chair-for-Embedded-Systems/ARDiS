@@ -15,7 +15,7 @@ available_apps = ['spec-GemsFDTD','spec-gcc', 'spec-milc', 'spec-bzip2', 'spec-s
 # Number of cores in the system
 system_cores = 24
 # platform specific stuff
-intel_p_core_ids = [0, 2, 4, 6, 8, 10, 12, 14]
+intel_p_core_ids = [2, 4, 6, 8, 10, 12, 14]
 intel_e_core_ids = [16, 17, 18, 19, 20, 21, 22, 23]
 # Number of workloads to run in the experiment
 num_workloads = 2
