@@ -28,7 +28,7 @@ def getCoreByApp(mapping, core):
     return None
 
 class Engine:
-    def __init__(self, experiment_name, mapping_policy = MappingPolicy()):
+    def __init__(self, experiment_name, mapping_policy = MappingPolicy(), debug = False):
         self.running = False
         self.startime = 0
         self.endtime = 0
@@ -39,7 +39,7 @@ class Engine:
         self.PIDs = {}  
         self.__mapping_policy = mapping_policy
         #TODO: replace for argument
-        self.__dvfs_policy = DVFSPolicy(True)
+        self.__dvfs_policy = DVFSPolicy(debug)
         #default frequency  = 2000 MHz
         self.__static_frequency  = 2000
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)

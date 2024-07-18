@@ -10,6 +10,7 @@ class DVFSPolicy():
             self.manager.setFrequency(core, frequency)
             if self.__debug:
                 print(f"Core {core} set to {frequency} MHz")
+    
     def executeDVFSPolicy(self, cores, frequency):
         pass
 
