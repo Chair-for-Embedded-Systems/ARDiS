@@ -130,6 +130,8 @@ class Engine:
                 self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
                 print("Total execution time of experiment = ", str(round(self.endtime - self.startime, 2)) + "s")
                 self.reporter.logEvent("Total execution time of experiment = " + str(round(self.endtime - self.startime, 2)) + "s")
+                # Clear the caches after the experiment is done
+                self.__clearCaches()
                 break
             else:
                 # Print the current mapping every 5 seconds
@@ -145,9 +147,13 @@ class Engine:
                         # hack to make sure we only print once
                         self.__last_print_time  = current_time
             time.sleep(action_interval)
-        
-        def __str__(self):
-                return f"Engine with mapping {self.mapping} and DVFS policy {self.__dvfs_policy}"
             
-        def __repr__(self):
-                return self.__str__()
+    def __clearCaches(self):
+        runProc("sudo sync")
+        runProc("sudo echo 3 > /proc/sys/vm/drop_caches")
+
+    def __str__(self):
+            return f"Engine with mapping {self.__mapping_policy} and DVFS policy {self.__dvfs_policy}"
+        
+    def __repr__(self):
+            return self.__str__()
