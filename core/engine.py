@@ -33,7 +33,7 @@ class Engine:
         self.running = False
         self.startime = 0
         self.endtime = 0
-        self.__last_print_time = None
+        self.__epochs = 0
         self.mapping = {}
         self.__threads = {}
         self.__active_threads = []
@@ -117,6 +117,7 @@ class Engine:
         # then start the workload execution
         self.__start()
         while self.running:
+            current_time = self.getElapsedTime()
             # Check if the application is scheduled to start and if the thread is not already running
             for app in self.mapping:
                 #TODO: this probably should be done by the scheduler, but we don't have access to it from here yet
@@ -143,22 +144,29 @@ class Engine:
                 self.__clearCaches()
                 break
             else:
-                # Print the current mapping every 5 seconds
-                current_time = self.getElapsedTime()
-                if round(current_time, 1) % 5 == 0:
-                    if self.__last_print_time  is None or current_time - self.__last_print_time  >= 5:
-                        print("[" + str(round(current_time, 2)) + "s]: Current map")
-                        map = ""
-                        for app, core in self.mapping.items():
-                            if app in self.__active_threads:
-                                map += app + ", " + str(core) + "  | "
-                        print(map)
-                        # monitor print
-                        for core in mapped_cores:
-                            print(f"Core {core}: {', '.join([f'{event} = {self.__monitor.getMetricAtCore(core, event)}' for event in events_to_track])}")
-                        # hack to make sure we only print once
-                        self.__last_print_time  = current_time
+                # Print the monitored metrics every 10 epochs
+                if self.__epochs % 10 == 0:
+                    # monitor print
+                    print("Monitored Metrics:")
+                    for core in mapped_cores:
+                        metrics = [f"{event} = {self.__monitor.getMetricAtCore(core, event)}" for event in events_to_track]
+                        print(f"Core {core}: {' | '.join(metrics)}")
+                    print("--------------------")
+                # Print the current mapping every 50 epochs
+                if self.__epochs % 50 == 0:
+                    print("[" + str(round(current_time, 2)) + "s]: Current map")
+                    map = ""
+                    for app, core in self.mapping.items():
+                        if app in self.__active_threads:
+                            map += app + ", " + str(core) + "  | "
+                    print(map)
+                    print("--------------------")
+                # any other periodic action here
+           
+            # Increment the epoch counter and sleep for the action interval
+            self.__epochs += 1
             time.sleep(action_interval)
+            
             
     def __clearCaches(self):
         runProc("sudo sync")
