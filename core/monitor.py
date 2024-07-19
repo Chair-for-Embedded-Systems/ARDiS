@@ -1,9 +1,85 @@
+#from config import *
+import threading
+import subprocess
+import os
+
+
+
+lock = threading.Lock()
 class Monitor:
-    def __init__(self, config):
-        pass
+    def __init__(self, sampling_rate_ms = 100, events = ["instructions", "cache-misses", "cache-references"], 
+                 tracked_cores = [0, 1, 2, 3]):
+        self.__sampling_rate = sampling_rate_ms / 1000
+        self.__events = events
+        self.__inst_file = "perf.out"
+        self.__finished = False
+        self.__current_values = {str(core): {event: 0 for event in self.__events} for core in tracked_cores}
+        self.__tracked_cores = [str(core) for core in tracked_cores]
+
+
     def start(self):
-        pass
+        self.__perf_thread = threading.Thread(target=self.__poll)
+        self.__perf_thread.start()
 
     def stop(self):
-        pass
+        self.__finished = True
 
+    def getMetricAtCore(self, core, event):
+        return self.__current_values[str(core)][event]
+
+    def __poll(self):
+        while not self.__finished:
+            self.__execute_perf_command()
+        os.remove(self.__inst_file)
+
+    def __execute_perf_command(self):
+        command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(self.__events)} -B -A -o {self.__inst_file} sleep {self.__sampling_rate} 2>/dev/null"
+        #print("Command is: ", command)
+        subprocess.run(command, shell=True)
+        self.__updateStats()
+
+
+    def __updateStats(self):
+        # Initialize or reset the lists for each metric based on the number of tracked cores
+        with open(self.__inst_file, 'r') as f:
+            lines = f.readlines()  # Skip the first line
+        
+        for line in lines[5:-3]:
+            if "<not supported>" in line or "<not counted>" in line:
+                continue  # Skip unsupported metrics
+            parts = line.split()
+            #print("Parts are: ", parts)
+            # Extract core number and convert it to an index based on tracked_cores
+            core_id = parts[0].replace("CPU", "")
+            if core_id not in self.__tracked_cores:
+                continue  # Skip cores that are not tracked
+    
+            # Parse the metric value, ensuring to remove any formatting like commas or dots
+            metric_value = int(parts[1].replace(".", "").replace(",", ""))
+            for event in self.__events:
+                if event in line:
+                    self.__current_values[str(core_id)][event] = metric_value
+                    break  # Break the loop once the metric is found
+
+
+
+
+# import time
+# if __name__ == "__main__":
+#     cores_to_track = [0, 1, 2, 3, 4, 5, 6, 17]
+#     event_to_track = ["instructions", "cache-misses", "cache-references"]
+#     sampling_rate = 100 # ms
+#     # Create an instance of the Monitor class
+#     monitor = Monitor(sampling_rate, event_to_track, cores_to_track)
+
+#     # Start monitoring
+#     monitor.start()
+#     time.sleep(1)
+
+#     for t in range(10):
+#         print(f"Time: {t}")
+#         # Print the IPS, cache accesses, and cache misses for each core
+#         for core in cores_to_track:
+#             print(f"Core {core}: {', '.join([f'{event} = {monitor.getMetricAtCore(core, event)}' for event in event_to_track])}")
+#         time.sleep(1)
+#     monitor.stop()

@@ -16,7 +16,7 @@ class Experiment:
     def __init__(self, name="", applications=[], mapping_policy=MappingPolicy()):
         self.__name = name
         self.__applications = applications
-        self.__engine = Engine(self.__name, mapping_policy=mapping_policy, debug=False)
+        self.__engine = Engine(self.__name, mapping_policy=mapping_policy)
         #self.__scheduler = Scheduler()
         # Create a schedule with a delay in the arrival time of 2.5 seconds between each application
         # use 0 for all applications to arrive at the same time
@@ -98,6 +98,6 @@ def runMotivationalExample():
 
 
 if __name__ == "__main__":
-    #runExample()
+    runExample()
     #runRandomExample()
-    runMotivationalExample()
+    #runMotivationalExample()

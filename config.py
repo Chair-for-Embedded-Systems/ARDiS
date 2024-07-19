@@ -1,6 +1,7 @@
 RESULTS_FOLDER="./results/"
 UTILS_DIR="./utils"
 
+DEBUG = False
 # List of available applications on the system
 available_apps = ['spec-GemsFDTD','spec-gcc', 'spec-milc', 'spec-bzip2', 'spec-sphinx3', 'spec-astar', 'spec-lbm',
                   'spec-bwaves', 'spec-mcf', 'spec-zeusmp', 'spec-namd', 'spec-h264ref', 'spec-gobmk', 'spec-libquantum',
@@ -24,3 +25,8 @@ action_interval = 0.1
 
 # List of cores to use for explicit mapping
 explicit_mapping_cores = [2, 4, 17, 23]
+
+# Monitoring parameters
+sampling_rate = 100 # in ms
+events_to_track = ["instructions", "cache-misses", "cache-references"]
+enable_monitoring = True 
