@@ -5,9 +5,8 @@ import subprocess
 MSR_HWP_REQUEST = 0x774
 
 class CPUFrequencyManager:
-    def __init__(self, debug = False):
+    def __init__(self):
         self.cores = list(range(system_cores))
-        self.__debug = debug
         self.__set_pstate_status_to_passive()
         self.__set_governor_to_userspace()
         self.__disable_thermald()
@@ -18,7 +17,7 @@ class CPUFrequencyManager:
         try:
             with open(pstate_status_path, 'w') as f:
                 f.write("passive")
-            if self.__debug:
+            if DEBUG:
                 print("intel_pstate status set to passive")
         except IOError as e:
                 print(f"Failed to set intel_pstate status to passive: {e}")
@@ -29,20 +28,20 @@ class CPUFrequencyManager:
             try:
                 with open(governor_path, 'w') as f:
                     f.write("userspace")
-                if self.__debug:
+                if DEBUG:
                     print(f"Governor of core {core} set to userspace")
             except IOError as e:
-                if self.__debug:
+                if DEBUG:
                     print(f"Failed to set governor for core {core}: {e}")
 
     def __disable_thermald(self):
         command = ['sudo', 'systemctl', 'stop', 'thermald']
         try:
             subprocess.run(command, check=True)
-            if self.__debug:
+            if DEBUG:
                 print("thermald service stopped")
         except subprocess.CalledProcessError as e:
-            if self.__debug:
+            if DEBUG:
                 print(f"Failed to stop thermald service: {e}")
 
     def __read_msr(self, core, msr):
@@ -53,7 +52,7 @@ class CPUFrequencyManager:
                 value = f.read(8)
                 return struct.unpack('Q', value)[0]
         except IOError as e:
-            if self.__debug:
+            if DEBUG:
                 print(f"Error reading MSR {msr:#x} on core {core}: {e}")
             return None
 
@@ -64,7 +63,7 @@ class CPUFrequencyManager:
                 f.seek(msr)
                 f.write(struct.pack('Q', value))
         except IOError as e:
-            if self.__debug:
+            if DEBUG:
                 print(f"Error writing MSR {msr:#x} on core {core}: {e}")
 
     def __frequency_to_pstate(self, core, frequency):
@@ -82,12 +81,12 @@ class CPUFrequencyManager:
             if frequency < min_frequency or frequency > max_frequency:
                 raise ValueError(f"Frequency {frequency} MHz is out of the valid range ({min_frequency}-{max_frequency} MHz)")
             pstate_index = int((frequency - min_frequency)/scaling_factor_pcore)
-            if self.__debug:
+            if DEBUG:
                 print(f"Frequency: {frequency} MHz, P-state index: {pstate_index}, P-state value: {pcore_action_to_pstate[pstate_index]}")
             pstate = pcore_action_to_pstate[min(pstate_index, len(pcore_action_to_pstate) - 1)]
         else:  # E-core handling
             pstate = int(frequency*1000 / scaling_factor_ecore)
-            if self.__debug:
+            if DEBUG:
                 print(f"Frequency: {frequency} MHz, P-state value: {pstate}")
         
         return pstate
@@ -108,7 +107,7 @@ class CPUFrequencyManager:
             if core  in intel_p_core_ids:
                 # this case, due to hyperthreading, we need to write to the other logical core
                 extra_core = core + 1 if core %2 == 0 else core - 1
-                if self.__debug:
+                if DEBUG:
                     print("Setting pstate to", pstate, "for cores", core, extra_core)
                 self.__write_msr(core, MSR_HWP_REQUEST, hwp_request)
                 self.__write_msr(extra_core, MSR_HWP_REQUEST, hwp_request)
@@ -116,7 +115,7 @@ class CPUFrequencyManager:
             elif core in intel_e_core_ids:
                 #TODO: check batch write
                 if core < intel_e_core_ids[4]:
-                    if self.__debug:
+                    if DEBUG:
                         print(f"Original HWP_REQUEST value: {hwp_request:#x}")
                         print("Setting pstate to", pstate, "for cores", intel_e_core_ids[:4])
                     self.__write_msr(intel_e_core_ids[0], MSR_HWP_REQUEST, hwp_request)
@@ -124,7 +123,7 @@ class CPUFrequencyManager:
                     self.__write_msr(intel_e_core_ids[2], MSR_HWP_REQUEST, hwp_request)
                     self.__write_msr(intel_e_core_ids[3], MSR_HWP_REQUEST, hwp_request)
                 else:
-                    if self.__debug:
+                    if DEBUG:
                         print(f"Original HWP_REQUEST value: {hwp_request:#x}")
                         print("Setting pstate to", pstate, "for cores", intel_e_core_ids[4:])
                     self.__write_msr(intel_e_core_ids[4], MSR_HWP_REQUEST, hwp_request)
@@ -133,7 +132,7 @@ class CPUFrequencyManager:
                     self.__write_msr(intel_e_core_ids[7], MSR_HWP_REQUEST, hwp_request)
 
             # Verify the write
-            if self.__debug:
+            if DEBUG:
                 new_hwp_request = self.__read_msr(core, MSR_HWP_REQUEST)
                 print(f"Updated HWP_REQUEST value: {new_hwp_request:#x}")
 
