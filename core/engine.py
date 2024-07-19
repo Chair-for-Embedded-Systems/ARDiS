@@ -1,6 +1,7 @@
 from config import *
 from core.procworker import *
 from core.mapping import *
+from core.monitor import *
 from core.reporter import *
 from core.dvfs import *
 import threading
@@ -28,7 +29,7 @@ def getCoreByApp(mapping, core):
     return None
 
 class Engine:
-    def __init__(self, experiment_name, mapping_policy = MappingPolicy(), debug = False):
+    def __init__(self, experiment_name, mapping_policy = MappingPolicy()):
         self.running = False
         self.startime = 0
         self.endtime = 0
@@ -38,12 +39,12 @@ class Engine:
         self.__active_threads = []
         self.PIDs = {}  
         self.__mapping_policy = mapping_policy
+        self.__monitor = None
         #TODO: replace for argument
-        self.__dvfs_policy = DVFSPolicy(debug)
+        self.__dvfs_policy = DVFSPolicy()
         #default frequency  = 2000 MHz
         self.__static_frequency  = 2000
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
-
             
 
     def __start(self):
@@ -102,8 +103,13 @@ class Engine:
         self.mapping = self.__mapping_policy.executeMapping(applications)
         self.reporter.logEvent("Mapping: " + str(self.mapping))
         print("Mapping: " + str(self.mapping))
+        mapped_cores = list(self.mapping.values())
+        # Start the monitoring thread
+        if(enable_monitoring):
+            self.__monitor = Monitor(sampling_rate, events_to_track, mapped_cores)
+            self.__monitor.start()
         # Set the static frequency for all soon-to-be-used cores
-        self.__dvfs_policy.setInitialFrequency(self.mapping.values(), self.__static_frequency)
+        self.__dvfs_policy.setInitialFrequency(mapped_cores, self.__static_frequency)
         self.reporter.logEvent("Initial core frequency: " + str(self.__static_frequency))
         print("Initial core frequency: " + str(self.__static_frequency))
         # Create the threads each application.
@@ -130,6 +136,9 @@ class Engine:
                 self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
                 print("Total execution time of experiment = ", str(round(self.endtime - self.startime, 2)) + "s")
                 self.reporter.logEvent("Total execution time of experiment = " + str(round(self.endtime - self.startime, 2)) + "s")
+                # Stop the monitoring thread
+                if(enable_monitoring):
+                    self.__monitor.stop()
                 # Clear the caches after the experiment is done
                 self.__clearCaches()
                 break
@@ -144,6 +153,9 @@ class Engine:
                             if app in self.__active_threads:
                                 map += app + ", " + str(core) + "  | "
                         print(map)
+                        # monitor print
+                        for core in mapped_cores:
+                            print(f"Core {core}: {', '.join([f'{event} = {self.__monitor.getMetricAtCore(core, event)}' for event in events_to_track])}")
                         # hack to make sure we only print once
                         self.__last_print_time  = current_time
             time.sleep(action_interval)
