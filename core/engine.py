@@ -1,3 +1,4 @@
+from benchmarks.bench_manager import *
 from config import *
 from core.procworker import *
 from core.mapping import *
@@ -5,28 +6,9 @@ from core.monitor import *
 from core.reporter import *
 from core.dvfs import *
 import threading
-import subprocess
 from timeit import default_timer as timer
 
 lock = threading.Lock()
-
-
-def getFullPath(app_str):
-    if "spec" in app_str:
-        name = "./scripts/" + "run_spec_app.sh " + app_str[5:] 
-    elif "splash" in app_str:
-        name = "./scripts/"+ app_str[7:]+".sh" 
-    elif "parsec" in app_str:
-        name = "./scripts/" + "run_parsec_app.sh " + app_str[7:]
-    else:
-        name = app_str
-    return name 
- 
-def getCoreByApp(mapping, core):
-    for app, value in mapping.items():
-        if value == core:
-            return app
-    return None
 
 class Engine:
     def __init__(self, experiment_name, mapping_policy = MappingPolicy()):
@@ -45,6 +27,7 @@ class Engine:
         #default frequency  = 2000 MHz
         self.__static_frequency  = 2000
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
+        self.__benchmark_manager = BenchManager()
             
 
     def __start(self):
@@ -53,13 +36,8 @@ class Engine:
 
     def __launchApp(self, app_name, core):
         # Build the full application execution command from the corresponding script
-        app_str = getFullPath(app_name)
-        str_cmd = "taskset -c " + str(core) + " " + app_str + " " + str(core)
-        command = str_cmd.split(" ")
-        # Execute the application
-        p = subprocess.Popen(command,  stdout=subprocess.PIPE)
         start = timer()
-        p.wait()
+        self.__benchmark_manager.runApplicationOnCore(app_name, core)
         end = timer()
         core = self.mapping[app_name]
         #TODO: since this is now a dictionary, the writing access should be thread safe
