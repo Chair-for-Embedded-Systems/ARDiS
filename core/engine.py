@@ -123,7 +123,7 @@ class Engine:
                 break
             else:
                 # Print the monitored metrics every 10 epochs
-                if self.__epochs % 10 == 0:
+                if self.__epochs % 40 == 0:
                     # monitor print
                     print("Monitored Metrics:")
                     for core in mapped_cores:

@@ -1,6 +1,8 @@
+import os
+
 RESULTS_FOLDER="./results/"
 UTILS_DIR="./utils"
-
+ROOTPATH=os.getcwd()
 DEBUG = False
 # List of available applications on the system
 available_apps = ['spec-GemsFDTD','spec-gcc', 'spec-milc', 'spec-bzip2', 'spec-sphinx3', 'spec-astar', 'spec-lbm',

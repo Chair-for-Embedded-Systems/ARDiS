@@ -40,37 +40,30 @@ class BenchManager:
                 key, value = line.split("=", 1)
                 os.environ[key] = value
 
-            os.chdir(os.getcwd())
-
         # run parsec app on core with nice value 0
         command = f"taskset -c {core} nice -n 0 parsecmgmt -a run -i {input_size} -n 1 -p {app} > {app}.log"
         #print("command: ", command)
         subprocess.run(command, shell=True, executable="/bin/bash")
+        os.chdir(ROOTPATH)
 
-    def __run_spec_app(self, app, core, input_size = "train"):
-        # Save the current directory
-        current_dir = os.getcwd()
-        
+    def __run_spec_app(self, app, core, input_size = "train"):      
         # set spec environment if it hasn't been done yet
         if "SPECBIN" not in os.environ:
-            try:
-                # Change to SPECPBASE directory
-                os.chdir(SPECPBASE)
-                # Source shrc and capture environment variables
-                command = f"source {SPECPBASE}/shrc && env"
-                proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, executable="/bin/bash")
-                output, error = proc.communicate()
+            # Change to SPECPBASE directory
+            os.chdir(SPECPBASE)
+            # Source shrc and capture environment variables
+            command = f"source {SPECPBASE}/shrc && env"
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, executable="/bin/bash")
+            output, error = proc.communicate()
 
-                # Parse output and update os.environ
-                for line in output.decode().splitlines():
-                    if "=" in line:  # Check if line contains '='
-                        key, value = line.split("=", 1)
-                        os.environ[key] = value
-            finally:
-                # Change back to the original directory
-                os.chdir(current_dir)
+            # Parse output and update os.environ
+            for line in output.decode().splitlines():
+                if "=" in line:  # Check if line contains '='
+                    key, value = line.split("=", 1)
+                    os.environ[key] = value
 
         # run app $1 on core $2
         command = f"taskset -c {core} nice -n 0 runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {app}.log"
         #print("command: ", command)	
         subprocess.run(command, shell=True, env=os.environ)
+        os.chdir(ROOTPATH)

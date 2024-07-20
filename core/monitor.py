@@ -1,4 +1,4 @@
-#from config import *
+from config import *
 import threading
 import subprocess
 import os
@@ -12,7 +12,7 @@ class Monitor:
                  tracked_cores = [0, 1, 2, 3]):
         self.__sampling_rate = sampling_rate_ms / 1000
         self.__events = events
-        self.__inst_file = "perf.out"
+        self.__inst_file = ROOTPATH + "perf.out"
         self.__finished = False
         self.__current_values = {str(core): {event: 0 for event in self.__events} for core in tracked_cores}
         self.__tracked_cores = [str(core) for core in tracked_cores]

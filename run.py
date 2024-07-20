@@ -52,9 +52,9 @@ class Experiment:
 
 def runExample():
    # Create an experiment object
-    exp = Experiment("Simple Experiment with Specific Applications")
+    exp = Experiment("Simple Experiment with Specific Applications", mapping_policy=ExplicitMapping([4,17, 2, 23]))
     # Manually set the applications to execute
-    exp.setApplications(['parsec-ferret', 'parsec-canneal', 'parsec-streamcluster', 'parsec-freqmine'])
+    exp.setApplications(['parsec-fluidanimate', 'spec-omnetpp', 'spec-libquantum', 'parsec-dedup'])
     # Set the initial frequency of the cores
     exp.setInitialFrequency(2900)
     # Run the experiment

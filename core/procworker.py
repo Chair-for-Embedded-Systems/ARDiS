@@ -13,7 +13,6 @@ def killProc(proc_name):
     p = subprocess.Popen(command, stdout=subprocess.PIPE)
     p.wait()
 
-
 def getPIDThread(proc):
     found = False
     str_cmd = "taskset -c 0 pgrep " + proc
