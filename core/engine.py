@@ -1,13 +1,11 @@
+from benchmarks.bench_manager import *
 from config import *
-from scripts.run_spec import *
-from scripts.run_parsec import *
 from core.procworker import *
 from core.mapping import *
 from core.monitor import *
 from core.reporter import *
 from core.dvfs import *
 import threading
-import subprocess
 from timeit import default_timer as timer
 
 lock = threading.Lock()
@@ -29,6 +27,7 @@ class Engine:
         #default frequency  = 2000 MHz
         self.__static_frequency  = 2000
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
+        self.__benchmark_manager = BenchManager()
             
 
     def __start(self):
@@ -38,11 +37,7 @@ class Engine:
     def __launchApp(self, app_name, core):
         # Build the full application execution command from the corresponding script
         start = timer()
-        if "spec" in app_name:
-            run_spec_app(app_name[5:], core) 
-        elif "parsec" in app_name:
-            run_parsec_app(app_name[7:], core)
-
+        self.__benchmark_manager.runApplicationOnCore(app_name, core)
         end = timer()
         core = self.mapping[app_name]
         #TODO: since this is now a dictionary, the writing access should be thread safe
