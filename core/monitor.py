@@ -2,6 +2,7 @@
 import threading
 import subprocess
 import os
+import time
 
 
 
@@ -35,14 +36,23 @@ class Monitor:
     def __execute_perf_command(self):
         command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(self.__events)} -B -A -o {self.__inst_file} sleep {self.__sampling_rate} 2>/dev/null"
         #print("Command is: ", command)
-        subprocess.run(command, shell=True)
+        with lock:
+            subprocess.run(command, shell=True)
         self.__updateStats()
 
 
     def __updateStats(self):
         # Initialize or reset the lists for each metric based on the number of tracked cores
-        with open(self.__inst_file, 'r') as f:
-            lines = f.readlines()  # Skip the first line
+       
+        base_dir = os.path.dirname(os.path.dirname(__file__)) 
+        perf_out_path = os.path.join(base_dir, self.__inst_file)  
+        #print("perf_out_path: ", perf_out_path)
+        if os.path.exists(perf_out_path):
+            with open(perf_out_path, 'r') as f:
+                lines = f.readlines()  # Skip the first line
+        else:
+            print("file is not there")
+            return
         
         for line in lines[5:-3]:
             if "<not supported>" in line or "<not counted>" in line:
@@ -60,26 +70,3 @@ class Monitor:
                 if event in line:
                     self.__current_values[str(core_id)][event] = metric_value
                     break  # Break the loop once the metric is found
-
-
-
-
-# import time
-# if __name__ == "__main__":
-#     cores_to_track = [0, 1, 2, 3, 4, 5, 6, 17]
-#     event_to_track = ["instructions", "cache-misses", "cache-references"]
-#     sampling_rate = 100 # ms
-#     # Create an instance of the Monitor class
-#     monitor = Monitor(sampling_rate, event_to_track, cores_to_track)
-
-#     # Start monitoring
-#     monitor.start()
-#     time.sleep(1)
-
-#     for t in range(10):
-#         print(f"Time: {t}")
-#         # Print the IPS, cache accesses, and cache misses for each core
-#         for core in cores_to_track:
-#             print(f"Core {core}: {', '.join([f'{event} = {monitor.getMetricAtCore(core, event)}' for event in event_to_track])}")
-#         time.sleep(1)
-#     monitor.stop()

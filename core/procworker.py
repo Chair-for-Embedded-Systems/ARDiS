@@ -13,33 +13,10 @@ def killProc(proc_name):
     p = subprocess.Popen(command, stdout=subprocess.PIPE)
     p.wait()
 
-def getProcessName(app_str):
-    if "spec" in app_str:
-        if "xalan" in app_str:
-            name = "Xalan_base.lnx64-gcc"
-        elif "sphinx" in app_str:
-            name = "sphinx_livepretend_base.lnx64-gcc"
-        else:
-            name = app_str[5:] +"_base.lnx64-gcc"
-    elif "splash" in app_str:
-        name = app_str[7:].upper()
-    elif "parsec" in app_str:
-        name = app_str[7:]
-    else:
-        name = app_str
-    return name
-
-def getProcessNamesFromMap(mapping):
-    procs = []
-    for app in mapping:
-        procs.append(getProcessName(app))
-    return procs
-
-
 
 def getPIDThread(proc):
     found = False
-    str_cmd = "taskset -c 0 pidof " + proc
+    str_cmd = "taskset -c 0 pgrep " + proc
     command = str_cmd.split(" ")
     pid = -1
     tries = 0
@@ -60,6 +37,6 @@ def getPIDThread(proc):
 
 
 def getPIDOfApp(app):
-    proc = getProcessName(app)
+    proc = app.split("-")[1]
     pid = getPIDThread(proc)
     return pid
