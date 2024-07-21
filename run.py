@@ -1,8 +1,7 @@
 from config import *
 from core.engine import *
-from core.scheduler import *
-from core.policies.consecutive_schedule import *
 from core.policies.explicit_mapping import *
+from core.policies.consecutive_schedule import *
 from core.dvfs import *
 from core.policies.intel_motivational_mapping import *
 import time
@@ -13,14 +12,11 @@ from random import randrange
 
 
 class Experiment:
-    def __init__(self, name="", applications=[], mapping_policy=MappingPolicy()):
+    def __init__(self, name="", applications=[], mapping_policy=MappingPolicy(), scheduler=Scheduler()):
         self.__name = name
         self.__applications = applications
-        self.__engine = Engine(self.__name, mapping_policy=mapping_policy)
-        #self.__scheduler = Scheduler()
-        # Create a schedule with a delay in the arrival time of 2.5 seconds between each application
-        # use 0 for all applications to arrive at the same time
-        self.__scheduler = ConsecutiveScheduler(0)
+        self.__engine = Engine(self.__name, mapping_policy=mapping_policy, scheduler=scheduler)
+
 
     # Generate a random list of N unique applications to execute
     def generateRandomApps(self, N_apps):
@@ -34,10 +30,7 @@ class Experiment:
    
     # Execute the experiment and wait for it to finish
     def executeExperiment(self):
-        self.__scheduler.createSchedule(self.__applications)
-        #TODO: for now we are passing the schedule to the engine
-        # if we want a periodic schedule policy we need to pass the scheduler to the engine, probably
-        self.__engine.executeWorkload(self.__applications, self.__scheduler.schedule)
+        self.__engine.executeWorkload(self.__applications)
     
     def setInitialFrequency(self, frequency):
         self.__engine.setStaticFrequency(frequency)
@@ -52,9 +45,11 @@ class Experiment:
 
 def runExample():
    # Create an experiment object
-    exp = Experiment("Simple Experiment with Specific Applications", mapping_policy=ExplicitMapping([4,17, 2, 23]))
+    exp = Experiment("Simple Experiment with Specific Applications", 
+                     mapping_policy=ExplicitMapping([4,17, 2, 6]),
+                     scheduler=ConsecutiveScheduler(5))
     # Manually set the applications to execute
-    exp.setApplications(['parsec-fluidanimate', 'spec-omnetpp', 'spec-libquantum', 'parsec-dedup'])
+    exp.setApplications(['parsec-fluidanimate', 'spec-omnetpp', 'spec-libquantum', 'parsec-canneal'])
     # Set the initial frequency of the cores
     exp.setInitialFrequency(2900)
     # Run the experiment
