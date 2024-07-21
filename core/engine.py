@@ -5,13 +5,15 @@ from core.mapping import *
 from core.monitor import *
 from core.reporter import *
 from core.dvfs import *
+from core.scheduler import *
+
 import threading
 from timeit import default_timer as timer
 
 lock = threading.Lock()
 
 class Engine:
-    def __init__(self, experiment_name, mapping_policy = MappingPolicy()):
+    def __init__(self, experiment_name, mapping_policy = MappingPolicy(), scheduler = Scheduler()):
         self.running = False
         self.startime = 0
         self.endtime = 0
@@ -19,8 +21,10 @@ class Engine:
         self.mapping = {}
         self.__threads = {}
         self.__active_threads = []
+        self.__waiting_threads = []
         self.PIDs = {}  
         self.__mapping_policy = mapping_policy
+        self.__scheduler = scheduler 
         self.__monitor = None
         #TODO: replace for argument
         self.__dvfs_policy = DVFSPolicy()
@@ -34,21 +38,23 @@ class Engine:
         self.running = True
         self.startime = timer()
 
-    def __launchApp(self, app_name, core):
+    def __launchApp(self, app, core):
+        self.PIDs[app] = -1
         # Build the full application execution command from the corresponding script
         start = timer()
-        self.__benchmark_manager.runApplicationOnCore(app_name, core)
+        self.__benchmark_manager.runApplicationOnCore(app, core)
         end = timer()
-        core = self.mapping[app_name]
+        core = self.mapping[app]
         #TODO: since this is now a dictionary, the writing access should be thread safe
         # keeping the lock until properly evaluated
         with lock:
-            self.mapping[app_name] = -1
-        print("[Core " + str(core) +"]: " + app_name + " finished execution!" )
-        self.reporter.logEvent("[Core " + str(core) +"]: " + app_name + " finished execution!" )
-        print("[Core " + str(core) +"]: " + app_name + "'s execution time = " + str(round(end - start,2)) + "s" )
-        self.reporter.logEvent("[Core " + str(core) +"]: " + app_name + "'s execution time = " + str(round(end - start,2)) + "s" )
-        self.reporter.logExecutionTime(app_name, core, end - start)
+            self.mapping[app] = -1
+            self.__active_threads.remove(app)
+        print("[Core " + str(core) +"]: " + app + " finished execution!" )
+        self.reporter.logEvent("[Core " + str(core) +"]: " + app + " finished execution!" )
+        print("[Core " + str(core) +"]: " + app + "'s execution time = " + str(round(end - start,2)) + "s" )
+        self.reporter.logEvent("[Core " + str(core) +"]: " + app + "'s execution time = " + str(round(end - start,2)) + "s" )
+        self.reporter.logExecutionTime(app, core, end - start)
         
     # Create a thread for each application in the mapping 
     def __makeThreads(self):
@@ -69,6 +75,8 @@ class Engine:
     
     def __startThread(self,  app):
         self.__threads[app].start()
+        #TODO: not safe-thread, need a lock here as well?
+        self.__waiting_threads.remove(app)
         self.__active_threads.append(app)
         print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
         self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
@@ -76,7 +84,10 @@ class Engine:
     def setStaticFrequency(self, frequency):
         self.__static_frequency = frequency
 
-    def executeWorkload(self, applications, schedule):
+    def executeWorkload(self, applications):
+        # First set a schedule for the applications
+        self.__scheduler.createSchedule(applications)
+        self.__waiting_threads = list(applications)
         # Execute the mapping policy 
         self.mapping = self.__mapping_policy.executeMapping(applications)
         self.reporter.logEvent("Mapping: " + str(self.mapping))
@@ -98,8 +109,7 @@ class Engine:
             current_time = self.getElapsedTime()
             # Check if the application is scheduled to start and if the thread is not already running
             for app in self.mapping:
-                #TODO: this probably should be done by the scheduler, but we don't have access to it from here yet
-                if schedule[app] <= self.getElapsedTime() and app not in self.__active_threads:
+                if self.__scheduler.isTimeToLaunch(app, current_time) and app in self.__waiting_threads:
                     # Start the thread
                     self.__startThread(app)
                     #TODO while very unlikely, we might have a race condition here 
@@ -108,7 +118,7 @@ class Engine:
                     # self.__executor.submit(self.getProcessID, app)
 
             # Check if all threads are done before finishing
-            if not any([thread.is_alive() for thread in self.__threads.values()]) and len(self.__active_threads) == len(self.mapping.keys()):
+            if not self.__active_threads and not self.__waiting_threads:
                 self.running = False
                 self.endtime = timer()
                 print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
@@ -136,7 +146,7 @@ class Engine:
                     map = ""
                     for app, core in self.mapping.items():
                         if app in self.__active_threads:
-                            map += app + ", " + str(core) + "  | "
+                            map += app + ", C" + str(core) + ", PID "  + str(self.PIDs[app]) + "  | "
                     print(map)
                     print("--------------------")
                 # any other periodic action here
