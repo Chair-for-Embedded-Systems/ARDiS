@@ -34,8 +34,9 @@ class Monitor:
         os.remove(self.__inst_file)
 
     def __execute_perf_command(self):
-        command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(self.__events)} -B -A -o {self.__inst_file} sleep {self.__sampling_rate} 2>/dev/null"
-        #print("Command is: ", command)
+        command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(self.__events)} -B -A -o {self.__inst_file} sleep {self.__sampling_rate} 2{'> /dev/null' if not DEBUG else ''}"
+        if DEBUG:
+            print("Command is: ", command)
         with lock:
             subprocess.run(command, shell=True)
         self.__updateStats()
