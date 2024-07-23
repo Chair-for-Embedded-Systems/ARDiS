@@ -12,10 +12,10 @@ from random import randrange
 
 
 class Experiment:
-    def __init__(self, name="", applications=[], mapping_policy=MappingPolicy(), scheduler=Scheduler()):
+    def __init__(self, name="", applications=[], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy=DVFSPolicy()):
         self.__name = name
         self.__applications = applications
-        self.__engine = Engine(self.__name, mapping_policy=mapping_policy, scheduler=scheduler)
+        self.__engine = Engine(self.__name, mapping_policy=mapping_policy, scheduler=scheduler, dvfs_policy=dvfs_policy)
 
 
     # Generate a random list of N unique applications to execute
@@ -32,10 +32,6 @@ class Experiment:
     def executeExperiment(self):
         self.__engine.executeWorkload(self.__applications)
     
-    def setInitialFrequency(self, frequency):
-        self.__engine.setStaticFrequency(frequency)
-
-    
     def __str__(self):
         return f"Experiment {self.__name} with applications {self.__applications} and engine {self.__engine}"
     
@@ -47,11 +43,10 @@ def runExample():
    # Create an experiment object
     exp = Experiment("Simple Experiment with Specific Applications", 
                      mapping_policy=ExplicitMapping([4,17, 2, 6]),
-                     scheduler=ConsecutiveScheduler(5))
+                     scheduler=ConsecutiveScheduler(5),
+                     dvfs_policy=DVFSPolicy())
     # Manually set the applications to execute
     exp.setApplications(['parsec-fluidanimate', 'spec-omnetpp', 'spec-libquantum', 'parsec-canneal'])
-    # Set the initial frequency of the cores
-    exp.setInitialFrequency(2900)
     # Run the experiment
     exp.executeExperiment()
 
@@ -61,8 +56,6 @@ def runRandomExample():
     exp = Experiment("Simple Experiment with Random Applications")
     # Generate a random list of applications
     exp.generateRandomApps(num_random_apps)
-    # Set the initial frequency of the cores
-    exp.setInitialFrequency(2900)
     # Run the experiment
     exp.executeExperiment()
 
@@ -87,7 +80,6 @@ def runMotivationalExample():
         for exp_number in range(0, motivationalDetails['total']):
             experiment = Experiment(exp['name'] + str(exp_number), mapping_policy=exp['mapping_policy'])
             experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
-            experiment.setInitialFrequency(2000)
             print(experiment)
             experiment.executeExperiment()
 
