@@ -61,30 +61,33 @@ def runRandomExample():
 
 def runMotivationalExample():
 
+    fixed_frequency = 2500
     motivationalDetails = {
-        "total": 8,
+        "total_runs": 8,
         "exp_types": [
             {
                 "name": "motivECores_2GHz",
-                "mapping_policy": IntelMotivationalExample()
+                "mapping_policy": IntelMotivationalExample(),
+                "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
             },
             {
                 "name": "motivPCores_2GHz",
-                "mapping_policy": IntelMotivationalExample(False)
+                "mapping_policy": IntelMotivationalExample(False),
+                "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
             }
         ],
         "applications": ['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves', 'spec-gcc', 'spec-leslie3d'],
     }
 
     for exp in motivationalDetails['exp_types']:
-        for exp_number in range(0, motivationalDetails['total']):
-            experiment = Experiment(exp['name'] + str(exp_number), mapping_policy=exp['mapping_policy'])
+        for exp_number in range(0, motivationalDetails['total_runs']):
+            experiment = Experiment(exp['name'] + str(exp_number), mapping_policy=exp['mapping_policy'], dvfs_policy=exp['dvfs_policy'])
             experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
             print(experiment)
             experiment.executeExperiment()
 
 
 if __name__ == "__main__":
-    runExample()
+    #runExample()
     #runRandomExample()
-    #runMotivationalExample()
+    runMotivationalExample()
