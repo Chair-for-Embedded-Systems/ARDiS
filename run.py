@@ -66,12 +66,12 @@ def runMotivationalExample():
         "total_runs": 8,
         "exp_types": [
             {
-                "name": "motivECores_2GHz",
+                "name": "motivECores",
                 "mapping_policy": IntelMotivationalExample(),
                 "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
             },
             {
-                "name": "motivPCores_2GHz",
+                "name": "motivPCores",
                 "mapping_policy": IntelMotivationalExample(False),
                 "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
             }
@@ -81,7 +81,7 @@ def runMotivationalExample():
 
     for exp in motivationalDetails['exp_types']:
         for exp_number in range(0, motivationalDetails['total_runs']):
-            experiment = Experiment(exp['name'] + str(exp_number), mapping_policy=exp['mapping_policy'], dvfs_policy=exp['dvfs_policy'])
+            experiment = Experiment(f"{exp['name']}_{fixed_frequency}MHz_{exp_number}", mapping_policy=exp['mapping_policy'], dvfs_policy=exp['dvfs_policy'])
             experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
             print(experiment)
             experiment.executeExperiment()
