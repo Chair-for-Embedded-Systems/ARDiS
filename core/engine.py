@@ -13,7 +13,7 @@ from timeit import default_timer as timer
 lock = threading.Lock()
 
 class Engine:
-    def __init__(self, experiment_name, mapping_policy = MappingPolicy(), scheduler = Scheduler()):
+    def __init__(self, experiment_name, mapping_policy = MappingPolicy(), scheduler = Scheduler(), dvfs_policy = DVFSPolicy()):
         self.running = False
         self.startime = 0
         self.endtime = 0
@@ -26,10 +26,7 @@ class Engine:
         self.__mapping_policy = mapping_policy
         self.__scheduler = scheduler 
         self.__monitor = None
-        #TODO: replace for argument
-        self.__dvfs_policy = DVFSPolicy()
-        #default frequency  = 2000 MHz
-        self.__static_frequency  = 2000
+        self.__dvfs_policy = dvfs_policy
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
         self.__benchmark_manager = BenchManager()
             
@@ -81,9 +78,6 @@ class Engine:
         print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
         self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
 
-    def setStaticFrequency(self, frequency):
-        self.__static_frequency = frequency
-
     def executeWorkload(self, applications):
         # First set a schedule for the applications
         self.__scheduler.createSchedule(applications)
@@ -97,10 +91,6 @@ class Engine:
         if(enable_monitoring):
             self.__monitor = Monitor(sampling_rate, events_to_track, mapped_cores)
             self.__monitor.start()
-        # Set the static frequency for all soon-to-be-used cores
-        self.__dvfs_policy.setInitialFrequency(mapped_cores, self.__static_frequency)
-        self.reporter.logEvent("Initial core frequency: " + str(self.__static_frequency))
-        print("Initial core frequency: " + str(self.__static_frequency))
         # Create the threads each application.
         self.__makeThreads()	
         # then start the workload execution

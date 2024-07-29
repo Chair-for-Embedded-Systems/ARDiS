@@ -12,7 +12,7 @@ class Monitor:
                  tracked_cores = [0, 1, 2, 3]):
         self.__sampling_rate = sampling_rate_ms / 1000
         self.__events = events
-        self.__inst_file = ROOTPATH + "perf.out"
+        self.__inst_file = os.path.join(ROOTPATH, "perf.out")
         self.__finished = False
         self.__current_values = {str(core): {event: 0 for event in self.__events} for core in tracked_cores}
         self.__tracked_cores = [str(core) for core in tracked_cores]
@@ -34,8 +34,9 @@ class Monitor:
         os.remove(self.__inst_file)
 
     def __execute_perf_command(self):
-        command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(self.__events)} -B -A -o {self.__inst_file} sleep {self.__sampling_rate} 2>/dev/null"
-        #print("Command is: ", command)
+        command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(self.__events)} -B -A -o {self.__inst_file} sleep {self.__sampling_rate} 2{'> /dev/null' if not DEBUG else ''}"
+        if DEBUG:
+            print("Command is: ", command)
         with lock:
             subprocess.run(command, shell=True)
         self.__updateStats()
