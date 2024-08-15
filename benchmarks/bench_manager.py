@@ -46,7 +46,7 @@ class BenchManager:
         subprocess.run(command, shell=True, executable="/bin/bash")
         os.chdir(ROOTPATH)
 
-    def __run_spec_app(self, app, core, input_size = "train"):      
+    def __run_spec_app(self, app, core, input_size = "ref"):      
         # set spec environment if it hasn't been done yet
         if "SPECBIN" not in os.environ:
             # Change to SPECPBASE directory

@@ -89,7 +89,8 @@ class Engine:
         self.mapping = self.__mapping_policy.executeMapping(applications)
         self.reporter.logEvent("Mapping: " + str(self.mapping))
         print("Mapping: " + str(self.mapping))
-        mapped_cores = list(self.mapping.values())
+        #mapped_cores = list(self.mapping.values())
+        mapped_cores = list(range(0, system_cores))
         # Start the monitoring thread
         if(enable_monitoring):
             self.__monitor = Monitor(sampling_rate, events_to_track, mapped_cores)
@@ -130,17 +131,18 @@ class Engine:
                 if self.__epochs % 10 == 0:
                     # monitor print
                     print("Monitored Metrics:")
-                    for core in mapped_cores:
+                    for core in list(self.mapping.values()):
                         metrics = [f"{event} = {self.__monitor.getMetricAtCore(core, event)}" for event in events_to_track]
                         print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
                         self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
                     print("--------------------")
                 
-                # Apply migration policy every 25 epochs
-                if self.__epochs % 25 == 0:
-                    new_mapping = self.__migration_policy.getShuffledMapping(self.mapping)
+                # Apply migration policy every 100 epochs
+                if self.__epochs > 0 and  self.__epochs % 100 == 0:
+                    new_mapping = self.__migration_policy.getRandomMapping(self.mapping)
                     self.PIDs = self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
                     self.mapping = new_mapping
+                    self.__monitor.updateTrackedCores(list(self.mapping.values()))
                     print("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
                     self.reporter.logEvent("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
 

@@ -27,6 +27,9 @@ class Monitor:
 
     def getMetricAtCore(self, core, event):
         return self.__current_values[str(core)][event]
+    
+    def updateTrackedCores(self, cores):
+        self.__tracked_cores = [str(core) for core in cores]	
 
     def __poll(self):
         while not self.__finished:
@@ -62,8 +65,8 @@ class Monitor:
             #print("Parts are: ", parts)
             # Extract core number and convert it to an index based on tracked_cores
             core_id = parts[0].replace("CPU", "")
-            if core_id not in self.__tracked_cores:
-                continue  # Skip cores that are not tracked
+            #if core_id not in self.__tracked_cores:
+            #    continue  # Skip cores that are not tracked
     
             # Parse the metric value, ensuring to remove any formatting like commas or dots
             metric_value = int(parts[1].replace(".", "").replace(",", ""))
