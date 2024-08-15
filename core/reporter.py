@@ -17,7 +17,12 @@ class Reporter():
     def logEvent(self, event):
         with open(self.workdir + "execution.log", "a") as f:
             f.write(event + "\n")
+
     def logExecutionTime(self, app_name, core, time):
         with open(self.workdir + "summary.log", "a") as f:
             f.write(f"{core}\t{app_name}\t{round(time, 2)}\n")
+            
+    def logPeriodicCounters(self, data):
+        with open(self.workdir + "periodic_counters.log", "a") as f:
+            f.write(data + "\n")
     
