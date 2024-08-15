@@ -7,6 +7,7 @@ from core.postprocessor import *
 from core.reporter import *
 from core.dvfs import *
 from core.scheduler import *
+from core.migration import *
 
 import threading
 from timeit import default_timer as timer
@@ -30,6 +31,7 @@ class Engine:
         self.__dvfs_policy = dvfs_policy
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
         self.__benchmark_manager = BenchManager()
+        self.__migration_policy = MigrationPolicy()
             
 
     def __start(self):
@@ -133,6 +135,14 @@ class Engine:
                         print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
                         self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
                     print("--------------------")
+                
+                # Apply migration policy every 25 epochs
+                if self.__epochs % 25 == 0:
+                    new_mapping = self.__migration_policy.getShuffledMapping(self.mapping)
+                    self.PIDs = self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
+                    self.mapping = new_mapping
+                    print("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
+                    self.reporter.logEvent("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
 
                 # Print the current mapping every 50 epochs
                 if self.__epochs % 50 == 0:
