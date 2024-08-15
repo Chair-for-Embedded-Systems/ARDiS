@@ -1,16 +1,17 @@
 import os
 
-RESULTS_FOLDER="./results/"
+RESULTS_FOLDER="./results/characterization/"
 UTILS_DIR="./utils"
 ROOTPATH=os.getcwd()
 DEBUG = False
+#DEBUG = True
 # List of available applications on the system
 available_apps = ['spec-GemsFDTD','spec-gcc', 'spec-milc', 'spec-bzip2', 'spec-sphinx3', 'spec-astar', 'spec-lbm',
                   'spec-bwaves', 'spec-mcf', 'spec-zeusmp', 'spec-namd', 'spec-h264ref', 'spec-gobmk', 'spec-libquantum',
                   'spec-povray', 'spec-gromacs', 'spec-cactusADM', 'spec-omnetpp', 'spec-hmmer', 'spec-leslie3d',
-                  'parsec-blackscholes', 'parsec-bodytrack', 'parsec-canneal', 'parsec-dedup', 'parsec-facesim',
-                  'parsec-ferret', 'parsec-fluidanimate', 'parsec-freqmine', 'parsec-streamcluster',
-                  'parsec-swaptions', 
+                  #'parsec-blackscholes', 'parsec-bodytrack', 'parsec-canneal', 'parsec-dedup', 'parsec-facesim',
+                  #'parsec-ferret', 'parsec-fluidanimate', 'parsec-freqmine', 'parsec-streamcluster',
+                  #'parsec-swaptions', 
                   #'parsec-vips', 
                   #'parsec-x264'
                   ]
@@ -30,5 +31,5 @@ explicit_mapping_cores = [2, 4, 17, 23]
 
 # Monitoring parameters
 sampling_rate = 100 # in ms
-events_to_track = ["instructions", "cache-misses", "cache-references"]
+events_to_track = ["instructions", "cache-misses", "cache-references","power/energy-pkg/", "power/energy-cores/", "power/energy-psys/"]
 enable_monitoring = True 
