@@ -8,7 +8,7 @@ import time
 
 lock = threading.Lock()
 class Monitor:
-    def __init__(self, sampling_rate_ms = 100, events = ["instructions", "cache-misses", "cache-references"], 
+    def __init__(self, sampling_rate_ms = 100, events = ["instructions", "cache-misses", "cache-references","power/energy-pkg/", "power/energy-cores/", "power/energy-psys/"], 
                  tracked_cores = [0, 1, 2, 3]):
         self.__sampling_rate = sampling_rate_ms / 1000
         self.__events = events

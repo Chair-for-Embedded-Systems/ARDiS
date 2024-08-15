@@ -3,6 +3,7 @@ from config import *
 from core.procworker import *
 from core.mapping import *
 from core.monitor import *
+from core.postprocessor import *
 from core.reporter import *
 from core.dvfs import *
 from core.scheduler import *
@@ -120,16 +121,19 @@ class Engine:
                     self.__monitor.stop()
                 # Clear the caches after the experiment is done
                 self.__clearCaches()
+                self.postprocess_results()
                 break
             else:
                 # Print the monitored metrics every 10 epochs
-                if self.__epochs % 40 == 0:
+                if self.__epochs % 10 == 0:
                     # monitor print
                     print("Monitored Metrics:")
                     for core in mapped_cores:
                         metrics = [f"{event} = {self.__monitor.getMetricAtCore(core, event)}" for event in events_to_track]
-                        print(f"Core {core}: {' | '.join(metrics)}")
+                        print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
+                        self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
                     print("--------------------")
+
                 # Print the current mapping every 50 epochs
                 if self.__epochs % 50 == 0:
                     print("[" + str(round(current_time, 2)) + "s]: Current map")
@@ -144,8 +148,18 @@ class Engine:
             # Increment the epoch counter and sleep for the action interval
             self.__epochs += 1
             time.sleep(action_interval)
-            
-            
+    
+    # Post-process the results of the experiment, which cannot be done during the experiment
+    def postprocess_results(self):
+        post_processor = PostProcessor(self.reporter.workdir)
+        total_energy = post_processor.compute_total_energy()
+        energy_efficiency = post_processor.compute_energy_efficiency()
+        self.reporter.logEvent(f"Total Energy Consumption (Package): {total_energy['total_energy_pkg']} Joules")
+        self.reporter.logEvent(f"Total Energy Consumption (Cores): {total_energy['total_energy_cores']} Joules")
+        self.reporter.logEvent(f"Total Energy Consumption (PSYS): {total_energy['total_energy_psys']} Joules")
+        self.reporter.logEvent(f"Energy Efficiency: {energy_efficiency} Instructions per Joule")
+
+
     def __clearCaches(self):
         runProc("sudo sync")
         runProc("sudo echo 3 > /proc/sys/vm/drop_caches")

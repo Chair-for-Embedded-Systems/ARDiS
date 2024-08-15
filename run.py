@@ -7,6 +7,7 @@ from core.policies.intel_motivational_mapping import *
 import time
 from timeit import default_timer as timer
 from random import randrange
+import os
 
 
 
@@ -42,11 +43,12 @@ class Experiment:
 def runExample():
    # Create an experiment object
     exp = Experiment("Simple Experiment with Specific Applications", 
-                     mapping_policy=ExplicitMapping([4,17, 2, 6]),
-                     scheduler=ConsecutiveScheduler(5),
-                     dvfs_policy=DVFSPolicy())
+                     mapping_policy=ExplicitMapping([6]),
+                     scheduler=ConsecutiveScheduler(0),
+                     dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}))
     # Manually set the applications to execute
-    exp.setApplications(['parsec-fluidanimate', 'spec-omnetpp', 'spec-libquantum', 'parsec-canneal'])
+    #exp.setApplications(['parsec-fluidanimate', 'spec-omnetpp', 'spec-libquantum', 'parsec-canneal'])
+    exp.setApplications(['spec-omnetpp'])
     # Run the experiment
     exp.executeExperiment()
 
@@ -66,12 +68,12 @@ def runMotivationalExample():
         "total_runs": 8,
         "exp_types": [
             {
-                "name": "motivECores_2GHz",
+                "name": "motivECores",
                 "mapping_policy": IntelMotivationalExample(),
                 "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
             },
             {
-                "name": "motivPCores_2GHz",
+                "name": "motivPCores",
                 "mapping_policy": IntelMotivationalExample(False),
                 "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
             }
@@ -81,13 +83,44 @@ def runMotivationalExample():
 
     for exp in motivationalDetails['exp_types']:
         for exp_number in range(0, motivationalDetails['total_runs']):
-            experiment = Experiment(exp['name'] + str(exp_number), mapping_policy=exp['mapping_policy'], dvfs_policy=exp['dvfs_policy'])
+            experiment = Experiment(f"{exp['name']}_{fixed_frequency}MHz_{exp_number}", mapping_policy=exp['mapping_policy'], dvfs_policy=exp['dvfs_policy'])
             experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
             print(experiment)
             experiment.executeExperiment()
 
 
+def run_characterization_experiments():
+
+    scheduler=ConsecutiveScheduler(0)                   
+    for frequency in [1000, 1500, 2000, 2500, 3000, 3500]:     
+        #run on an E core
+        for app in available_apps:
+            exp_name = f"{app}_{frequency}MHz_Ecore"
+            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                exp = Experiment(exp_name, 
+                                mapping_policy=ExplicitMapping([intel_e_core_ids[0]]), 
+                                scheduler=scheduler, 
+                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+                exp.setApplications([app])
+                exp.executeExperiment()
+            else:
+                print(f"Experiment {exp_name} already exists in the results folder.")
+        #run on a P core
+        for app in available_apps:
+            exp_name = f"{app}_{frequency}MHz_Pcore"
+            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                exp = Experiment(exp_name, 
+                                mapping_policy=ExplicitMapping([intel_p_core_ids[3]]), 
+                                scheduler=scheduler, 
+                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+                exp.setApplications([app])
+                exp.executeExperiment()
+            else:
+                print(f"Experiment {exp_name} already exists in the results folder.")
+
+
 if __name__ == "__main__":
     #runExample()
     #runRandomExample()
-    runMotivationalExample()
+    #runMotivationalExample()
+    run_characterization_experiments()
