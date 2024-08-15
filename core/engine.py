@@ -123,13 +123,15 @@ class Engine:
                 break
             else:
                 # Print the monitored metrics every 10 epochs
-                if self.__epochs % 40 == 0:
+                if self.__epochs % 10 == 0:
                     # monitor print
                     print("Monitored Metrics:")
                     for core in mapped_cores:
                         metrics = [f"{event} = {self.__monitor.getMetricAtCore(core, event)}" for event in events_to_track]
-                        print(f"Core {core}: {' | '.join(metrics)}")
+                        print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
+                        self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
                     print("--------------------")
+
                 # Print the current mapping every 50 epochs
                 if self.__epochs % 50 == 0:
                     print("[" + str(round(current_time, 2)) + "s]: Current map")
