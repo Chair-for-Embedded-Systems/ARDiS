@@ -1,6 +1,6 @@
 import os
 
-RESULTS_FOLDER="./results/characterization/"
+RESULTS_FOLDER="./results/exps/"
 #RESULTS_FOLDER="./results/exps/"
 UTILS_DIR="./utils"
 ROOTPATH=os.getcwd()
@@ -57,5 +57,6 @@ action_interval = 0.1
 explicit_mapping_cores = [2, 4, 17, 23]
 
 # Monitoring parameters
+sampling_rate = 100 # in ms
 events_to_track = ["instructions", "cache-misses", "cache-references", "LLC-loads", "LLC-load-misses", "LLC-stores", "LLC-store-misses", "power/energy-pkg/", "power/energy-cores/", "power/energy-psys/"]
 enable_monitoring = True 
