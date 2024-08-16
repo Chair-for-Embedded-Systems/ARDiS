@@ -43,12 +43,12 @@ class Experiment:
 def runExample():
    # Create an experiment object
     exp = Experiment("Simple Experiment with Specific Applications", 
-                     mapping_policy=ExplicitMapping([6]),
+                     mapping_policy=ExplicitMapping([6,19]),
                      scheduler=ConsecutiveScheduler(0),
                      dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}))
     # Manually set the applications to execute
     #exp.setApplications(['parsec-fluidanimate', 'spec-omnetpp', 'spec-libquantum', 'parsec-canneal'])
-    exp.setApplications(['spec-omnetpp'])
+    exp.setApplications(['spec-omnetpp','spec-milc'])
     # Run the experiment
     exp.executeExperiment()
 
@@ -92,7 +92,7 @@ def runMotivationalExample():
 def run_characterization_experiments():
 
     scheduler=ConsecutiveScheduler(0)                   
-    for frequency in [1000, 1500, 2000, 2500, 3000, 3500]:     
+    for frequency in [1500, 2000, 2500, 3000, 3500]:     
         #run on an E core
         for app in available_apps:
             exp_name = f"{app}_{frequency}MHz_Ecore"
@@ -118,9 +118,42 @@ def run_characterization_experiments():
             else:
                 print(f"Experiment {exp_name} already exists in the results folder.")
 
+def run_same_application_multiple_times():
+    scheduler=ConsecutiveScheduler(0)                   
+    for frequency in [2500,]:     
+        #run on an E core
+        for app in available_apps:
+            for e_core in intel_e_core_ids:
+                for iteration in range(10):
+                    exp_name = f"{app}_{frequency}MHz_Ecore_{e_core}_iter_{iteration}"
+                    if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                        exp = Experiment(exp_name, 
+                                        mapping_policy=ExplicitMapping([e_core]), 
+                                        scheduler=scheduler, 
+                                        dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+                        exp.setApplications([app])
+                        exp.executeExperiment()
+                    else:
+                        print(f"Experiment {exp_name} already exists in the results folder.")
+        #run on an E core
+        for app in available_apps:
+            for p_core in intel_p_core_ids:
+                for iteration in range(10):
+                    exp_name = f"{app}_{frequency}MHz_Pcore_{p_core}_iter_{iteration}"
+                    if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                        exp = Experiment(exp_name, 
+                                        mapping_policy=ExplicitMapping([p_core]), 
+                                        scheduler=scheduler, 
+                                        dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+                        exp.setApplications([app])
+                        exp.executeExperiment()
+                    else:
+                        print(f"Experiment {exp_name} already exists in the results folder.")
+
 
 if __name__ == "__main__":
     #runExample()
     #runRandomExample()
     #runMotivationalExample()
-    run_characterization_experiments()
+    #run_characterization_experiments()
+    run_same_application_multiple_times()
