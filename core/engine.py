@@ -151,13 +151,7 @@ class Engine:
     
     # Post-process the results of the experiment, which cannot be done during the experiment
     def postprocess_results(self):
-        post_processor = PostProcessor(self.reporter.workdir)
-        total_energy = post_processor.compute_total_energy()
-        energy_efficiency = post_processor.compute_energy_efficiency()
-        self.reporter.logEvent(f"Total Energy Consumption (Package): {total_energy['total_energy_pkg']} Joules")
-        self.reporter.logEvent(f"Total Energy Consumption (Cores): {total_energy['total_energy_cores']} Joules")
-        self.reporter.logEvent(f"Total Energy Consumption (PSYS): {total_energy['total_energy_psys']} Joules")
-        self.reporter.logEvent(f"Energy Efficiency: {energy_efficiency} Instructions per Joule")
+        pass
 
 
     def __clearCaches(self):
