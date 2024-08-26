@@ -89,12 +89,13 @@ def runMotivationalExample():
             experiment.executeExperiment()
 
 
-def run_characterization_experiments():
+def run_spec_characterization_experiments():
 
     scheduler=ConsecutiveScheduler(0)                   
-    for frequency in [1500, 2000, 2500, 3000, 3500]:     
+    #for frequency in [3500, 3000, 2500, 2000, 1500]:    
+    for frequency in [3500, 2500]:   
         #run on an E core
-        for app in available_apps:
+        for app in spec_apps:
             exp_name = f"{app}_{frequency}MHz_Ecore"
             if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
                 exp = Experiment(exp_name, 
@@ -106,7 +107,68 @@ def run_characterization_experiments():
             else:
                 print(f"Experiment {exp_name} already exists in the results folder.")
         #run on a P core
-        for app in available_apps:
+        for app in spec_apps:
+            exp_name = f"{app}_{frequency}MHz_Pcore"
+            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                exp = Experiment(exp_name, 
+                                mapping_policy=ExplicitMapping([intel_p_core_ids[3]]), 
+                                scheduler=scheduler, 
+                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+                exp.setApplications([app])
+                exp.executeExperiment()
+            else:
+                print(f"Experiment {exp_name} already exists in the results folder.")
+
+def run_parsec_characterization_experiments():
+
+    scheduler=ConsecutiveScheduler(0)                   
+    #for frequency in [3500, 3000, 2500, 2000, 1500]:    
+    for frequency in [3500, 2500]:   
+        #run on an E core
+        for app in parsec_apps:
+            exp_name = f"{app}_{frequency}MHz_Ecore"
+            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                exp = Experiment(exp_name, 
+                                mapping_policy=ExplicitMapping([intel_e_core_ids[0]]), 
+                                scheduler=scheduler, 
+                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+                exp.setApplications([app])
+                exp.executeExperiment()
+            else:
+                print(f"Experiment {exp_name} already exists in the results folder.")
+        #run on a P core
+        for app in parsec_apps:
+            exp_name = f"{app}_{frequency}MHz_Pcore"
+            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                exp = Experiment(exp_name, 
+                                mapping_policy=ExplicitMapping([intel_p_core_ids[3]]), 
+                                scheduler=scheduler, 
+                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+                exp.setApplications([app])
+                exp.executeExperiment()
+            else:
+                print(f"Experiment {exp_name} already exists in the results folder.")
+
+
+def run_splash2_characterization_experiments():
+
+    scheduler=ConsecutiveScheduler(0)                   
+    #for frequency in [3500, 3000, 2500, 2000, 1500]:    
+    for frequency in [3500, 2500]:   
+        #run on an E core
+        for app in splash2_apps:
+            exp_name = f"{app}_{frequency}MHz_Ecore"
+            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                exp = Experiment(exp_name, 
+                                mapping_policy=ExplicitMapping([intel_e_core_ids[0]]), 
+                                scheduler=scheduler, 
+                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+                exp.setApplications([app])
+                exp.executeExperiment()
+            else:
+                print(f"Experiment {exp_name} already exists in the results folder.")
+        #run on a P core
+        for app in splash2_apps:
             exp_name = f"{app}_{frequency}MHz_Pcore"
             if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
                 exp = Experiment(exp_name, 
@@ -119,12 +181,13 @@ def run_characterization_experiments():
                 print(f"Experiment {exp_name} already exists in the results folder.")
 
 def run_same_application_multiple_times():
+    ITERATIONS = 5
     scheduler=ConsecutiveScheduler(0)                   
-    for frequency in [2500,]:     
+    for frequency in [3500,]:     
         #run on an E core
         for app in available_apps:
             for e_core in intel_e_core_ids:
-                for iteration in range(10):
+                for iteration in range(ITERATIONS):
                     exp_name = f"{app}_{frequency}MHz_Ecore_{e_core}_iter_{iteration}"
                     if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
                         exp = Experiment(exp_name, 
@@ -135,10 +198,10 @@ def run_same_application_multiple_times():
                         exp.executeExperiment()
                     else:
                         print(f"Experiment {exp_name} already exists in the results folder.")
-        #run on an E core
+        #run on an P core
         for app in available_apps:
             for p_core in intel_p_core_ids:
-                for iteration in range(10):
+                for iteration in range(ITERATIONS):
                     exp_name = f"{app}_{frequency}MHz_Pcore_{p_core}_iter_{iteration}"
                     if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
                         exp = Experiment(exp_name, 
@@ -155,5 +218,7 @@ if __name__ == "__main__":
     #runExample()
     #runRandomExample()
     #runMotivationalExample()
-    #run_characterization_experiments()
-    run_same_application_multiple_times()
+    #run_spec_characterization_experiments()
+    #run_parsec_characterization_experiments()
+    run_splash2_characterization_experiments()
+    #run_same_application_multiple_times()
