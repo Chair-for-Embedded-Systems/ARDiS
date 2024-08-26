@@ -37,5 +37,8 @@ def getPIDThread(proc):
 
 def getPIDOfApp(app):
     proc = app.split("-")[1]
+    if "splash2x" in proc:
+        proc = proc.replace("splash2x.", "")
+    print(proc)
     pid = getPIDThread(proc)
     return pid
