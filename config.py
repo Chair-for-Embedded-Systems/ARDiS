@@ -6,6 +6,7 @@ RESULTS_FOLDER="./results/characterization_parsec/"
 #RESULTS_FOLDER="./results/characterization_spec_ref/"
 #RESULTS_FOLDER="./results/characterization_spec_train/"
 #RESULTS_FOLDER="./results/motivational/ref/"
+#RESULTS_FOLDER="./results/motivational/train/"
 #RESULTS_FOLDER="./results/characterization/"
 #RESULTS_FOLDER="./results/repeated_single/"
 #RESULTS_FOLDER="./results/exps/"
@@ -14,41 +15,6 @@ ROOTPATH=os.getcwd()
 DEBUG = False
 #DEBUG = True
 # List of available applications on the system
-
-available_apps = [
-    'spec-GemsFDTD',
-    #'spec-gcc',
-    'spec-milc',
-    'spec-bzip2',
-    'spec-sphinx3',
-    'spec-astar',
-    'spec-lbm',
-    'spec-bwaves',
-    'spec-mcf',
-    'spec-zeusmp',
-    'spec-namd',
-    'spec-h264ref',
-    'spec-gobmk',
-    #'spec-libquantum',
-    'spec-povray',
-    'spec-gromacs',
-    'spec-cactusADM',
-    'spec-omnetpp',
-    'spec-hmmer',
-    'spec-leslie3d',
-    #'parsec-blackscholes',
-    #'parsec-bodytrack',
-    #'parsec-canneal',
-    #'parsec-dedup',
-    #'parsec-facesim',
-    #'parsec-ferret',
-    #'parsec-fluidanimate',
-    #'parsec-freqmine',
-    #'parsec-streamcluster',
-    #'parsec-swaptions',
-    #'parsec-vips',
-    #'parsec-x264'
-]
 
 spec_apps = [
     'spec-GemsFDTD',
@@ -88,10 +54,7 @@ parsec_apps = [
     'parsec-netstreamcluster',
     #'parsec-swaptions',
     #'parsec-vips',
-    #'parsec-x264'
-]
-
-splash2_apps = [
+    #'parsec-x264',
     'parsec-splash2x.barnes',
     'parsec-splash2x.cholesky',
     'parsec-splash2x.fft',
