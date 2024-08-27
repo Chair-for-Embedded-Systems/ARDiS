@@ -7,6 +7,7 @@ from core.postprocessor import *
 from core.reporter import *
 from core.dvfs import *
 from core.scheduler import *
+from core.migration import *
 
 import threading
 from timeit import default_timer as timer
@@ -30,6 +31,8 @@ class Engine:
         self.__dvfs_policy = dvfs_policy
         self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
         self.__benchmark_manager = BenchManager()
+        self.__migration_policy = MigrationPolicy()
+        self.__total_instructions = 0
             
 
     def __start(self):
@@ -87,7 +90,8 @@ class Engine:
         self.mapping = self.__mapping_policy.executeMapping(applications)
         self.reporter.logEvent("Mapping: " + str(self.mapping))
         print("Mapping: " + str(self.mapping))
-        mapped_cores = list(self.mapping.values())
+        #mapped_cores = list(self.mapping.values())
+        mapped_cores = list(range(0, system_cores))
         # Start the monitoring thread
         if(enable_monitoring):
             self.__monitor = Monitor(sampling_rate, events_to_track, mapped_cores)
@@ -128,11 +132,33 @@ class Engine:
                 if self.__epochs % 10 == 0:
                     # monitor print
                     print("Monitored Metrics:")
-                    for core in mapped_cores:
+                    for core in list(self.mapping.values()):
                         metrics = [f"{event} = {self.__monitor.getMetricAtCore(core, event)}" for event in events_to_track]
                         print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
                         self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(metrics)}")
+                        self.__total_instructions += self.__monitor.getMetricAtCore(core, "instructions")
+                        self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
                     print("--------------------")
+                
+                # Apply migration policy every 50 epochs
+                if self.__epochs > 0 and  self.__epochs % 50 == 0:
+                    # update PIDs before calling the migration procedure
+                    if DEBUG:
+                        print("##################### Migrating applications #####################")
+                        print("########## Before PID update:", self.PIDs)
+                    for app in self.mapping:
+                        self.PIDs[app] = getPIDOfApp(app)
+                    if DEBUG:
+                        print("########## After PID update:", self.PIDs)
+                        
+                    new_mapping = self.__migration_policy.getStaticScheduleMapping(self.__total_instructions, self.mapping)
+
+                    print("New Mapping: ", new_mapping)
+                    self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
+                    self.mapping = new_mapping
+                    self.__monitor.updateTrackedCores(list(self.mapping.values()))
+                    print("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
+                    self.reporter.logEvent("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
 
                 # Print the current mapping every 50 epochs
                 if self.__epochs % 50 == 0:

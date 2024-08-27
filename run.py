@@ -119,6 +119,24 @@ def run_spec_characterization_experiments():
             else:
                 print(f"Experiment {exp_name} already exists in the results folder.")
 
+          
+def run_spec_static_schedule_migration():
+
+    scheduler=ConsecutiveScheduler(0)                    
+    frequency = 2500   
+    for app in spec_apps:
+        exp_name = f"{app}_{frequency}MHz_Mixed"
+        if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+            exp = Experiment(exp_name, 
+                            mapping_policy=ExplicitMapping([intel_e_core_ids[0]]), 
+                            scheduler=scheduler, 
+                            dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
+            exp.setApplications([app])
+            exp.executeExperiment()
+        else:
+            print(f"Experiment {exp_name} already exists in the results folder.")
+
+
 def run_parsec_characterization_experiments():
 
     scheduler=ConsecutiveScheduler(0)                   

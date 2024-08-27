@@ -2,9 +2,11 @@ import os
 
 
 #RESULTS_FOLDER="./results/characterization_splash2/"
-#RESULTS_FOLDER="./results/characterization_parsec/"
+RESULTS_FOLDER="./results/characterization_parsec/"
 #RESULTS_FOLDER="./results/characterization_spec_ref/"
-RESULTS_FOLDER="./results/characterization_spec_train/"
+#RESULTS_FOLDER="./results/characterization_spec_train/"
+#RESULTS_FOLDER="./results/motivational/ref/"
+#RESULTS_FOLDER="./results/characterization/"
 #RESULTS_FOLDER="./results/repeated_single/"
 #RESULTS_FOLDER="./results/exps/"
 UTILS_DIR="./utils"
