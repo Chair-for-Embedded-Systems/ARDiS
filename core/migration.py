@@ -67,7 +67,7 @@ class MigrationPolicy:
         return tmp_mapping
     
 
-    def getMotivationalExampleMapping(self, instructions, mapping):
+    def getStaticScheduleMapping(self, instructions, mapping):
         tmp_mapping = mapping.copy()
         for app in tmp_mapping:
             static_schedule = self.static_schedules.get(app, [])

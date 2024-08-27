@@ -140,9 +140,9 @@ class Engine:
                         self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
                     print("--------------------")
                 
-                # Apply migration policy every 100 epochs
+                # Apply migration policy every 50 epochs
                 if self.__epochs > 0 and  self.__epochs % 50 == 0:
-                    # update PIDs before migration
+                    # update PIDs before calling the migration procedure
                     if DEBUG:
                         print("##################### Migrating applications #####################")
                         print("########## Before PID update:", self.PIDs)
@@ -150,15 +150,15 @@ class Engine:
                         self.PIDs[app] = getPIDOfApp(app)
                     if DEBUG:
                         print("########## After PID update:", self.PIDs)
-                    new_mapping = self.__migration_policy.getRandomMapping(self.mapping)
+                        
+                    new_mapping = self.__migration_policy.getStaticScheduleMapping(self.__total_instructions, self.mapping)
 
-                    if self.mapping != new_mapping:
-                        print("New Mapping: ", new_mapping)
-                        self.PIDs = self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
-                        self.mapping = new_mapping
-                        self.__monitor.updateTrackedCores(list(self.mapping.values()))
-                        print("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
-                        self.reporter.logEvent("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
+                    print("New Mapping: ", new_mapping)
+                    self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
+                    self.mapping = new_mapping
+                    self.__monitor.updateTrackedCores(list(self.mapping.values()))
+                    print("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
+                    self.reporter.logEvent("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
 
                 # Print the current mapping every 50 epochs
                 if self.__epochs % 50 == 0:
