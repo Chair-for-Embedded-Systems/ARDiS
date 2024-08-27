@@ -142,16 +142,16 @@ class Engine:
                 
                 # Apply migration policy every 50 epochs
                 if self.__epochs > 0 and  self.__epochs % 50 == 0:
-                    # update PIDs before calling the migration procedure
-                    if DEBUG:
-                        print("##################### Migrating applications #####################")
-                        print("########## Before PID update:", self.PIDs)
-                    for app in self.mapping:
-                        self.PIDs[app] = getPIDOfApp(app)
-                    if DEBUG:
-                        print("########## After PID update:", self.PIDs)
                     if self.__migration_policy is not None:
-                        new_mapping = self.__migration_policy.getStaticScheduleMapping(self.__total_instructions, self.mapping)
+                        # update PIDs before calling the migration procedure
+                        if DEBUG:
+                            print("##################### Migrating applications #####################")
+                            print("########## Before PID update:", self.PIDs)
+                        for app in self.mapping:
+                            self.PIDs[app] = getPIDOfApp(app)
+                        if DEBUG:
+                            print("########## After PID update:", self.PIDs)
+                            new_mapping = self.__migration_policy.getStaticScheduleMapping(self.__total_instructions, self.mapping)
 
                         print("New Mapping: ", new_mapping)
                         self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
