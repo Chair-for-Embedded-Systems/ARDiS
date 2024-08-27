@@ -1,7 +1,6 @@
 __pycache__
 */__pycache__/*
 results/
-scripts/
 *.log
 *.out
 *DS_Store
