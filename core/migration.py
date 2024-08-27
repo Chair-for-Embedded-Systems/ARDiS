@@ -2,18 +2,23 @@ import threading
 import subprocess
 import random
 import config
+import json
 
 
 
 class MigrationPolicy:
     def __init__(self, params = {}):
         self.params = params
+        self.static_schedules = self.load_static_schedules("static_schedules_psys_20.0.json")
     
+    def load_static_schedules(self, schedule_file):
+        with open(schedule_file, 'r') as file:
+            return json.load(file)
+
     def __setAffinity(self, pid, core):
         cmd_str = "taskset -cp " + str(core) + " " + str(pid)
         command = cmd_str.split(" ")
-        if DEBUG:
-            print ("Executing: ", cmd_str)    
+        print ("Executing: ", cmd_str)    
         p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         if p.stderr.readlines():
             return False
@@ -24,19 +29,17 @@ class MigrationPolicy:
     def executeMigration(self, currmap , newmap , pids):
         tmp_pids = pids.copy()
         #Only apply migration if the new map is different than current map
-        if (newmap != currmap):
-            #check each app for its new core
-            for app in currmap:
-                if currmap[app] != newmap[app]:
-                    #if the app is still running, then move it to the new core
-                    #if setting the affinity fails, it means the app finished
-                    if pids[app] != -1:
-                        try:
-                            self.__setAffinity(pids[app], newmap[app])
-                            tmp_pids[app] = pids[app]
-                        #if the app finished, then set the pid to undefined (-1)
-                        except:
-                            tmp_pids[app] = -1                 
+        #check each app for its new core
+        for app in currmap:
+            #if the app is still running, then move it to the new core
+            #if setting the affinity fails, it means the app finished
+            if pids[app] != -1:
+                try:
+                    self.__setAffinity(pids[app], newmap[app])
+                    tmp_pids[app] = pids[app]
+                #if the app finished, then set the pid to undefined (-1)
+                except:
+                    tmp_pids[app] = -1                 
         return tmp_pids
     
     def getShuffledMapping(self, mapping):
@@ -61,6 +64,25 @@ class MigrationPolicy:
         random.shuffle(available_cores)
         for app in mapping:
             tmp_mapping[app] = available_cores.pop()
+        return tmp_mapping
+    
+
+    def getMotivationalExampleMapping(self, instructions, mapping):
+        tmp_mapping = mapping.copy()
+        for app in tmp_mapping:
+            static_schedule = self.static_schedules.get(app, [])
+            selected_core = tmp_mapping[list(tmp_mapping.keys())[0]]  # Default to current core
+
+            for entry in static_schedule:
+                if instructions >= entry["trigger_instruction"]:
+                    selected_core = entry["core"]
+                    print("Now entering Phase: ", entry["phase"], "Core: ", selected_core)
+                else:
+                    break  # Stop once the correct phase is determined
+
+            if tmp_mapping[app] != selected_core:
+                tmp_mapping[app] = selected_core
+        
         return tmp_mapping
 
 
