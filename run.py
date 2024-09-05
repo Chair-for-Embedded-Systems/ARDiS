@@ -1,5 +1,6 @@
 from config import *
 from core.engine import *
+from core.linuxengine import *
 from core.policies.explicit_mapping import *
 from core.policies.consecutive_schedule import *
 from core.policies.intel_static_dvfs import *
@@ -27,6 +28,33 @@ class Experiment:
             candidate = available_apps[randrange(len(available_apps))]
             if candidate not in self.__applications:
                 self.__applications.append(candidate)
+    
+    def setApplications(self, applications):
+        self.__applications = applications
+   
+    # Execute the experiment and wait for it to finish
+    def executeExperiment(self):
+        self.__engine.executeWorkload(self.__applications)
+    
+    def __str__(self):
+        return f"Experiment {self.__name} with applications {self.__applications} and engine {self.__engine}"
+    
+    def __repr__(self):
+        return self.__str__()
+    
+    
+
+class DefaultLinuxExperiment:
+    def __init__(self, name="", applications=[], scheduler=Scheduler(), governor="performance", min_frequency=1500, max_frequency=3500):
+        self.__name = name
+        self.__applications = applications
+        self.__engine = LinuxEngine(self.__name, 
+                                    governor, 
+                                    scheduler=scheduler, 
+                                    min_frequency=min_frequency, 
+                                    max_frequency=max_frequency,
+                                    perf_out_file="/home/sikmoh00/Subjects/RealHardware/ARDIS/perf.out") 
+
     
     def setApplications(self, applications):
         self.__applications = applications
@@ -185,6 +213,28 @@ def run_parsec_static_schedule_migration_with_dvfs():
             print(f"Experiment {exp_name} already exists in the results folder.")
 
 
+
+def run_parsec_default_linux_governor():
+
+    scheduler=ConsecutiveScheduler(0)      
+
+    for governor in ["performance", "powersave", "ondemand", "conservative", "schedutil"]:
+        for app in parsec_apps:
+            exp_name = f"{app}_{governor}"
+            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+                exp = DefaultLinuxExperiment(exp_name, 
+                                scheduler=scheduler, 
+                                governor=governor,
+                                min_frequency=1500,
+                                max_frequency=3500
+                                )
+                exp.setApplications([app])
+                exp.executeExperiment()
+            else:
+                print(f"Experiment {exp_name} already exists in the results folder.")
+
+
+
 def run_parsec_characterization_experiments():
 
     scheduler=ConsecutiveScheduler(0)                   
@@ -255,7 +305,8 @@ if __name__ == "__main__":
     #runMotivationalExample()
     #run_spec_characterization_experiments()
     #run_parsec_characterization_experiments()
-    run_parsec_static_schedule_migration_with_dvfs()
+    #run_parsec_static_schedule_migration_with_dvfs()
+    run_parsec_default_linux_governor()
     #run_spec_static_schedule_migration()
     #run_parsec_static_schedule_migration()
     #run_same_application_multiple_times()
