@@ -9,8 +9,9 @@ CONFIGFILE = "mytest.cfg"
 
 
 class BenchManager:
-    def __init__(self, benchmarks = ["spec", "parsec"]):
+    def __init__(self, benchmarks = ["spec", "parsec"], out_file = None):
         self.__supported_benchmarks = benchmarks
+        self.__out_file = out_file
 
     def runApplicationOnCore(self, app_string, core):
         benchmark, app = app_string.split("-")[:2]
@@ -40,8 +41,12 @@ class BenchManager:
                 key, value = line.split("=", 1)
                 os.environ[key] = value
 
-        # run parsec app on core with nice value 0
-        command = f"taskset -c {core} nice -n 0 parsecmgmt -a run -i {input_size} -n 1 -p {app} > {app}.log"
+        # run parsec app on core with nice value 0 if a core is assigned; otherwise, that means we are using the default governor
+        if core is not None:
+            command = f"taskset -c {core} nice -n 0 parsecmgmt -a run -i {input_size} -n 1 -p {app} > {app}.log"
+        else:
+            command = f"perf stat -a -e power/energy-psys/ -o {self.__out_file} parsecmgmt -a run -i {input_size} -n 1 -p {app}"
+            
         #print("command: ", command)
         subprocess.run(command, shell=True, executable="/bin/bash")
         os.chdir(ROOTPATH)
@@ -63,7 +68,11 @@ class BenchManager:
                     os.environ[key] = value
 
         # run app $1 on core $2
-        command = f"taskset -c {core} nice -n 0 runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {app}.log"
+        
+        if core is not None:
+            command = f"taskset -c {core} nice -n 0 runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {app}.log"
+        else:
+            command = f"runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {app}.log"
         #print("command: ", command)	
         subprocess.run(command, shell=True, env=os.environ)
         os.chdir(ROOTPATH)
