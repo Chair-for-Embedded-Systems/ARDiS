@@ -141,7 +141,7 @@ class Engine:
                     print("--------------------")
                 
                 # Apply migration policy every 50 epochs
-                if self.__epochs > 0 and  self.__epochs % 50 == 0:
+                if self.__epochs > 0 and  self.__epochs % 10 == 0:
                     if self.__migration_policy is not None:
                         # update PIDs before calling the migration procedure
                         if DEBUG:
@@ -151,14 +151,17 @@ class Engine:
                             self.PIDs[app] = getPIDOfApp(app)
                         if DEBUG:
                             print("########## After PID update:", self.PIDs)
-                            new_mapping = self.__migration_policy.getStaticScheduleMapping(self.__total_instructions, self.mapping)
-
-                        print("New Mapping: ", new_mapping)
+                        
+                        new_mapping = self.__migration_policy.getStaticScheduleMapping(self.__total_instructions, self.mapping)
+                        # Executing the migration policy
+                        #print("New Mapping: ", new_mapping)
                         self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
                         self.mapping = new_mapping
                         self.__monitor.updateTrackedCores(list(self.mapping.values()))
-                        print("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
+                        #print("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
                         self.reporter.logEvent("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
+                        # Executing the DVFS policy
+                        self.__dvfs_policy.executeDVFSPolicy(self.__total_instructions, self.mapping)
 
                 # Print the current mapping every 50 epochs
                 if self.__epochs % 50 == 0:

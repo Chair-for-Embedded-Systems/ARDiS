@@ -2,11 +2,13 @@ import os
 
 
 #RESULTS_FOLDER="./results/characterization_splash2/"
-RESULTS_FOLDER="./results/characterization_parsec/"
+#RESULTS_FOLDER="./results/characterization_parsec/"
+RESULTS_FOLDER="./results/static_migration/multi_vf/"
 #RESULTS_FOLDER="./results/characterization_spec_ref/"
 #RESULTS_FOLDER="./results/characterization_spec_train/"
 #RESULTS_FOLDER="./results/motivational/ref/"
 #RESULTS_FOLDER="./results/motivational/train/"
+#RESULTS_FOLDER="./results/motivational/parsec/"
 #RESULTS_FOLDER="./results/characterization/"
 #RESULTS_FOLDER="./results/repeated_single/"
 #RESULTS_FOLDER="./results/exps/"
@@ -56,9 +58,9 @@ parsec_apps = [
     #'parsec-vips',
     #'parsec-x264',
     'parsec-splash2x.barnes',
-    'parsec-splash2x.cholesky',
+    #'parsec-splash2x.cholesky',
     'parsec-splash2x.fft',
-    'parsec-splash2x.fmm',
+    #'parsec-splash2x.fmm',
     'parsec-splash2x.lu_cb',
     'parsec-splash2x.lu_ncb',
     'parsec-splash2x.ocean_cp',
@@ -84,5 +86,18 @@ explicit_mapping_cores = [2, 4, 17, 23]
 
 # Monitoring parameters
 sampling_rate = 100 # in ms
-events_to_track = ["instructions", "LLC-loads", "LLC-load-misses", "LLC-stores", "LLC-store-misses", "power/energy-pkg/", "power/energy-cores/", "power/energy-psys/"]
+
+events_to_track = [
+    "instructions",
+    "LLC-loads",
+    "LLC-load-misses",
+    "LLC-stores",
+    "LLC-store-misses",
+    "power/energy-pkg/",
+    "power/energy-cores/",
+    "power/energy-psys/",
+    "cycles",
+    "branch-misses",
+    "branches"
+]
 enable_monitoring = True 

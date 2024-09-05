@@ -2,7 +2,9 @@ from config import *
 from core.engine import *
 from core.policies.explicit_mapping import *
 from core.policies.consecutive_schedule import *
+from core.policies.intel_static_dvfs import *
 from core.dvfs import *
+from core.migration import *
 from core.policies.intel_motivational_mapping import *
 import time
 from timeit import default_timer as timer
@@ -13,10 +15,10 @@ import os
 
 
 class Experiment:
-    def __init__(self, name="", applications=[], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy=DVFSPolicy()):
+    def __init__(self, name="", applications=[], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy=DVFSPolicy(), migration_policy=None):
         self.__name = name
         self.__applications = applications
-        self.__engine = Engine(self.__name, mapping_policy=mapping_policy, scheduler=scheduler, dvfs_policy=dvfs_policy)
+        self.__engine = Engine(self.__name, mapping_policy=mapping_policy, scheduler=scheduler, dvfs_policy=dvfs_policy, migration_policy=migration_policy)
 
 
     # Generate a random list of N unique applications to execute
@@ -135,13 +137,59 @@ def run_spec_static_schedule_migration():
             exp.executeExperiment()
         else:
             print(f"Experiment {exp_name} already exists in the results folder.")
+          
+def run_parsec_static_schedule_migration():
+
+    scheduler=ConsecutiveScheduler(0)                    
+    frequency = 2500   
+    for app in parsec_apps:
+        exp_name = f"{app}_{frequency}MHz_Mixed"
+        if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+            exp = Experiment(exp_name, 
+                            mapping_policy=ExplicitMapping([intel_e_core_ids[0]]), 
+                            scheduler=scheduler, 
+                            dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}),
+                            migration_policy=MigrationPolicy())
+            exp.setApplications([app])
+            exp.executeExperiment()
+        else:
+            print(f"Experiment {exp_name} already exists in the results folder.")  
+
+def load_static_schedules(schedule_file):
+    with open(schedule_file, 'r') as file:
+        return json.load(file)
+
+def run_parsec_static_schedule_migration_with_dvfs():
+
+    scheduler=ConsecutiveScheduler(0)                    
+    initial_frequency = 2500
+    schedule_path = "/home/sikmoh00/Subjects/RealHardware/ARDIS/results/characterization_parsec/schedules/static_schedules_all_apps_with_dvfs.json"
+
+
+    for app in parsec_apps:
+        # Getting the starting core for the first phase of the static schedule
+        static_schedule = load_static_schedules(schedule_path).get(app, [])
+        initial_core_type = static_schedule[0]["core"]
+        print("####   Starting core type: ", initial_core_type)
+        initial_core = config.intel_e_core_ids[0] if "E-Core" in initial_core_type else config.intel_p_core_ids[3]
+        exp_name = f"{app}_Mixed"
+        if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
+            exp = Experiment(exp_name, 
+                            mapping_policy=ExplicitMapping([initial_core]), 
+                            scheduler=scheduler, 
+                            dvfs_policy=IntelStaticDVFSPolicy(schedule_path, {core: initial_frequency for core in range(system_cores)}),
+                            migration_policy=MigrationPolicy(schedule_path))
+            exp.setApplications([app])
+            exp.executeExperiment()
+        else:
+            print(f"Experiment {exp_name} already exists in the results folder.")
 
 
 def run_parsec_characterization_experiments():
 
     scheduler=ConsecutiveScheduler(0)                   
-    #for frequency in [3500, 3000, 2500, 2000, 1500]:    
-    for frequency in [3500, 2500]:   
+    for frequency in [3500, 3000, 2500, 2000, 1500]:    
+    #for frequency in [3500,]:   
         #run on an E core
         for app in parsec_apps:
             exp_name = f"{app}_{frequency}MHz_Ecore"
@@ -156,37 +204,6 @@ def run_parsec_characterization_experiments():
                 print(f"Experiment {exp_name} already exists in the results folder.")
         #run on a P core
         for app in parsec_apps:
-            exp_name = f"{app}_{frequency}MHz_Pcore"
-            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
-                exp = Experiment(exp_name, 
-                                mapping_policy=ExplicitMapping([intel_p_core_ids[3]]), 
-                                scheduler=scheduler, 
-                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
-                exp.setApplications([app])
-                exp.executeExperiment()
-            else:
-                print(f"Experiment {exp_name} already exists in the results folder.")
-
-
-def run_splash2_characterization_experiments():
-
-    scheduler=ConsecutiveScheduler(0)                   
-    #for frequency in [3500, 3000, 2500, 2000, 1500]:    
-    for frequency in [3500, 2500]:   
-        #run on an E core
-        for app in splash2_apps:
-            exp_name = f"{app}_{frequency}MHz_Ecore"
-            if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
-                exp = Experiment(exp_name, 
-                                mapping_policy=ExplicitMapping([intel_e_core_ids[0]]), 
-                                scheduler=scheduler, 
-                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}))
-                exp.setApplications([app])
-                exp.executeExperiment()
-            else:
-                print(f"Experiment {exp_name} already exists in the results folder.")
-        #run on a P core
-        for app in splash2_apps:
             exp_name = f"{app}_{frequency}MHz_Pcore"
             if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
                 exp = Experiment(exp_name, 
@@ -238,5 +255,7 @@ if __name__ == "__main__":
     #runMotivationalExample()
     #run_spec_characterization_experiments()
     #run_parsec_characterization_experiments()
-    run_splash2_characterization_experiments()
+    run_parsec_static_schedule_migration_with_dvfs()
+    #run_spec_static_schedule_migration()
+    #run_parsec_static_schedule_migration()
     #run_same_application_multiple_times()
