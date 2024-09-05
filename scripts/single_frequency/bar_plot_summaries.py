@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Import the configuration
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 import config
 
 # Function to parse log file and accumulate instructions and energy
@@ -41,23 +41,20 @@ def parse_log_file(log_file, energy_type):
 def gather_metrics(application_name, frequency, energy_type):
     log_directory = config.RESULTS_FOLDER
 
-    # Use glob to find the directories matching the application name for P-core, E-core, and Mixed at the specified frequency
+    # Use glob to find the directories matching the application name for P-core and E-core at the specified frequency
     pcore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Pcore"))
     ecore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Ecore"))
-    mixed_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Mixed"))
 
-    if not (pcore_dirs and ecore_dirs and mixed_dirs):
+    if not (pcore_dirs and ecore_dirs):
         return None
 
     # Take the first matching directory (assuming there's only one result per application)
     pcore_file = os.path.join(pcore_dirs[0], "periodic_counters.log")
     ecore_file = os.path.join(ecore_dirs[0], "periodic_counters.log")
-    mixed_file = os.path.join(mixed_dirs[0], "periodic_counters.log")
 
     # Parse the logs
     ecore_time, ecore_instr, ecore_energy = parse_log_file(ecore_file, energy_type)
     pcore_time, pcore_instr, pcore_energy = parse_log_file(pcore_file, energy_type)
-    mixed_time, mixed_instr, mixed_energy = parse_log_file(mixed_file, energy_type)
 
     # Calculate metrics for E-core
     ecore_total_time = ecore_time[-1]
@@ -69,141 +66,118 @@ def gather_metrics(application_name, frequency, energy_type):
     pcore_total_energy = pcore_energy[-1]
     pcore_total_instructions = pcore_instr[-1]
 
-    # Calculate metrics for Mixed
-    mixed_total_time = mixed_time[-1]
-    mixed_total_energy = mixed_energy[-1]
-    mixed_total_instructions = mixed_instr[-1]
-
     # Calculate the average number of instructions executed
-    avg_instructions = (ecore_total_instructions + pcore_total_instructions + mixed_total_instructions) / 3
+    avg_instructions = (ecore_total_instructions + pcore_total_instructions) / 2
 
     # Calculate energy efficiency using the average instructions
     ecore_efficiency = (avg_instructions / ecore_total_energy) / 1e6 if ecore_total_energy > 0 else np.nan
     pcore_efficiency = (avg_instructions / pcore_total_energy) / 1e6 if pcore_total_energy > 0 else np.nan
-    mixed_efficiency = (avg_instructions / mixed_total_energy) / 1e6 if mixed_total_energy > 0 else np.nan
 
     return {
         'ecore_time': ecore_total_time,
         'pcore_time': pcore_total_time,
-        'mixed_time': mixed_total_time,
         'ecore_energy': ecore_total_energy,
         'pcore_energy': pcore_total_energy,
-        'mixed_energy': mixed_total_energy,
         'ecore_efficiency': ecore_efficiency,
-        'pcore_efficiency': pcore_efficiency,
-        'mixed_efficiency': mixed_efficiency
+        'pcore_efficiency': pcore_efficiency
     }
 
 # Function to calculate percentage difference and add annotations
-def annotate_bars(ax, ecore_values, pcore_values, mixed_values, index, bar_width, metric_type):
+def annotate_bars(ax, ecore_values, pcore_values, index, bar_width):
     for i in range(len(ecore_values)):
-        if metric_type == 'efficiency':
-            # Higher efficiency is better, compare to the max of E-core and P-core
-            best_value = max(ecore_values[i], pcore_values[i])
-            if best_value > 0:
-                improvement = ((mixed_values[i] - best_value) / best_value) * 100
-        else:
-            # Lower energy/time is better, compare to the min of E-core and P-core
-            best_value = min(ecore_values[i], pcore_values[i])
-            if best_value > 0:
-                improvement = ((best_value - mixed_values[i]) / best_value) * 100
-
-        annotation = f"{improvement:.1f}%"
-        ax.text(index[i] + 2 * bar_width, mixed_values[i] * 1.01, annotation,
-                ha='center', va='bottom', fontsize=8, color='black')
+        if pcore_values[i] > 0:
+            percentage_diff = ((ecore_values[i] - pcore_values[i]) / pcore_values[i]) * 100
+            annotation = f"{percentage_diff:.1f}%"
+            ax.text(index[i] + bar_width / 2, max(ecore_values[i], pcore_values[i]) * 1.01, annotation,
+                    ha='center', va='bottom', fontsize=8, color='black')
 
 # Function to generate the execution time plot
-def plot_execution_time(applications, ecore_times, pcore_times, mixed_times, frequency, output_dir):
-    plt.figure(figsize=(12, 6))
-    bar_width = 0.25
+def plot_execution_time(applications, ecore_times, pcore_times, frequency, output_dir):
+    plt.figure(figsize=(10, 6))
+    bar_width = 0.35
     index = np.arange(len(applications))
     
     bars1 = plt.bar(index, ecore_times, bar_width, label='E-core', color='red', alpha=0.7)
     bars2 = plt.bar(index + bar_width, pcore_times, bar_width, label='P-core', color='blue', alpha=0.7)
-    bars3 = plt.bar(index + 2 * bar_width, mixed_times, bar_width, label='Mixed', color='green', alpha=0.7)
     
     plt.xlabel('Applications')
     plt.ylabel('Execution Time (s)')
     plt.title(f'Execution Time at {frequency}')
-    plt.xticks(index + bar_width, applications, rotation=45, ha="right")
+    plt.xticks(index + bar_width / 2, applications, rotation=45, ha="right")
     plt.legend()
 
     # Annotate the bars with percentage differences
-    annotate_bars(plt, ecore_times, pcore_times, mixed_times, index, bar_width, metric_type='time')
+    annotate_bars(plt, ecore_times, pcore_times, index, bar_width)
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, f"execution_time_{frequency}.png"))
     plt.close()
 
 # Function to generate energy plots for each energy type
-def plot_energy(applications, ecore_values, pcore_values, mixed_values, metric_name, frequency, energy_type, output_dir):
-    plt.figure(figsize=(12, 6))
-    bar_width = 0.25
+def plot_energy(applications, ecore_values, pcore_values, metric_name, frequency, energy_type, output_dir):
+    plt.figure(figsize=(10, 6))
+    bar_width = 0.35
     index = np.arange(len(applications))
     
     bars1 = plt.bar(index, ecore_values, bar_width, label='E-core', color='red', alpha=0.7)
     bars2 = plt.bar(index + bar_width, pcore_values, bar_width, label='P-core', color='blue', alpha=0.7)
-    bars3 = plt.bar(index + 2 * bar_width, mixed_values, bar_width, label='Mixed', color='green', alpha=0.7)
     
     plt.xlabel('Applications')
     plt.ylabel(f'{metric_name} ({energy_type.capitalize()})')
     plt.title(f'{metric_name} at {frequency} ({energy_type})')
-    plt.xticks(index + bar_width, applications, rotation=45, ha="right")
+    plt.xticks(index + bar_width / 2, applications, rotation=45, ha="right")
     plt.legend()
 
     # Annotate the bars with percentage differences
-    metric_type = 'efficiency' if metric_name == 'Energy Efficiency' else 'energy'
-    annotate_bars(plt, ecore_values, pcore_values, mixed_values, index, bar_width, metric_type)
+    annotate_bars(plt, ecore_values, pcore_values, index, bar_width)
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, f"{metric_name.lower()}_{energy_type}_{frequency}.png"))
     plt.close()
 
-# Main function to create all plots for a list of applications
+# Main function to create all plots
 def main():
     energy_types = ["pkg", "psys", "cores"]
-    frequencies = ["2500MHz",]
-    applications = config.spec_apps
-
+    frequencies = ["1500MHz", "2000MHz", "2500MHz", "3000MHz", "3500MHz"]
+    #frequencies = ["2500MHz", "3500MHz"]
+    #frequencies = ["3500MHz",]
+    #frequencies = ["2500MHz",]
+    
     output_dir = os.path.join(config.ROOTPATH, f"{config.RESULTS_FOLDER}/plots/bars")
     os.makedirs(output_dir, exist_ok=True)
 
     for frequency in frequencies:
+        applications = []
         ecore_times = []
         pcore_times = []
-        mixed_times = []
         ecore_energy = {et: [] for et in energy_types}
         pcore_energy = {et: [] for et in energy_types}
-        mixed_energy = {et: [] for et in energy_types}
         ecore_efficiency = {et: [] for et in energy_types}
         pcore_efficiency = {et: [] for et in energy_types}
-        mixed_efficiency = {et: [] for et in energy_types}
 
-        for application_name in applications:
+        for application_name in config.parsec_apps:
             # Gather execution time
             metrics = gather_metrics(application_name, frequency, energy_types[0])  # Any energy type works for time
             if metrics is None:
                 continue
 
+            applications.append(application_name)
             ecore_times.append(metrics['ecore_time'])
             pcore_times.append(metrics['pcore_time'])
-            mixed_times.append(metrics['mixed_time'])
 
             # Gather energy and efficiency metrics
             for energy_type in energy_types:
                 metrics = gather_metrics(application_name, frequency, energy_type)
                 ecore_energy[energy_type].append(metrics['ecore_energy'])
                 pcore_energy[energy_type].append(metrics['pcore_energy'])
-                mixed_energy[energy_type].append(metrics['mixed_energy'])
                 ecore_efficiency[energy_type].append(metrics['ecore_efficiency'])
                 pcore_efficiency[energy_type].append(metrics['pcore_efficiency'])
-                mixed_efficiency[energy_type].append(metrics['mixed_efficiency'])
 
         # Generate plots
-        plot_execution_time(applications, ecore_times, pcore_times, mixed_times, frequency, output_dir)
+        plot_execution_time(applications, ecore_times, pcore_times, frequency, output_dir)
         for energy_type in energy_types:
-            plot_energy(applications, ecore_energy[energy_type], pcore_energy[energy_type], mixed_energy[energy_type], 'Energy Consumption', frequency, energy_type, output_dir)
-            plot_energy(applications, ecore_efficiency[energy_type], pcore_efficiency[energy_type], mixed_efficiency[energy_type], 'Energy Efficiency', frequency, energy_type, output_dir)
+            plot_energy(applications, ecore_energy[energy_type], pcore_energy[energy_type], 'Energy Consumption', frequency, energy_type, output_dir)
+            plot_energy(applications, ecore_efficiency[energy_type], pcore_efficiency[energy_type], 'Energy Efficiency', frequency, energy_type, output_dir)
 
 if __name__ == "__main__":
     main()

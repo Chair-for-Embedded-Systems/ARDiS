@@ -7,7 +7,7 @@ import sys
 import json
 
 # Import the configuration
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 import config
 
 # Function to parse log file and accumulate instructions
@@ -114,7 +114,7 @@ def main():
 
     all_schedules = {}
 
-    for application_name in config.spec_apps:
+    for application_name in config.parsec_apps:
         pcore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Pcore"))
         ecore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Ecore"))
 

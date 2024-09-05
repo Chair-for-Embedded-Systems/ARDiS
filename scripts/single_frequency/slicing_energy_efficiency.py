@@ -7,7 +7,7 @@ import glob
 import sys
 
 # Import the configuration
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 import config
 
 # Function to parse log file and accumulate instructions
@@ -47,7 +47,29 @@ def extract_cumulative_energy(log_file, energy_type):
     
     return time_points, cumulative_energy
 
+# Function to find the corresponding time for a specific instruction using interpolation
+def find_time_for_instruction(instruction_target, cumulative_instructions, time_points):
+    # Check if the instruction target exists directly in the logs
+    if instruction_target in cumulative_instructions:
+        idx = cumulative_instructions.index(instruction_target)
+        return time_points[idx]
+    
+    # Otherwise, perform linear interpolation to find the time
+    for i in range(1, len(cumulative_instructions)):
+        if cumulative_instructions[i-1] <= instruction_target <= cumulative_instructions[i]:
+            # Linear interpolation between two points
+            time_start = time_points[i-1]
+            time_end = time_points[i]
+            instr_start = cumulative_instructions[i-1]
+            instr_end = cumulative_instructions[i]
 
+            # Interpolate to find the corresponding time
+            time_for_instruction = time_start + (instruction_target - instr_start) * (time_end - time_start) / (instr_end - instr_start)
+            return time_for_instruction
+    
+    # If the target instruction is outside the range, return the last time
+    return time_points[-1]
+# Updated generate_lookup_table function with boundary checks
 def generate_lookup_table(application_name, pcore_file, ecore_file, instruction_slice, energy_type):
     # Parse the logs for instructions and energy
     pcore_time, pcore_instr = parse_log_file(pcore_file)
@@ -58,70 +80,46 @@ def generate_lookup_table(application_name, pcore_file, ecore_file, instruction_
     # Initialize the lookup table
     lookup_table = []
 
-    # Debugging: Print the lengths of the parsed data
-    print(f"Debug: {application_name} - Energy Type: {energy_type}")
-    print(f"pcore_time length: {len(pcore_time)}, pcore_instr length: {len(pcore_instr)}")
-    print(f"ecore_time length: {len(ecore_time)}, ecore_instr length: {len(ecore_instr)}")
-    print(f"pcore_energy length: {len(pcore_energy)}, ecore_energy length: {len(ecore_energy)}")
-
-    # Process the E-core first
-    ecore_index = 0
-    pcore_index = 0
     current_instr = 0
     
     while current_instr < ecore_instr[-1]:
         next_instr = current_instr + instruction_slice
 
-        # Debugging: Print current instruction slice range
-        #print(f"Debug: Processing instruction range {current_instr} to {next_instr}")
-
-        # Find the start time and energy on the E-core
-        ecore_start_time = ecore_time[ecore_index]
-        ecore_start_energy = ecore_energy[ecore_index]
-
-        # Find the time and energy on the E-core where this slice ends
-        while ecore_index < len(ecore_instr) and ecore_instr[ecore_index] < next_instr:
-            ecore_index += 1
-        ecore_end_time = ecore_time[ecore_index] if ecore_index < len(ecore_instr) else ecore_time[-1]
-        ecore_end_energy = ecore_energy[ecore_index] if ecore_index < len(ecore_energy) else ecore_energy[-1]
-
-        # Debugging: Print E-core indices and times
-        #print(f"Debug: E-core start index: {ecore_index}, start time: {ecore_start_time}, end time: {ecore_end_time}")
-
-        # Find the start time and energy on the P-core
-        if pcore_index < len(pcore_time):
-            pcore_start_time = pcore_time[pcore_index]
-            pcore_start_energy = pcore_energy[pcore_index]
-        else:
-            print(f"Error: pcore_index {pcore_index} out of range for pcore_time (length: {len(pcore_time)})")
-            break
-
-        # Find corresponding time and energy on P-core
-        while pcore_index < len(pcore_instr) and pcore_instr[pcore_index] < next_instr:
-            pcore_index += 1
-        if pcore_index < len(pcore_time):
-            pcore_end_time = pcore_time[pcore_index]
-            pcore_end_energy = pcore_energy[pcore_index]
-        else:
-            print(f"Error: pcore_index {pcore_index} out of range for pcore_time (length: {len(pcore_time)})")
-            break
-
-        # Debugging: Print P-core indices and times
-        #print(f"Debug: P-core start index: {pcore_index}, start time: {pcore_start_time}, end time: {pcore_end_time}")
+        # Use interpolation to find the start and end times for the E-core and P-core
+        ecore_start_time = find_time_for_instruction(current_instr, ecore_instr, ecore_time)
+        ecore_end_time = find_time_for_instruction(next_instr, ecore_instr, ecore_time)
+        pcore_start_time = find_time_for_instruction(current_instr, pcore_instr, pcore_time)
+        pcore_end_time = find_time_for_instruction(next_instr, pcore_instr, pcore_time)
 
         # Calculate the duration of the slice on each core
         ecore_duration = ecore_end_time - ecore_start_time
         pcore_duration = pcore_end_time - pcore_start_time
 
+        # Ensure valid range for energy calculations
+        ecore_index_start = np.searchsorted(ecore_instr, current_instr)
+        ecore_index_end = np.searchsorted(ecore_instr, next_instr)
+        pcore_index_start = np.searchsorted(pcore_instr, current_instr)
+        pcore_index_end = np.searchsorted(pcore_instr, next_instr)
+
+        # Adjust indices to prevent out-of-range errors
+        ecore_index_start = min(max(ecore_index_start, 0), len(ecore_energy) - 1)
+        ecore_index_end = min(max(ecore_index_end, 0), len(ecore_energy) - 1)
+        pcore_index_start = min(max(pcore_index_start, 0), len(pcore_energy) - 1)
+        pcore_index_end = min(max(pcore_index_end, 0), len(pcore_energy) - 1)
+
         # Calculate energy consumed during the phase
+        ecore_start_energy = ecore_energy[ecore_index_start]
+        ecore_end_energy = ecore_energy[ecore_index_end]
+        pcore_start_energy = pcore_energy[pcore_index_start]
+        pcore_end_energy = pcore_energy[pcore_index_end]
+
         ecore_energy_consumed = ecore_end_energy - ecore_start_energy
         pcore_energy_consumed = pcore_end_energy - pcore_start_energy
 
         if ecore_energy_consumed <= 0:
-            print(f"Debug: E-core zero or negative energy consumption at slice {current_instr} to {next_instr}, start energy: {ecore_start_energy}, end energy: {ecore_end_energy}")
+            print(f"Debug: E-core zero or negative energy consumption at slice {current_instr} to {next_instr}")
         if pcore_energy_consumed <= 0:
-            print(f"Debug: P-core zero or negative energy consumption at slice {current_instr} to {next_instr}, start energy: {pcore_start_energy}, end energy: {pcore_end_energy}")
-
+            print(f"Debug: P-core zero or negative energy consumption at slice {current_instr} to {next_instr}")
 
         # Calculate energy efficiency in MInstr/J
         ecore_instructions_executed = next_instr - current_instr
@@ -350,7 +348,7 @@ def main():
 
     all_lookup_tables = []
 
-    for application_name in config.spec_apps:
+    for application_name in config.parsec_apps:
         # Use glob to find the directories matching the application name for P-core and E-core at 2000MHz
         pcore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Pcore"))
         ecore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Ecore"))
@@ -369,7 +367,7 @@ def main():
             continue
 
         # Define the size of the instruction slice (e.g., 2e9 instructions)
-        instruction_slice = 2e10
+        instruction_slice = 2e9
 
         # Process for each energy type
         for energy_type in ["cores", "pkg", "psys"]:

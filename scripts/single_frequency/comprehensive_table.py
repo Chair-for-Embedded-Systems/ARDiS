@@ -5,7 +5,7 @@ import sys
 import numpy as np
 
 # Import the configuration
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 import config
 
 # Function to parse log file and accumulate instructions and energy

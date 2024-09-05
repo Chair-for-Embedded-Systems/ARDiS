@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import glob
 
 # Import the configuration
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 import config
 
 # Define the directory where the logs are stored
@@ -31,8 +31,30 @@ def parse_log_file(log_file):
     
     return time_points, cumulative_instructions
 
+# Function to find the corresponding time for a specific instruction using interpolation
+def find_time_for_instruction(instruction_target, cumulative_instructions, time_points):
+    # Check if the instruction target exists directly in the logs
+    if instruction_target in cumulative_instructions:
+        idx = cumulative_instructions.index(instruction_target)
+        return time_points[idx]
+    
+    # Otherwise, perform linear interpolation to find the time
+    for i in range(1, len(cumulative_instructions)):
+        if cumulative_instructions[i-1] <= instruction_target <= cumulative_instructions[i]:
+            # Linear interpolation between two points
+            time_start = time_points[i-1]
+            time_end = time_points[i]
+            instr_start = cumulative_instructions[i-1]
+            instr_end = cumulative_instructions[i]
 
-# Function to generate the lookup table for an application
+            # Interpolate to find the corresponding time
+            time_for_instruction = time_start + (instruction_target - instr_start) * (time_end - time_start) / (instr_end - instr_start)
+            return time_for_instruction
+    
+    # If the target instruction is outside the range, return the last time
+    return time_points[-1]
+
+# Function to generate the lookup table for an application using interpolation
 def generate_lookup_table(application_name, pcore_file, ecore_file, instruction_slice):
     # Parse the logs
     pcore_time, pcore_instr = parse_log_file(pcore_file)
@@ -47,45 +69,17 @@ def generate_lookup_table(application_name, pcore_file, ecore_file, instruction_
     lookup_table = []
 
     # Process the E-core first
-    ecore_index = 0
-    pcore_index = 0
     current_instr = 0
     
     while current_instr < ecore_instr[-1]:
         next_instr = current_instr + instruction_slice
         
-        # Debugging: Print current instruction slice range
-        #print(f"Debug: Processing instruction range {current_instr} to {next_instr}")
+        # Find the start and end times using interpolation
+        ecore_start_time = find_time_for_instruction(current_instr, ecore_instr, ecore_time)
+        ecore_end_time = find_time_for_instruction(next_instr, ecore_instr, ecore_time)
 
-        # Find the start time on the E-core
-        ecore_start_time = ecore_time[ecore_index]
-        
-        # Find the time on the E-core where this slice ends
-        while ecore_index < len(ecore_instr) and ecore_instr[ecore_index] < next_instr:
-            ecore_index += 1
-        ecore_end_time = ecore_time[ecore_index] if ecore_index < len(ecore_instr) else ecore_time[-1]
-
-        # Debugging: Print E-core indices and times
-        #print(f"Debug: E-core start index: {ecore_index}, start time: {ecore_start_time}, end time: {ecore_end_time}")
-
-        # Find the start time on the P-core
-        if pcore_index < len(pcore_time):
-            pcore_start_time = pcore_time[pcore_index]
-        else:
-            print(f"Error: pcore_index {pcore_index} out of range for pcore_time (length: {len(pcore_time)})")
-            break
-
-        # Find the corresponding time on the P-core
-        while pcore_index < len(pcore_instr) and pcore_instr[pcore_index] < next_instr:
-            pcore_index += 1
-        if pcore_index < len(pcore_time):
-            pcore_end_time = pcore_time[pcore_index]
-        else:
-            print(f"Error: pcore_index {pcore_index} out of range for pcore_time (length: {len(pcore_time)})")
-            break
-
-        # Debugging: Print P-core indices and times
-        #print(f"Debug: P-core start index: {pcore_index}, start time: {pcore_start_time}, end time: {pcore_end_time}")
+        pcore_start_time = find_time_for_instruction(current_instr, pcore_instr, pcore_time)
+        pcore_end_time = find_time_for_instruction(next_instr, pcore_instr, pcore_time)
 
         # Calculate the duration on each core
         ecore_duration = ecore_end_time - ecore_start_time
@@ -289,7 +283,7 @@ def main():
 
     all_lookup_tables = []
 
-    for application_name in config.splash2_apps:
+    for application_name in config.parsec_apps:
         # Use glob to find the directories matching the application name for P-core and E-core at 2000MHz
         pcore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Pcore"))
         ecore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Ecore"))
@@ -308,7 +302,7 @@ def main():
             continue
 
         # Define the size of the instruction slice (e.g., 2e9 instructions)
-        instruction_slice = 1e10
+        instruction_slice = 2e9
 
         # Generate the lookup table
         lookup_table = generate_lookup_table(application_name, pcore_file, ecore_file, instruction_slice)
