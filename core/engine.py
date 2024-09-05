@@ -2,7 +2,7 @@ from benchmarks.bench_manager import *
 from config import *
 from core.procworker import *
 from core.mapping import *
-from core.monitor import *
+from core.coremonitor import *
 from core.postprocessor import *
 from core.reporter import *
 from core.dvfs import *
@@ -94,7 +94,7 @@ class Engine:
         mapped_cores = list(range(0, system_cores))
         # Start the monitoring thread
         if(enable_monitoring):
-            self.__monitor = Monitor(sampling_rate, events_to_track, mapped_cores)
+            self.__monitor = CoreMonitor(sampling_rate, events_to_track, mapped_cores)
             self.__monitor.start()
         # Create the threads each application.
         self.__makeThreads()	
