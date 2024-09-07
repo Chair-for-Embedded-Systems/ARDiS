@@ -9,9 +9,8 @@ CONFIGFILE = "mytest.cfg"
 
 
 class BenchManager:
-    def __init__(self, benchmarks = ["spec", "parsec"], out_file = None):
+    def __init__(self, benchmarks = ["spec", "parsec"]):
         self.__supported_benchmarks = benchmarks
-        self.__out_file = out_file
 
     def runApplicationOnCore(self, app_string, core):
         benchmark, app = app_string.split("-")[:2]
@@ -24,7 +23,7 @@ class BenchManager:
             if benchmark == "spec":
                 self.__run_spec_app(app, core)#, size)
             elif benchmark == "parsec":
-                self.__run_parsec_app(app, core)#, size)
+                self.__run_parsec_app(app=app, core=core)#, size)
 
 
     def __run_parsec_app(self, app, core, input_size = "native"):
@@ -45,7 +44,7 @@ class BenchManager:
         if core is not None:
             command = f"taskset -c {core} nice -n 0 parsecmgmt -a run -i {input_size} -n 1 -p {app} > {app}.log"
         else:
-            command = f"perf stat -a -e power/energy-psys/ -o {self.__out_file} parsecmgmt -a run -i {input_size} -n 1 -p {app}"
+            command = f"parsecmgmt -a run -i {input_size} -n 1 -p {app}"
             
         #print("command: ", command)
         subprocess.run(command, shell=True, executable="/bin/bash")
