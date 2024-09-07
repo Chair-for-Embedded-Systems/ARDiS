@@ -7,17 +7,14 @@ import json
 
 
 class MigrationPolicy:
-    def __init__(self, static_schedule_path):
-        self.static_schedules = self.load_static_schedules(static_schedule_path)
+    def __init__(self, static_schedule):
+        self.static_schedule = static_schedule
     
-    def load_static_schedules(self, schedule_file):
-        with open(schedule_file, 'r') as file:
-            return json.load(file)
 
     def __setAffinity(self, pid, core):
         cmd_str = "taskset -cp " + str(core) + " " + str(pid)
         command = cmd_str.split(" ")
-        print ("Executing: ", cmd_str)    
+        #print ("Executing: ", cmd_str)    
         p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
         if p.stderr.readlines():
             return False
@@ -69,10 +66,9 @@ class MigrationPolicy:
     def getStaticScheduleMapping(self, instructions, mapping):
         tmp_mapping = mapping.copy()
         for app in tmp_mapping:
-            static_schedule = self.static_schedules.get(app, [])
             selected_core = tmp_mapping[list(tmp_mapping.keys())[0]]  # Default to current core
             current_phase = None
-            for entry in static_schedule:
+            for entry in self.static_schedule:
                 if instructions >= entry["trigger_instruction"]:
                     selected_core = config.intel_e_core_ids[0] if "E-core" in entry["core"] else config.intel_p_core_ids[3]
                     current_phase = entry["phase"]
@@ -81,7 +77,8 @@ class MigrationPolicy:
 
             if tmp_mapping[app] != selected_core:
                 tmp_mapping[app] = selected_core
-                print("[Migration Policy] Now entering Phase: ", current_phase, "Core: ", selected_core)
+                if config.DEBUG:
+                    print("[Migration Policy] Now entering Phase: ", current_phase, "Core: ", selected_core)
         
         return tmp_mapping
 
