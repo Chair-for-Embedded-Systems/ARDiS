@@ -2,8 +2,10 @@ import os
 
 
 #RESULTS_FOLDER="./results/characterization_splash2/"
-#RESULTS_FOLDER="./results/characterization_parsec/"
-RESULTS_FOLDER="./results/static_migration/multi_vf/"
+PARSEC_FIXED_FREQ_FOLDER="./results/characterization_parsec/"
+PARSEC_MIXED_STATIC_FOLDER="./results/static_migration/multi_vf/"
+PARSEC_BASELINE_FOLDER="./results/baselines/"
+#RESULTS_FOLDER="./results/baselines/"
 #RESULTS_FOLDER="./results/characterization_spec_ref/"
 #RESULTS_FOLDER="./results/characterization_spec_train/"
 #RESULTS_FOLDER="./results/motivational/ref/"
@@ -12,9 +14,12 @@ RESULTS_FOLDER="./results/static_migration/multi_vf/"
 #RESULTS_FOLDER="./results/characterization/"
 #RESULTS_FOLDER="./results/repeated_single/"
 #RESULTS_FOLDER="./results/exps/"
+RESULTS_FOLDER="./results/characterization_parsec/"
+EVALUATION_FOLDER="./evaluation/"
+EVALUATION_MIXED_FOLDER="./evaluation/ours_with_periodic/"
 UTILS_DIR="./utils"
 ROOTPATH=os.getcwd()
-DEBUG = False
+DEBUG = True
 #DEBUG = True
 # List of available applications on the system
 
@@ -46,14 +51,14 @@ parsec_apps = [
     'parsec-bodytrack',
     'parsec-canneal',
     'parsec-dedup',
-    'parsec-netdedup',
+    #'parsec-netdedup',
     'parsec-facesim',
     'parsec-ferret',
-    'parsec-netferret',
+    #'parsec-netferret',
     'parsec-fluidanimate',
     'parsec-freqmine',
     'parsec-streamcluster',
-    'parsec-netstreamcluster',
+    #'parsec-netstreamcluster',
     #'parsec-swaptions',
     #'parsec-vips',
     #'parsec-x264',
@@ -87,17 +92,28 @@ explicit_mapping_cores = [2, 4, 17, 23]
 # Monitoring parameters
 sampling_rate = 100 # in ms
 
-events_to_track = [
+periodic_app_level_events = [
     "instructions",
     "LLC-loads",
     "LLC-load-misses",
     "LLC-stores",
     "LLC-store-misses",
-    "power/energy-pkg/",
-    "power/energy-cores/",
-    "power/energy-psys/",
     "cycles",
     "branch-misses",
     "branches"
 ]
+
+periodic_system_wide_events = [
+    "power/energy-pkg/",
+    "power/energy-cores/",
+    "power/energy-psys/",
+]
+
+one_shot_system_wide_events = [
+    "power/energy-pkg/",
+    "power/energy-cores/",
+    "power/energy-psys/",
+    "instructions"
+]
+
 enable_monitoring = True 
