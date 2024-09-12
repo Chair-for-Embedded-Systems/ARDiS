@@ -16,7 +16,7 @@ from timeit import default_timer as timer
 lock = threading.Lock()
 
 class Engine:
-    def __init__(self, experiment_name, mapping_policy = MappingPolicy(), scheduler = Scheduler(), dvfs_policy = DVFSPolicy(), migration_policy = None, monitoring_mode = MonitoringMode.PERIODIC_ON_CORE):
+    def __init__(self, experiment_name, mapping_policy = MappingPolicy(), scheduler = Scheduler(), dvfs_policy = DVFSPolicy(), migration_policy = None, monitoring_mode = MonitoringMode.PERIODIC_ON_CORE, results_folder = RESULTS_FOLDER):
         self.running = False
         self.startime = 0
         self.endtime = 0
@@ -30,7 +30,7 @@ class Engine:
         self.__scheduler = scheduler 
         self.__monitor = None
         self.__dvfs_policy = dvfs_policy
-        self.reporter = Reporter(experiment_name, RESULTS_FOLDER)
+        self.reporter = Reporter(experiment_name, results_folder)
         self.__migration_policy = migration_policy
         self.__total_instructions = 0
         self.__monitoring_mode = monitoring_mode
@@ -170,8 +170,7 @@ class Engine:
                                 print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(app_metrics)}")
                             self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(app_metrics)}")
                             self.__total_instructions += self.__monitor.getMetricAtCore(core, "instructions")
-                            if config.DEBUG:
-                                self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
+                            self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
                     elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                         for app in self.mapping:
                             app_metrics = [f"{event} = {self.__monitor.getMetricForPID(self.PIDs[app], event)}" for event in periodic_app_level_events]
@@ -179,8 +178,7 @@ class Engine:
                                 print(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: {' | '.join(app_metrics)}")
                             self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: {' | '.join(app_metrics)}")
                             self.__total_instructions += self.__monitor.getMetricForPID(self.PIDs[app], "instructions")
-                            if config.DEBUG:
-                                self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: Cumulative Instructions = {self.__total_instructions}")
+                            self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: Cumulative Instructions = {self.__total_instructions}")
                     
                     system_metrics = [f"{event} = {self.__monitor.getSystemWideMetric(event)}" for event in periodic_system_wide_events]
                     if config.DEBUG:
@@ -190,8 +188,9 @@ class Engine:
                     if config.DEBUG:
                         print("--------------------")
                 
-                # Apply migration policy every 50 epochs
-                if self.__epochs > 0 and  self.__epochs % 10 == 0:
+                # Apply migration policy every 5 epochs
+                if self.__epochs > 0 and  self.__epochs % 5 == 0:
+                    #print("[" + str(round(current_time, 2)) + "s]: Checking Migrations")
                     if self.__migration_policy is not None:
                         # update PIDs before calling the migration procedure
                         if config.DEBUG:
