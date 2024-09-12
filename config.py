@@ -2,9 +2,17 @@ import os
 
 
 #RESULTS_FOLDER="./results/characterization_splash2/"
-PARSEC_FIXED_FREQ_FOLDER="./results/characterization_parsec/"
-PARSEC_MIXED_STATIC_FOLDER="./results/static_migration/multi_vf/"
+PARSEC_FIXED_FREQ_FOLDER="./results/characterization_parsec/fixed_freqs/"
+PARSEC_GOVERNOR_FOLDER="./results/characterization_parsec/governors/"
+PARSEC_MIXED_STATIC_FOLDERS= [
+                            "./results/characterization_parsec/mixed_1.00e+09_IPJ/",
+                            "./results/characterization_parsec/mixed_2.00e+09_IPJ/",
+                            "./results/characterization_parsec/mixed_5.00e+08_IPJ/",
+                            "./results/characterization_parsec/mixed_8.00e+08_IPJ/",
+                            #"./results/characterization_parsec/mixed_2.00e+10_IPJ/",
+                            ]
 PARSEC_BASELINE_FOLDER="./results/baselines/"
+SCHEDULES="./results/characterization_parsec/fixed_freqs/schedules/"
 #RESULTS_FOLDER="./results/baselines/"
 #RESULTS_FOLDER="./results/characterization_spec_ref/"
 #RESULTS_FOLDER="./results/characterization_spec_train/"
@@ -15,11 +23,13 @@ PARSEC_BASELINE_FOLDER="./results/baselines/"
 #RESULTS_FOLDER="./results/repeated_single/"
 #RESULTS_FOLDER="./results/exps/"
 RESULTS_FOLDER="./results/characterization_parsec/"
+TESTING_FOLDER="./tests/"
+#RESULTS_FOLDER="./results/characterization_parsec/mixed_5e9_EDP/"
 EVALUATION_FOLDER="./evaluation/"
 EVALUATION_MIXED_FOLDER="./evaluation/ours_with_periodic/"
 UTILS_DIR="./utils"
 ROOTPATH=os.getcwd()
-DEBUG = True
+DEBUG = False
 #DEBUG = True
 # List of available applications on the system
 
@@ -52,11 +62,11 @@ parsec_apps = [
     'parsec-canneal',
     'parsec-dedup',
     #'parsec-netdedup',
-    'parsec-facesim',
+    #'parsec-facesim',
     'parsec-ferret',
     #'parsec-netferret',
     'parsec-fluidanimate',
-    'parsec-freqmine',
+    #'parsec-freqmine',
     'parsec-streamcluster',
     #'parsec-netstreamcluster',
     #'parsec-swaptions',
