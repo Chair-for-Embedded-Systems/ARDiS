@@ -1,13 +1,9 @@
-"""
-    This script generates a plot that shows the cumulative instructions and instantaneous instructions over time for a specific application.
-    A specific slice is highlighted in red, and the energy consumed during that slice is calculated and displayed along with the IPJ.
-"""
-
 import os
 import re
 import numpy as np
 import glob
 import sys
+import random
 import matplotlib.pyplot as plt
 
 # Import the configuration
@@ -19,31 +15,38 @@ import config
 
 # Function to parse log file and extract instructions
 def parse_log_file(log_file):
-    exec_time_points = []
-    energy_time_points = []
+    time_points = []
     instantaneous_instructions = []
-    instantaneous_energy = []
 
     with open(log_file, 'r') as file:
-        energy_regex = fr'power/energy-psys/ = (\d+)'
         for line in file:
-            if "] PID" in line:
-                match = re.search(r'\[(\d+\.\d+)s\].*instructions = (\d+)', line)
-                if match:
-                    time = float(match.group(1))
-                    instructions = int(match.group(2))  # Instantaneous instructions from the log
-                    exec_time_points.append(time)
-                    instantaneous_instructions.append(instructions)
-            elif "] SYSTEM:" in line:
-                match = re.search(fr'\[(\d+\.\d+)s\].*{energy_regex}', line)
-                if match:
-                    time = float(match.group(1))
-                    energy = float(match.group(2))
-                    energy_time_points.append(time)
-                    instantaneous_energy.append(energy)
-    assert len(exec_time_points) == len(energy_time_points) and len(energy_time_points) == len(instantaneous_instructions) and len(instantaneous_instructions) == len(instantaneous_energy)
-    return exec_time_points, instantaneous_instructions, instantaneous_energy
+            match = re.search(r'\[(\d+\.\d+)s\].*instructions = (\d+)', line)
+            if match:
+                time = float(match.group(1))
+                instructions = int(match.group(2))  # Instantaneous instructions from the log
+                time_points.append(time)
+                instantaneous_instructions.append(instructions)
+    
+    return time_points, instantaneous_instructions
 
+# Function to extract and accumulate energy values from log files
+def extract_cumulative_energy(log_file, energy_type):
+    time_points = []
+    cumulative_energy = []
+
+    with open(log_file, 'r') as file:
+        cum_energy = 0
+        energy_regex = fr'power/energy-{energy_type}/ = (\d+)'
+        for line in file:
+            match = re.search(fr'\[(\d+\.\d+)s\].*{energy_regex}', line)
+            if match:
+                time = float(match.group(1))
+                energy = float(match.group(2))
+                cum_energy += energy
+                time_points.append(time)
+                cumulative_energy.append(cum_energy)
+    
+    return time_points, cumulative_energy
 # Function to find the corresponding time for a specific instruction using interpolation
 def find_time_for_instruction(instruction_target, cumulative_instructions, time_points):
     # Find the exact match or perform interpolation if needed
@@ -68,20 +71,11 @@ def find_time_for_instruction(instruction_target, cumulative_instructions, time_
     # If the target instruction is outside the range, return the last time
     return time_points[-1]
 
-def energy_consumed(instructions, energy, start_instr, end_instr):
-    # Interpolate the energy values at instruction counts X and Y
-    energy_X = np.interp(start_instr, instructions, energy)
-    energy_Y = np.interp(end_instr, instructions, energy)
-    
-    # Calculate the energy consumed between X and Y
-    return energy_X, energy_Y
-
-
 # Function to highlight a randomly selected slice across frequencies and core types
-def highlight_slice(start_instr, end_instr, cumulative_instructions, time_points, duration, energy_consumed):
+def highlight_slice(start_instr, end_instr, cumulative_instructions, time_points, duration):
     start_time = find_time_for_instruction(start_instr, cumulative_instructions, time_points)
     end_time = find_time_for_instruction(end_instr, cumulative_instructions, time_points)
-    plt.axvspan(start_time, end_time, color='red', label=f"{duration:.2f}s & {energy_consumed:.2f} IPJ", alpha=0.3)
+    plt.axvspan(start_time, end_time, color='red', label=f"Highlighted slice {duration:.2f}s", alpha=0.3)
 
 # Function to generate slices and highlight a selected slice
 def generate_slices(application_name, core_type, log_files, frequencies, instruction_slice, energy_type, highlight_start, highlight_end):
@@ -93,14 +87,9 @@ def generate_slices(application_name, core_type, log_files, frequencies, instruc
             print(f"Log file not found for {core_type} at {freq} MHz: {log_file}")
             continue
 
-        time_points, instantaneous_instructions, instantaneous_energy = parse_log_file(log_file)
+        time_points, instantaneous_instructions = parse_log_file(log_file)
 
         cumulative_instructions = np.cumsum(instantaneous_instructions)
-        cumulative_energy = np.cumsum(instantaneous_energy)
-
-        #print(cumulative_instructions)
-        #print(cumulative_energy)
-        
         max_instr = cumulative_instructions[-1]
         current_instr = 0
         slice_num = 1
@@ -119,14 +108,6 @@ def generate_slices(application_name, core_type, log_files, frequencies, instruc
             end_time = find_time_for_instruction(next_instr, cumulative_instructions, time_points)
             execution_time = end_time - start_time
 
-            print(f"Slice {slice_num}: {current_instr} - {next_instr} ({execution_time:.2f}s)")
-            print(f"Start time: {start_time:.2f}s, End time: {end_time:.2f}s")
-            start_energy, end_energy = energy_consumed(cumulative_instructions, cumulative_energy, current_instr, next_instr)
-            consumed_energy = end_energy - start_energy
-            efficiency = ((next_instr - current_instr) / consumed_energy) * 1e-6 if consumed_energy > 0 else 0
-
-
-            print(f"Start energy:{start_energy:.2f} \t End energy:{end_energy:.2f} \t Consumed energy:{consumed_energy:.2f} \tEfficiency: {efficiency:.2f} IPJ")
             slice_data.append({
                 "application": application_name,
                 "core_type": core_type,
@@ -136,15 +117,14 @@ def generate_slices(application_name, core_type, log_files, frequencies, instruc
                 "ending_instruction": next_instr,
                 "starting_time": start_time,
                 "ending_time": end_time,
-                "duration": execution_time,
-                "efficiency": efficiency
+                "duration": execution_time
             })
 
             ax1.axvline(x=start_time, color='r', linestyle='--', alpha=0.4)
             ax1.axvline(x=end_time, color='r', linestyle='--', alpha=0.4)
 
             if current_instr <= highlight_start and next_instr >= highlight_end:
-                highlight_slice(highlight_start, highlight_end, cumulative_instructions, time_points, execution_time, efficiency)
+                highlight_slice(highlight_start, highlight_end, cumulative_instructions, time_points, execution_time)
 
             current_instr = next_instr
             slice_num += 1
@@ -162,7 +142,7 @@ def generate_slices(application_name, core_type, log_files, frequencies, instruc
 def main():
     log_directory = config.PARSEC_FIXED_FREQ_FOLDER
     frequencies = [1500, 2000, 2500, 3000, 3500]
-    application_name = "parsec-dedup"
+    application_name = "parsec-blackscholes"
     print(f"\nProcessing {application_name}...")
 
     pcore_files = [glob.glob(os.path.join(log_directory, f"*_{application_name}_{freq}MHz_Pcore/periodic_counters.log")) for freq in frequencies]
@@ -175,10 +155,10 @@ def main():
         print(f"Skipping {application_name}: Missing log files.")
         return
 
-    instruction_slice = 1e9
+    instruction_slice = 5e9
     energy_type = "psys"
-    random_start = 2e9
-    random_end = 3e9
+    random_start = 2e10
+    random_end = 2.5e10
 
     plt.figure(figsize=(18, 6))
 
@@ -186,7 +166,7 @@ def main():
     generate_slices(application_name, "E-core", ecore_files, frequencies, instruction_slice, energy_type, random_start, random_end)
 
     plt.tight_layout()
-    output_image_file = f"{application_name}_highlighted_energy_slicing_plot.png"
+    output_image_file = f"{application_name}_highlighted_performance_slicing_plot.png"
     plt.savefig(output_image_file, dpi=300)
     print(f"Figure saved as {output_image_file}")
 

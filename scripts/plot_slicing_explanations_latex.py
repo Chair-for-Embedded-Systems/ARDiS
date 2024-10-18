@@ -15,7 +15,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 import config
 
 # Enable LaTeX rendering in Matplotlib (if needed)
-# plt.rcParams.update({...})
+plt.rcParams.update({
+    "text.usetex": True,  # Use LaTeX to render text
+    "font.family": "serif",  # Use serif fonts
+    "font.serif": ["Times"],  # Use Times font for the plot
+    "axes.labelsize": 12,  # Font size for axis labels
+    "xtick.labelsize": 10,  # Font size for x-axis tick labels
+    "ytick.labelsize": 10,  # Font size for y-axis tick labels
+    "legend.fontsize": 10,  # Font size for the legend
+    "axes.titlesize": 12  # Font size for the title
+})
 
 # Function to parse log file and extract instructions
 def parse_log_file(log_file):
@@ -81,7 +90,7 @@ def energy_consumed(instructions, energy, start_instr, end_instr):
 def highlight_slice(start_instr, end_instr, cumulative_instructions, time_points, duration, energy_consumed):
     start_time = find_time_for_instruction(start_instr, cumulative_instructions, time_points)
     end_time = find_time_for_instruction(end_instr, cumulative_instructions, time_points)
-    plt.axvspan(start_time, end_time, color='red', label=f"{duration:.2f}s & {energy_consumed:.2f} IPJ", alpha=0.3)
+    plt.axvspan(start_time, end_time, color='red', label=f"{duration:.2f}s - {energy_consumed:.2f} IPJ", alpha=0.3)
 
 # Function to generate slices and highlight a selected slice
 def generate_slices(application_name, core_type, log_files, frequencies, instruction_slice, energy_type, highlight_start, highlight_end):
@@ -185,9 +194,9 @@ def main():
     generate_slices(application_name, "P-core", pcore_files, frequencies, instruction_slice, energy_type, random_start, random_end)
     generate_slices(application_name, "E-core", ecore_files, frequencies, instruction_slice, energy_type, random_start, random_end)
 
-    plt.tight_layout()
-    output_image_file = f"{application_name}_highlighted_energy_slicing_plot.png"
-    plt.savefig(output_image_file, dpi=300)
+    plt.tight_layout(pad=1.0)
+    output_image_file = f"{application_name}_highlighted_energy_slicing_plot.pdf"
+    plt.savefig(output_image_file, dpi=300, format='pdf')
     print(f"Figure saved as {output_image_file}")
 
 

@@ -5,3 +5,6 @@ results/
 *.out
 *DS_Store
 *.tex
+tests/
+*.png
+*.pdf

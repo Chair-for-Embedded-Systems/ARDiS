@@ -373,7 +373,7 @@ if __name__ == "__main__":
     run_parsec_with_static_schedules()
 
     # Running parsec apps at all frequencies and core types
-    run_parsec_characterization_experiments()
+    #run_parsec_characterization_experiments()
     
 
 
