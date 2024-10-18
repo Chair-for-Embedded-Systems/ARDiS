@@ -97,18 +97,20 @@ def runRandomExample():
 
 def runMotivationalExample():
 
-    fixed_frequency = 2500
+    fixed_frequency = 3200
     motivationalDetails = {
         "total_runs": 8,
         "exp_types": [
             {
                 "name": "motivECores",
                 "mapping_policy": IntelMotivationalExample(),
+                "scheduler": ConsecutiveScheduler(0),
                 "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
             },
             {
                 "name": "motivPCores",
                 "mapping_policy": IntelMotivationalExample(False),
+                "scheduler": ConsecutiveScheduler(0),
                 "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
             }
         ],
@@ -117,10 +119,17 @@ def runMotivationalExample():
 
     for exp in motivationalDetails['exp_types']:
         for exp_number in range(0, motivationalDetails['total_runs']):
-            experiment = Experiment(f"{exp['name']}_{fixed_frequency}MHz_{exp_number}", mapping_policy=exp['mapping_policy'], dvfs_policy=exp['dvfs_policy'])
+            experiment = Experiment(
+                f"{exp['name']}_{fixed_frequency}MHz_{exp_number}",
+                mapping_policy=exp['mapping_policy'],
+                dvfs_policy=exp['dvfs_policy'],
+                scheduler=exp['scheduler'],
+                monitoring_mode=MonitoringMode.PERIODIC_ON_PID,
+                results_folder=config.MOTIVATIONAL_RESULTS_FOLDER
+                )
             experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
             print(experiment)
-            experiment.executeExperiment()
+            #experiment.executeExperiment()
 
 
 def run_spec_characterization_experiments():
@@ -359,25 +368,4 @@ def run_same_application_multiple_times():
 if __name__ == "__main__":
     #runExample()
     #runRandomExample()
-    #runMotivationalExample()
-    #run_spec_characterization_experiments()
-
-    # Running parsec apps at max frequency only and using perf to count to the total energy consumption
-    #run_parsec_characterization_experiments_for_comparison()
-
-
-    # Running parsec app using the default linux governors
-    #run_parsec_default_linux_governor()
-
-    # Running parsec apps following a statically generated schedule
-    run_parsec_with_static_schedules()
-
-    # Running parsec apps at all frequencies and core types
-    #run_parsec_characterization_experiments()
-    
-
-
-    
-    #run_spec_static_schedule_migration()
-    #run_parsec_static_schedule_migration()
-    #run_same_application_multiple_times()
+    runMotivationalExample()

@@ -1,34 +1,10 @@
 import os
 
-
-#RESULTS_FOLDER="./results/characterization_splash2/"
-PARSEC_FIXED_FREQ_FOLDER="./results/characterization_parsec/fixed_freqs/"
-PARSEC_GOVERNOR_FOLDER="./results/characterization_parsec/governors/"
-PARSEC_MIXED_STATIC_FOLDERS= [
-                            "./results/characterization_parsec/mixed_coarse_500mhz/mixed_2.00e+09_IPJ/",
-                            "./results/characterization_parsec/mixed_coarse_500mhz/mixed_1.00e+09_IPJ/",
-                            "./results/characterization_parsec/mixed_coarse_500mhz/mixed_8.00e+08_IPJ/",
-                            "./results/characterization_parsec/mixed_coarse_500mhz/mixed_5.00e+08_IPJ/",
-                            ]
-#PARSEC_MIXED_STATIC_FOLDERS = "./results/characterization_parsec/mixed_fine_100mhz/"
-PARSEC_BASELINE_FOLDER="./results/baselines/"
-SCHEDULES="./results/characterization_parsec/mixed_fine_100mhz/schedules/"
-#RESULTS_FOLDER="./results/baselines/"
-#RESULTS_FOLDER="./results/characterization_spec_ref/"
-#RESULTS_FOLDER="./results/characterization_spec_train/"
-#RESULTS_FOLDER="./results/motivational/ref/"
-#RESULTS_FOLDER="./results/motivational/train/"
-ANALYSIS_RESULTS_FOLDER="./results/motivational/parsec/"
-#RESULTS_FOLDER="./results/characterization/"
-#RESULTS_FOLDER="./results/repeated_single/"
-RESULTS_FOLDER="./results/characterization_parsec/mixed_fine_100mhz/"
-PAPERPLOT_FOLDER="./paper_plots/"
-#RESULTS_FOLDER="./results/characterization_parsec/"
-TESTING_FOLDER="./tests/"
-#RESULTS_FOLDER="./results/characterization_parsec/mixed_5e9_EDP/"
+RESULTS_FOLDER="./results"
+MOTIVATIONAL_RESULTS_FOLDER="./results/motivational"
 EVALUATION_FOLDER="./evaluation/"
-EVALUATION_MIXED_FOLDER="./evaluation/ours_with_periodic/"
 UTILS_DIR="./utils"
+
 ROOTPATH=os.getcwd()
 DEBUG = False
 #DEBUG = True
@@ -90,7 +66,7 @@ parsec_apps = [
 # Number of cores in the system
 system_cores = 24
 # platform specific stuff
-intel_p_core_ids = [0, 2, 4, 6, 8, 10, 12, 14]
+intel_p_core_ids = [2, 4, 6, 8, 10, 12, 14]
 intel_e_core_ids = [16, 17, 18, 19, 20, 21, 22, 23]
 # Number of workloads to run in the experiment
 num_workloads = 2
