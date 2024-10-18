@@ -32,7 +32,7 @@ class Engine:
         self.__dvfs_policy = dvfs_policy
         self.reporter = Reporter(experiment_name, results_folder)
         self.__migration_policy = migration_policy
-        self.__total_instructions = 0
+        self.__total_instructions = None
         self.__monitoring_mode = monitoring_mode
         self.__one_shot_file = os.path.join(ROOTPATH, "one_shot.out")
         self.__benchmark_manager = BenchManager()
@@ -97,6 +97,7 @@ class Engine:
 
     def executeWorkload(self, applications):
         # First set a schedule for the applications
+        self.__total_instructions = {app: 0 for app in applications}
         self.__scheduler.createSchedule(applications)
         self.__waiting_threads = list(applications)
         # Execute the mapping policy 
@@ -156,7 +157,7 @@ class Engine:
             else:
                 for app in self.mapping:
                     self.PIDs[app] = getPIDOfApp(app)
-                if self.__monitoring_mode != MonitoringMode.OFF:
+                if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                     self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
                 # Print the monitored metrics every 10 epochs
                 if self.__epochs % 10 == 0:
@@ -169,17 +170,18 @@ class Engine:
                             if config.DEBUG:
                                 print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(app_metrics)}")
                             self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(app_metrics)}")
-                            self.__total_instructions += self.__monitor.getMetricAtCore(core, "instructions")
-                            self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
+                            #self.__total_instructions += self.__monitor.getMetricAtCore(core, "instructions")
+                            #self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
                     elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                         for app in self.mapping:
                             app_metrics = [f"{event} = {self.__monitor.getMetricForPID(self.PIDs[app], event)}" for event in periodic_app_level_events]
                             if config.DEBUG:
                                 print(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: {' | '.join(app_metrics)}")
                             self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: {' | '.join(app_metrics)}")
-                            self.__total_instructions += self.__monitor.getMetricForPID(self.PIDs[app], "instructions")
-                            self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: Cumulative Instructions = {self.__total_instructions}")
-                    
+                            if self.__total_instructions is not None:
+                                self.__total_instructions[app] += self.__monitor.getMetricForPID(self.PIDs[app], "instructions")
+                                self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: Cumulative Instructions = {self.__total_instructions[app]}")
+                        
                     system_metrics = [f"{event} = {self.__monitor.getSystemWideMetric(event)}" for event in periodic_system_wide_events]
                     if config.DEBUG:
                         print(f"[{str(round(self.getElapsedTime(), 2))}s] SYSTEM: {' | '.join(system_metrics)}")

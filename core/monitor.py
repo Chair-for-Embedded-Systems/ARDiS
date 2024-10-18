@@ -145,7 +145,7 @@ class Monitor:
             return
         
         # Temporary dictionary to hold metrics for each core
-        temp_core_metrics = {core: {event: {"cpu_atom": 0, "cpu_core": 0} for event in self.__events} for core in self.__tracked_cores}
+        temp_core_metrics = {core: {event: {"cpu_atom": 0, "cpu_core": 0} for event in periodic_app_level_events} for core in self.__tracked_cores}
         
         # Process each relevant line in the perf output
         for line in lines[5:-3]:

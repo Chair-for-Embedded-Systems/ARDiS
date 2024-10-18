@@ -98,38 +98,43 @@ def runRandomExample():
 def runMotivationalExample():
 
     fixed_frequency = 3200
-    motivationalDetails = {
-        "total_runs": 8,
-        "exp_types": [
-            {
-                "name": "motivECores",
-                "mapping_policy": IntelMotivationalExample(),
-                "scheduler": ConsecutiveScheduler(0),
-                "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
-            },
-            {
-                "name": "motivPCores",
-                "mapping_policy": IntelMotivationalExample(False),
-                "scheduler": ConsecutiveScheduler(0),
-                "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
-            }
-        ],
-        "applications": ['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves', 'spec-gcc', 'spec-leslie3d'],
-    }
 
-    for exp in motivationalDetails['exp_types']:
-        for exp_number in range(0, motivationalDetails['total_runs']):
-            experiment = Experiment(
-                f"{exp['name']}_{fixed_frequency}MHz_{exp_number}",
-                mapping_policy=exp['mapping_policy'],
-                dvfs_policy=exp['dvfs_policy'],
-                scheduler=exp['scheduler'],
-                monitoring_mode=MonitoringMode.PERIODIC_ON_PID,
-                results_folder=config.MOTIVATIONAL_RESULTS_FOLDER
-                )
-            experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
-            print(experiment)
-            #experiment.executeExperiment()
+    
+    for fixed_frequency in [3200, 2800, 2400, 2000]:    
+        motivationalDetails = {
+            "total_runs": 8,
+            "exp_types": [
+                {
+                    "name": "motivECores",
+                    "mapping_policy": IntelMotivationalExample(),
+                    "scheduler": ConsecutiveScheduler(0),
+                    "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
+                },
+                {
+                    "name": "motivPCores",
+                    "mapping_policy": IntelMotivationalExample(False),
+                    "scheduler": ConsecutiveScheduler(0),
+                    "dvfs_policy": DVFSPolicy({core: fixed_frequency for core in range(system_cores)})
+                }
+            ],
+            "applications": ['spec-omnetpp', 'spec-libquantum', 'spec-GemsFDTD', 'spec-milc', 'spec-lbm', 'spec-mcf', 'spec-bwaves', 'spec-gcc', 'spec-leslie3d'],
+        }
+
+        for exp in motivationalDetails['exp_types']:
+            for exp_number in range(0, motivationalDetails['total_runs']):
+                exp_name = f"{exp['name']}_{fixed_frequency}MHz_{exp_number}"
+                if not any(exp_name in folder for folder in os.listdir(MOTIVATIONAL_RESULTS_FOLDER)):
+                    experiment = Experiment(
+                        exp_name,
+                        mapping_policy=exp['mapping_policy'],
+                        dvfs_policy=exp['dvfs_policy'],
+                        scheduler=exp['scheduler'],
+                        monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
+                        results_folder=config.MOTIVATIONAL_RESULTS_FOLDER
+                        )
+                    experiment.setApplications(motivationalDetails['applications'][0:exp_number+1])
+                    print(experiment)
+                    experiment.executeExperiment()
 
 
 def run_spec_characterization_experiments():
