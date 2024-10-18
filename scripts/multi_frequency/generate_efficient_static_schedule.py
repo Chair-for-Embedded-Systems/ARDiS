@@ -70,7 +70,8 @@ def find_time_for_instruction(instruction_target, cumulative_instructions, time_
     
     # If the target instruction is outside the range, return the last time
     return time_points[-1]
-# Function to generate static schedule considering DVFS, excluding the first and last slice
+
+
 def generate_static_schedule_with_dvfs(application_name, pcore_files, ecore_files, instruction_slice, energy_type, frequencies, metric="IPJ"):
     # Initialize the static schedule
     static_schedule = []
@@ -94,43 +95,60 @@ def generate_static_schedule_with_dvfs(application_name, pcore_files, ecore_file
         best_time = None
         best_energy = None
 
+        slice_exists = True  # Flag to check if the slice exists across all core types and frequencies
+
         # Iterate through core types (P-core and E-core)
         for core_type, core_files in zip(["P-core", "E-core"], [pcore_files, ecore_files]):
             # Iterate through frequencies
             for freq, log_file in zip(frequencies, core_files):
                 if not os.path.exists(log_file):
                     print(f"Log file not found for {core_type} at {freq} MHz: {log_file}")
-                    continue  # Skip if the log file does not exist
-                
-                pcore_time, pcore_instr = parse_log_file(log_file)
-                pcore_energy_time, pcore_energy = extract_cumulative_energy(log_file, energy_type)
+                    slice_exists = False  # Mark slice as missing
+                    break  # Break out of the frequency loop for this core type
+
+                # Parse log files for instructions and energy
+                core_time, core_instr = parse_log_file(log_file)
+                core_energy_time, core_energy = extract_cumulative_energy(log_file, energy_type)
+
+                # Check if the required instructions range is covered in the logs
+                if current_instr > core_instr[-1] or next_instr > core_instr[-1]:
+                    print(f"\tRequired slice from {current_instr} to {next_instr} not available in {core_type} at {freq} MHz")
+                    slice_exists = False
+                    break
+
+            if not slice_exists:
+                break  # Break out of the core type loop if the slice is missing for any frequency/core
+
+        # Skip the slice if it's not available in all cores and frequencies
+        if not slice_exists:
+            print(f"\tSkipping slice {phase + 1} due to missing data across core types or frequencies.")
+            current_instr = next_instr  # Update for the next slice
+            phase += 1
+            continue  # Skip to the next slice
+
+        # If the slice exists across all cores and frequencies, find the best configuration
+        for core_type, core_files in zip(["P-core", "E-core"], [pcore_files, ecore_files]):
+            for freq, log_file in zip(frequencies, core_files):
+                core_time, core_instr = parse_log_file(log_file)
+                core_energy_time, core_energy = extract_cumulative_energy(log_file, energy_type)
 
                 # Find the execution time for this slice using instruction lookup
-                start_time = find_time_for_instruction(current_instr, pcore_instr, pcore_time)
-                end_time = find_time_for_instruction(next_instr, pcore_instr, pcore_time)
+                start_time = find_time_for_instruction(current_instr, core_instr, core_time)
+                end_time = find_time_for_instruction(next_instr, core_instr, core_time)
                 execution_time = end_time - start_time
 
                 # Skip slices that take less than a second
-                if execution_time < 0.5:
+                if execution_time < 0.1:
                     print(f"\tSkipping slice {phase + 1} (execution time = {execution_time:.2f}s < 1s)")
                     continue  # Move to the next configuration
                 
                 # Find the energy consumption for this slice
-                core_index_start = np.searchsorted(pcore_instr, current_instr)
-                core_index_end = np.searchsorted(pcore_instr, next_instr)
-
-                # Ensure indices are within valid range
-                core_index_start = min(max(core_index_start, 0), len(pcore_energy) - 1)
-                core_index_end = min(max(core_index_end, 0), len(pcore_energy) - 1)
-
-                start_energy = np.interp(current_instr, pcore_instr, pcore_energy)
-                end_energy = np.interp(next_instr, pcore_instr, pcore_energy)
+                start_energy = np.interp(current_instr, core_instr, core_energy)
+                end_energy = np.interp(next_instr, core_instr, core_energy)
                 energy_consumed = end_energy - start_energy
 
-                # Calculate energy efficiency in MInstr/J
-                instructions_executed = next_instr - current_instr
-
                 # Calculate the desired metric based on user choice
+                instructions_executed = next_instr - current_instr
                 if metric == "IPJ":
                     # IPJ = Instructions per Joule
                     energy_efficiency = (instructions_executed / energy_consumed) / 1e6 if energy_consumed > 0 else 0
@@ -139,39 +157,28 @@ def generate_static_schedule_with_dvfs(application_name, pcore_files, ecore_file
                     # EDP = Energy * Time (in Joules-seconds)
                     metric_value = energy_consumed * execution_time
                 elif metric == "PERF":
-                    # EDP = Energy * Time (in Joules-seconds)
+                    # PERF = Performance (execution time)
                     metric_value = execution_time
 
-                # Print the result for this configuration
-                #print(f"\tCore: {core_type}, Frequency: {freq} MHz, Time: {execution_time:.2f}s, "
-                #      f"Energy: {energy_consumed:.2f}J, Metric Value: {metric_value:.4f}")
-
-                # Update best configuration
-                if (metric == "IPJ" and metric_value > best_metric_value) or (metric == "EDP" and metric_value < best_metric_value) or (metric == "PERF" and metric_value < best_metric_value):
+                # Update best configuration if this is better
+                if (metric == "IPJ" and metric_value > best_metric_value) or (metric in ["EDP", "PERF"] and metric_value < best_metric_value):
                     best_metric_value = metric_value
                     best_core = core_type
                     best_freq = freq
                     best_time = execution_time
                     best_energy = energy_consumed
 
-        # Skip the first and last slice
-        if 0 < phase < total_phases - 1 and best_core is not None and best_freq is not None and best_time is not None and best_energy is not None and best_metric_value is not None:     
-            # Log the best configuration for this slice
-            
-            print(f"Best configuration for slice {phase + 1}: Core = {best_core}, Frequency = {best_freq} MHz, "
-                  f"Time = {best_time}s, Energy = {best_energy}J, Metric Value = {best_metric_value}")
-            
+        # Skip the first and last slice, and record the best configuration for this slice
+        if 0 < phase < total_phases - 1 and best_core is not None and best_freq is not None and best_time is not None and best_energy is not None:
             print(f"Best configuration for slice {phase + 1}: Core = {best_core}, Frequency = {best_freq} MHz, "
                   f"Time = {best_time:.2f}s, Energy = {best_energy:.2f}J, Metric Value = {best_metric_value:.4f}")
-
-            # Append the static schedule entry, ensuring valid values
+            
+            # Append the static schedule entry
             static_schedule.append({
                 "phase": phase,
-                "core": best_core if best_core else "unknown",
-                "frequency": best_freq if best_freq else "unknown",
+                "core": best_core,
+                "frequency": best_freq,
                 "trigger_instruction": current_instr,
-                #"metric_value": best_metric_value,
-                #"metric": metric
             })
 
         # Update for the next slice
@@ -181,54 +188,77 @@ def generate_static_schedule_with_dvfs(application_name, pcore_files, ecore_file
     return {application_name: static_schedule}
 
 
-
 def main():
     metric = "IPJ"  # Metric to optimize (IPJ or EDP)
     log_directory = config.PARSEC_FIXED_FREQ_FOLDER
     frequencies = [
-        1500,
-        2000,
-        2500,
+        3500,
+        3400,
+        3300,
+        3200,
+        3100,
         3000,
-        3500
+        2900,
+        2800,
+        2700,
+        2600,
+        2500,
+        2400,
+        2300,
+        2200,
+        2100,
+        2000,
+        1900,
+        1800,
+        1700,
+        1600,
+        1500
     ]  # Available frequencies
 
-    output_directory = os.path.join(config.ROOTPATH, f"{log_directory}/schedules")
+    output_directory = os.path.join(config.PARSEC_MIXED_STATIC_FOLDERS, f"{log_directory}/schedules")
     os.makedirs(output_directory, exist_ok=True)
 
-    all_schedules = {}
 
-    # Loop through all applications specified in your config
-    for application_name in config.parsec_apps:
-        print(f"\nProcessing {application_name}...")
 
-        # Gather log files for P-core and E-core at all frequencies using glob
-        pcore_files = [glob.glob(os.path.join(log_directory, f"*_{application_name}_{freq}MHz_Pcore/periodic_counters.log")) for freq in frequencies]
-        ecore_files = [glob.glob(os.path.join(log_directory, f"*_{application_name}_{freq}MHz_Ecore/periodic_counters.log")) for freq in frequencies]
+    for instruction_slice in [
+        #1e10,
+        #5e9,
+        #2e9,
+        #1e9,
+        5e8,
+        2e8
+        ]:
+        all_schedules = {}
 
-        # Flatten the lists to avoid nesting of lists returned by glob
-        pcore_files = [item for sublist in pcore_files for item in sublist]
-        ecore_files = [item for sublist in ecore_files for item in sublist]
+        # Loop through all applications specified in your config
+        for application_name in config.parsec_apps:
+            print(f"\nProcessing {application_name}...")
 
-        if not pcore_files or not ecore_files:
-            print(f"Skipping {application_name}: Missing log files.")
-            continue
+            # Gather log files for P-core and E-core at all frequencies using glob
+            pcore_files = [glob.glob(os.path.join(log_directory, f"*_{application_name}_{freq}MHz_Pcore/periodic_counters.log")) for freq in frequencies]
+            ecore_files = [glob.glob(os.path.join(log_directory, f"*_{application_name}_{freq}MHz_Ecore/periodic_counters.log")) for freq in frequencies]
 
-        # Instruction slice size
-        instruction_slice = 5e8
+            # Flatten the lists to avoid nesting of lists returned by glob
+            pcore_files = [item for sublist in pcore_files for item in sublist]
+            ecore_files = [item for sublist in ecore_files for item in sublist]
 
-        # Energy type (e.g., "psys")
-        energy_type = "psys"
+            if not pcore_files or not ecore_files:
+                print(f"Skipping {application_name}: Missing log files.")
+                continue
 
-        # Generate the static schedule with DVFS
-        static_schedule = generate_static_schedule_with_dvfs(application_name, pcore_files, ecore_files, instruction_slice, energy_type, frequencies, metric)
+            # Instruction slice size
+            # Energy type (e.g., "psys")
+            energy_type = "psys"
 
-        # Update all schedules with the current application schedule
-        all_schedules.update(static_schedule)
+            # Generate the static schedule with DVFS
+            static_schedule = generate_static_schedule_with_dvfs(application_name, pcore_files, ecore_files, instruction_slice, energy_type, frequencies, metric)
 
-    # Save the static schedules for all applications to a JSON file
-    with open(os.path.join(output_directory, f"static_schedules_{instruction_slice:.2e}_{metric}.json"), "w") as outfile:
-        json.dump(all_schedules, outfile, indent=4)
+            # Update all schedules with the current application schedule
+            all_schedules.update(static_schedule)
+
+        # Save the static schedules for all applications to a JSON file
+        with open(os.path.join(output_directory, f"static_schedules_{instruction_slice:.2e}_{metric}.json"), "w") as outfile:
+            json.dump(all_schedules, outfile, indent=4)
 
 if __name__ == "__main__":
     main()

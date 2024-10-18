@@ -1,3 +1,7 @@
+"""
+    This is the script used to generate the figures for the energy efficiency phases of the applications in the paper.
+"""
+
 import os
 import re
 import numpy as np
@@ -10,42 +14,61 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 import config
 
+# Enable LaTeX rendering in Matplotlib (if needed)
+plt.rcParams.update({
+    "text.usetex": True,  # Use LaTeX to render text
+    "font.family": "serif",  # Use serif fonts
+    "font.serif": ["Times"],  # Use Times font for the plot
+    "axes.labelsize": 20,  # Font size for axis labels
+    "axes.labelweight": "bold",  # Make axis labels bold
+    "xtick.labelsize": 18,  # Font size for x-axis tick labels
+    "ytick.labelsize": 18,  # Font size for y-axis tick labels
+    "legend.fontsize": 18,  # Font size for the legend
+    "axes.titlesize": 20  # Font size for the title
+})
+
 # Function to parse log file and accumulate instructions
 def parse_log_file(log_file):
     time_points = []
     cumulative_instructions = []
+    periodic_instructions = []
 
     with open(log_file, 'r') as file:
         cumulative_instr = 0
         for line in file:
-            match = re.search(r'\[(\d+\.\d+)s\].*instructions = (\d+)', line)
-            if match:
-                time = float(match.group(1))
-                instructions = int(match.group(2))
-                cumulative_instr += instructions
-                time_points.append(time)
-                cumulative_instructions.append(cumulative_instr)
+            if "PID" in line:
+                match = re.search(r'\[(\d+\.\d+)s\].*instructions = (\d+)', line)
+                if match:
+                    time = float(match.group(1))
+                    instructions = int(match.group(2))
+                    cumulative_instr += instructions
+                    time_points.append(time)
+                    cumulative_instructions.append(cumulative_instr)
+                    periodic_instructions.append(instructions)
     
-    return time_points, cumulative_instructions
+    return time_points, cumulative_instructions, periodic_instructions
 
 # Function to extract and accumulate energy values from log files
 def extract_cumulative_energy(log_file, energy_type):
     time_points = []
     cumulative_energy = []
+    periodic_energy = []
 
     with open(log_file, 'r') as file:
         cum_energy = 0
-        energy_regex = fr'power/energy-{energy_type}/ = (\d+)'
+        energy_regex = fr'power/energy-{energy_type}/ = (\d+\.\d+)'
         for line in file:
-            match = re.search(fr'\[(\d+\.\d+)s\].*{energy_regex}', line)
-            if match:
-                time = float(match.group(1))
-                energy = float(match.group(2))
-                cum_energy += energy
-                time_points.append(time)
-                cumulative_energy.append(cum_energy)
+            if "SYSTEM" in line:
+                match = re.search(fr'\[(\d+\.\d+)s\].*{energy_regex}', line)
+                if match:
+                    time = float(match.group(1))
+                    energy = float(match.group(2))
+                    cum_energy += energy
+                    time_points.append(time)
+                    cumulative_energy.append(cum_energy)
+                    periodic_energy.append(energy)
     
-    return time_points, cumulative_energy
+    return time_points, cumulative_energy, periodic_energy
 
 # Function to find the corresponding time for a specific instruction using interpolation
 def find_time_for_instruction(instruction_target, cumulative_instructions, time_points):
@@ -72,10 +95,12 @@ def find_time_for_instruction(instruction_target, cumulative_instructions, time_
 # Updated generate_lookup_table function with boundary checks
 def generate_lookup_table(application_name, pcore_file, ecore_file, instruction_slice, energy_type):
     # Parse the logs for instructions and energy
-    pcore_time, pcore_instr = parse_log_file(pcore_file)
-    ecore_time, ecore_instr = parse_log_file(ecore_file)
-    pcore_energy_time, pcore_energy = extract_cumulative_energy(pcore_file, energy_type)
-    ecore_energy_time, ecore_energy = extract_cumulative_energy(ecore_file, energy_type)
+    pcore_time, pcore_instr, _ = parse_log_file(pcore_file)
+    ecore_time, ecore_instr, _ = parse_log_file(ecore_file)
+    pcore_energy_time, pcore_energy, _ = extract_cumulative_energy(pcore_file, energy_type)
+    ecore_energy_time, ecore_energy, _ = extract_cumulative_energy(ecore_file, energy_type)
+    assert len(pcore_instr) == len(pcore_energy), "EnerInstructions and energy values do not match for P-core"
+    assert len(ecore_instr) == len(ecore_energy), "EnerInstructions and energy values do not match for E-core"
 
     # Initialize the lookup table
     lookup_table = []
@@ -159,14 +184,19 @@ def generate_lookup_table(application_name, pcore_file, ecore_file, instruction_
 
 
 
-def generate_efficiency_plot(application_name, lookup_table, pcore_file, ecore_file, output_directory, energy_type):
+def generate_efficiency_plot(application_name, lookup_table, pcore_file, ecore_file, output_directory, energy_type, instruction_slice, frequency_raw):
     # Parse the logs again for detailed plotting
-    pcore_time, pcore_instr = parse_log_file(pcore_file)
-    ecore_time, ecore_instr = parse_log_file(ecore_file)
+    
+    pcore_time, pcore_instr, pcore_periodic_instr = parse_log_file(pcore_file)
+    ecore_time, ecore_instr, ecore_periodic_instr = parse_log_file(ecore_file)
+
+    pcore_energy_time, pcore_energy, pcore_periodic_energy = extract_cumulative_energy(pcore_file, energy_type)
+    ecore_energy_time, ecore_energy, ecore_periodic_energy = extract_cumulative_energy(ecore_file, energy_type)
 
     # Calculate periodic instructions (difference between consecutive instruction counts)
-    pcore_periodic_instr = np.diff([0] + pcore_instr)
-    ecore_periodic_instr = np.diff([0] + ecore_instr)
+    pcore_periodic_ipj =  np.asarray(pcore_periodic_instr) / np.asarray(pcore_periodic_energy)
+    ecore_periodic_ipj =  np.asarray(ecore_periodic_instr) / np.asarray(ecore_periodic_energy)
+
 
     # Filter the lookup table for the current energy type
     lookup_table_filtered = [row for row in lookup_table if row['Energy Type'] == energy_type]
@@ -176,149 +206,123 @@ def generate_efficiency_plot(application_name, lookup_table, pcore_file, ecore_f
         print(f"No data available for {application_name} with energy type {energy_type}. Skipping plot generation.")
         return  # Exit the function early
 
-
-    # Identify the phases with the maximum and minimum energy efficiency improvement
-    max_improvement_index = max(range(len(lookup_table_filtered)), key=lambda i: lookup_table_filtered[i]['E-core Efficiency Improvement (%)'])
-    min_improvement_index = min(range(len(lookup_table_filtered)), key=lambda i: lookup_table_filtered[i]['E-core Efficiency Improvement (%)'])
-    
-    # Create subplots (2x1 layout for E-core and P-core)
-    fig, axs = plt.subplots(2, 1, figsize=(14, 12), sharex=True)
+        
+        # Create subplots (1x2 layout for E-core and P-core side by side)
+    fig, axs = plt.subplots(2, 1, figsize=(10, 6), sharey=True)
 
     # Colors for the phases
     colors = plt.cm.viridis(np.linspace(0, 1, len(lookup_table_filtered)))
 
-    ### E-core Plot ###
+    ### E-core Plot (Left Plot) ###
     # Plot cumulative instructions for E-core
-    axs[0].plot(ecore_time, ecore_instr, color="red", label="Cumulative Instructions")
-    axs[0].set_ylabel("Cumulative Instructions")
-    axs[0].set_title(f"{application_name} - E-core Energy Efficiency and Phases ({energy_type})")
+    
+    instruction_slice_text = '800-million-Instr. Slice' if instruction_slice == 8e8 else '2-billion-Instr. Slice'
+    display_app_name = application_name.replace("parsec-","")
+
+
+
+    axs[0].grid(True, which='both', linestyle='-', linewidth=1.2, color='#333', alpha=0.2)
+    axs[1].grid(True, which='both', linestyle='-', linewidth=1.2, color='#333', alpha=0.2)
+    axs[1].plot(ecore_time, ecore_instr, color="#38369A", label="Cumulative Instructions")
+    axs[1].set_xlabel("Time (s)")
+    axs[1].set_ylabel("Cumul. Instructions")
+    axs[1].set_title(f"{display_app_name} - E core Execution - {frequency_raw/1000:.1f} GHz - {instruction_slice_text}")
+    #axs[0].set_title(f"{application_name} - E-core Energy Efficiency and Phases ({energy_type})")
 
     # Plot periodic instructions for E-core
-    ax2 = axs[0].twinx()
-    ax2.plot(ecore_time, ecore_periodic_instr, color="orange", label="Periodic Instructions", alpha=0.7)
-    ax2.set_ylabel("Periodic Instructions")
+    ax2 = axs[1].twinx()
+    ax2.plot(ecore_time, ecore_periodic_energy, '--', color="#061A40", label="Periodic Energy", alpha=0.3)
+    ax2.set_ylabel("Energy (J)")
 
     # Highlight phases for E-core and add slice number and percentage improvement annotations
     for i, row in enumerate(lookup_table_filtered):
-        # Find start and end times for the current instruction slice
         start_instr = row['Instruction Start']
         end_instr = row['Instruction End']
 
-        # Find corresponding times using searchsorted
         start_index = np.searchsorted(ecore_instr, start_instr)
         end_index = np.searchsorted(ecore_instr, end_instr)
 
-        # Ensure indices are within range
         start_index = min(start_index, len(ecore_time) - 1)
         end_index = min(end_index, len(ecore_time) - 1)
 
         start_time = ecore_time[start_index]
         end_time = ecore_time[end_index]
 
-        # Determine the highlight color and alpha
-        if i == max_improvement_index:
-            highlight_alpha = 0.5
-            highlight_color = 'gold'
-        elif i == min_improvement_index:
-            highlight_alpha = 0.5
-            highlight_color = 'lightcoral'
-        else:
-            highlight_alpha = 0.3
-            highlight_color = colors[i]
+        #if i == max_improvement_index:
+        #    highlight_alpha = 0.5
+        #    highlight_color = 'gold'
+        #elif i == min_improvement_index:
+        #    highlight_alpha = 0.5
+        #    highlight_color = 'lightcoral'
+        #else:
+        highlight_alpha = 0.3
+        highlight_color = colors[i]
 
-        # Highlight the phase
-        axs[0].axvspan(
-            start_time,
-            end_time,
-            color=highlight_color,
-            alpha=highlight_alpha,
-            edgecolor=None,
-            linewidth=2 if i in [max_improvement_index, min_improvement_index] else 0
+        axs[1].axvspan(
+            start_time, end_time, color=highlight_color, alpha=highlight_alpha, edgecolor=None,
+            linewidth=1
         )
 
-        # Calculate the position for the annotation
         annotation_time = (start_time + end_time) / 2
         annotation_instr = (start_instr + end_instr) / 2
-
-        # Add text annotation for the slice number and percentage improvement on separate lines
-        improvement_text = f"P{i+1}\n{row['E-core Efficiency Improvement (%)']:.2f}%"
-        axs[0].text(
-            annotation_time,
-            annotation_instr,
-            improvement_text,
-            color="black",
-            ha="center",
-            va="center",
-            fontsize=8,
-            bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1)
+        fixed_position = 0.3e10
+        phase_number = f"Phase {i+1}"
+        absolute_text = f"{row['E-core Efficiency (MInstr/J)']:.1f}"
+        improvement_text = f"{'+' if row['E-core Efficiency Improvement (%)'] > 0 else ''} {row['E-core Efficiency Improvement (%)']:.1f}\%"
+        #axs[1].text(
+        #    annotation_time, fixed_position, phase_number, color="black", ha="center", va="bottom",
+        #    fontsize=16, fontweight='bold', bbox=dict(facecolor='white', edgecolor='#032B43', pad=2), rotation=90
+        #)
+        #axs[1].text(
+        #    annotation_time, fixed_position, absolute_text, color="black", ha="center", va="bottom",
+        #    fontsize=16, fontweight='bold', bbox=dict(facecolor='white', edgecolor='#032B43', pad=2), rotation=90
+        #)
+        improvement_box_color = '#FCC8B2' if row['E-core Efficiency Improvement (%)'] < 0 else '#C6D8AF'
+        axs[1].text(
+            annotation_time, fixed_position, improvement_text, color='black' if row['E-core Efficiency Improvement (%)'] < 0 else 'black', ha="center", va="bottom",
+            fontsize=16, bbox=dict(facecolor=improvement_box_color, edgecolor='none', pad=2), rotation=90
         )
 
-    ### P-core Plot ###
-    # Plot cumulative instructions for P-core
-    axs[1].plot(pcore_time, pcore_instr, color="blue", label="Cumulative Instructions")
-    axs[1].set_xlabel("Time (s)")
-    axs[1].set_ylabel("Cumulative Instructions")
-    axs[1].set_title(f"{application_name} - P-core Energy Efficiency and Phases ({energy_type})")
+    ### P-core Plot (Right Plot) ###
+    axs[0].plot(pcore_time, pcore_instr, color="#38369A", label="Cumulative Instructions")
+    #axs[0].set_xlabel("Time (s)")
+    axs[0].set_ylabel("Cumul. Instructions")
+    axs[0].set_title(f"{display_app_name} - P core Execution - {frequency_raw/1000:.1f} GHz - {instruction_slice_text}")
 
-    # Plot periodic instructions for P-core
-    ax3 = axs[1].twinx()
-    ax3.plot(pcore_time, pcore_periodic_instr, color="yellow", label="Periodic Instructions", alpha=0.7)
-    ax3.set_ylabel("Periodic Instructions")
+    ax3 = axs[0].twinx()
+    ax3.plot(pcore_time, pcore_periodic_energy, '--', color="#061A40", label="Perioidic Energy", alpha=0.3)
+    ax3.set_ylabel("Energy (J)")
 
-    # Highlight phases for P-core and add slice number and percentage improvement annotations
     for i, row in enumerate(lookup_table_filtered):
-        # Find start and end times for the current instruction slice
         start_instr = row['Instruction Start']
         end_instr = row['Instruction End']
 
-        # Find corresponding times using searchsorted
         start_index = np.searchsorted(pcore_instr, start_instr)
         end_index = np.searchsorted(pcore_instr, end_instr)
 
-        # Ensure indices are within range
         start_index = min(start_index, len(pcore_time) - 1)
         end_index = min(end_index, len(pcore_time) - 1)
 
         start_time = pcore_time[start_index]
         end_time = pcore_time[end_index]
 
-        # Determine the highlight color and alpha
-        if i == max_improvement_index:
-            highlight_alpha = 0.5
-            highlight_color = 'gold'
-        elif i == min_improvement_index:
-            highlight_alpha = 0.5
-            highlight_color = 'lightcoral'
-        else:
-            highlight_alpha = 0.3
-            highlight_color = colors[i]
+        highlight_alpha = 0.3
+        highlight_color = colors[i]
 
-        # Highlight the phase
-        axs[1].axvspan(
-            start_time,
-            end_time,
-            color=highlight_color,
-            alpha=highlight_alpha,
-            edgecolor=None,
-            linewidth=2 if i in [max_improvement_index, min_improvement_index] else 0
+        axs[0].axvspan(
+            start_time, end_time, color=highlight_color, alpha=highlight_alpha, edgecolor=None,
+            linewidth=1
         )
 
-        # Calculate the position for the annotation
+        fixed_position = 0.25e10
         annotation_time = (start_time + end_time) / 2
         annotation_instr = (start_instr + end_instr) / 2
 
-        # Add text annotation for the slice number and percentage improvement on separate lines
-        improvement_text = f"P{i+1}\n{row['E-core Efficiency Improvement (%)']:.2f}%"
-        axs[1].text(
-            annotation_time,
-            annotation_instr,
-            improvement_text,
-            color="black",
-            ha="center",
-            va="center",
-            fontsize=8,
-            bbox=dict(facecolor='white', alpha=0.6, edgecolor='none', pad=1)
-        )
+        absolute_text = f"Phase {i+1}: {row['P-core Efficiency (MInstr/J)']:.2f}"
+        #axs[0].text(
+        #    annotation_time, fixed_position, absolute_text, color="black", ha="center", va="bottom",
+        #    fontsize=16, bbox=dict(facecolor='white', edgecolor='#032B43', pad=2), rotation=90
+        #)
 
     # Add legends
     axs[0].legend(loc="upper left")
@@ -327,10 +331,8 @@ def generate_efficiency_plot(application_name, lookup_table, pcore_file, ecore_f
     ax3.legend(loc="upper right")
 
     # Adjust layout for better spacing
-    plt.tight_layout()
-
-    # Save the plot
-    plt.savefig(os.path.join(output_directory, f"{application_name}_efficiency_phases_{energy_type}.png"))
+    plt.tight_layout(pad=1.0)
+    plt.savefig(os.path.join(output_directory, f"{application_name}_efficiency_phases_{instruction_slice:.1e}.pdf"), dpi=300, format='pdf')
     plt.close()
 
 
@@ -338,50 +340,52 @@ def generate_efficiency_plot(application_name, lookup_table, pcore_file, ecore_f
 def main():
     # Ensure the output directory exists
 
-    log_directory = config.RESULTS_FOLDER
+    log_directory = config.PARSEC_FIXED_FREQ_FOLDER
 
     frequency = "2500MHz"
+    frequency_raw = 2500
 
     
-    output_directory = os.path.join(config.ROOTPATH, f"{log_directory}/plots/energy_efficiency_phases/{frequency}")
+    output_directory = os.path.join(config.PAPERPLOT_FOLDER, f"energy_efficiency_phases/{frequency}")
     os.makedirs(output_directory, exist_ok=True)
 
     all_lookup_tables = []
 
-    for application_name in config.parsec_apps:
-        # Use glob to find the directories matching the application name for P-core and E-core at 2000MHz
-        pcore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Pcore"))
-        ecore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Ecore"))
+    #for application_name in config.parsec_apps:
+    application_name = "parsec-splash2x.radix"
+    # Use glob to find the directories matching the application name for P-core and E-core at 2000MHz
+    pcore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Pcore"))
+    ecore_dirs = glob.glob(os.path.join(log_directory, f"*_{application_name}_{frequency}_Ecore"))
 
-        if not (pcore_dirs and ecore_dirs):
-            print(f"Skipping {application_name}: Missing log files.")
-            continue
+    if not (pcore_dirs and ecore_dirs):
+        print(f"Skipping {application_name}: Missing log files.")
+        #continue
 
-        # Take the first matching directory (assuming there's only one result per application)
-        pcore_file = os.path.join(pcore_dirs[0], "periodic_counters.log")
-        ecore_file = os.path.join(ecore_dirs[0], "periodic_counters.log")
+    # Take the first matching directory (assuming there's only one result per application)
+    pcore_file = os.path.join(pcore_dirs[0], "periodic_counters.log")
+    ecore_file = os.path.join(ecore_dirs[0], "periodic_counters.log")
 
-        # Ensure the log files exist
-        if not (os.path.exists(pcore_file) and os.path.exists(ecore_file)):
-            print(f"Skipping {application_name}: Missing log files.")
-            continue
+    # Ensure the log files exist
+    if not (os.path.exists(pcore_file) and os.path.exists(ecore_file)):
+        print(f"Skipping {application_name}: Missing log files.")
+        #continue
 
-        # Define the size of the instruction slice (e.g., 2e9 instructions)
-        instruction_slice = 2e9
+    # Define the size of the instruction slice (e.g., 2e9 instructions)
+    instruction_slice = 1e9
 
-        # Process for each energy type
-        for energy_type in ["cores", "pkg", "psys"]:
-            # Generate the lookup table
-            lookup_table = generate_lookup_table(application_name, pcore_file, ecore_file, instruction_slice, energy_type)
-            #print(lookup_table)
-            all_lookup_tables.extend(lookup_table)
-            
-            # Generate the energy efficiency plot
-            generate_efficiency_plot(application_name, lookup_table, pcore_file, ecore_file, output_directory, energy_type)
+    # Process for each energy type
+    for energy_type in ["psys",]:
+        # Generate the lookup table
+        lookup_table = generate_lookup_table(application_name, pcore_file, ecore_file, instruction_slice, energy_type)
+        #print(lookup_table)
+        all_lookup_tables.extend(lookup_table)
+        
+        # Generate the energy efficiency plot
+        generate_efficiency_plot(application_name, lookup_table, pcore_file, ecore_file, output_directory, energy_type, instruction_slice, frequency_raw)
 
     # Convert all lookup tables to a DataFrame and save as one CSV
-    lookup_df = pd.DataFrame(all_lookup_tables)
-    lookup_df.to_csv(os.path.join(output_directory, "all_applications_lookup_table.csv"), index=False)
+    #lookup_df = pd.DataFrame(all_lookup_tables)
+    #lookup_df.to_csv(os.path.join(output_directory, "all_applications_lookup_table.csv"), index=False)
 
 if __name__ == "__main__":
     main()

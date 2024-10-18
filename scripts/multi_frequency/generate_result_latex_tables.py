@@ -26,7 +26,7 @@ def parse_periodic_log(log_file):
                 total_instructions += instructions
                 all_instructions.append(instructions)
 
-            # Check for SYSTEM entries and accumulate energy (for energy-pkg)
+            # Check for SYSTEM entries and accumulate energy (for energy-psys)
             energy_match = re.search(r'power/energy-psys/ = (\d+\.\d+)', line)
             if energy_match:
                 energy = float(energy_match.group(1))
@@ -62,12 +62,15 @@ def compute_ipj(instructions, energy):
     return (instructions / energy) * 1e-6 if energy > 0 else np.nan
 
 # Function to gather metrics for an application
-def gather_metrics(application_name, frequency, governors, local_mixed_folder):
+def gather_metrics(application_name, frequencies, local_mixed_folder):
     # Paths for periodic and execution logs
-    pcore_dirs = glob.glob(os.path.join(config.PARSEC_FIXED_FREQ_FOLDER, f"*_{application_name}_{frequency}_Pcore"))
+    print(local_mixed_folder)
+    print(config.PARSEC_FIXED_FREQ_FOLDER)
+    pcore_dirs = [glob.glob(os.path.join(config.PARSEC_FIXED_FREQ_FOLDER, f"*_{application_name}_{freq}MHz_Pcore")) for freq in frequencies]
+    ecore_dirs = [glob.glob(os.path.join(config.PARSEC_FIXED_FREQ_FOLDER, f"*_{application_name}_{freq}MHz_Ecore")) for freq in frequencies]
     mixed_dirs = glob.glob(os.path.join(local_mixed_folder, f"*_{application_name}_Mixed*"))
 
-    if not (pcore_dirs and mixed_dirs):
+    if not (pcore_dirs and ecore_dirs and mixed_dirs):
         return None
 
     # Assume both log files are named as follows:
@@ -80,46 +83,42 @@ def gather_metrics(application_name, frequency, governors, local_mixed_folder):
         'execution': {}
     }
 
-    # Parse the periodic logs
-    pcore_periodic_file = os.path.join(pcore_dirs[0], periodic_log_name)
+    # Parse the periodic logs for each frequency on P-cores and E-cores
+    for i, freq in enumerate(frequencies):
+        pcore_periodic_file = os.path.join(pcore_dirs[i][0], periodic_log_name)
+        ecore_periodic_file = os.path.join(ecore_dirs[i][0], periodic_log_name)
+
+        pcore_instructions, pcore_energy, _, _ = parse_periodic_log(pcore_periodic_file)
+        ecore_instructions, ecore_energy, _, _ = parse_periodic_log(ecore_periodic_file)
+        
+        metrics['periodic'][f'pcore_{freq}'] = {'instructions': pcore_instructions, 'energy': pcore_energy}
+        metrics['periodic'][f'ecore_{freq}'] = {'instructions': ecore_instructions, 'energy': ecore_energy}
+
+    # Parse the mixed periodic logs
     mixed_periodic_file = os.path.join(mixed_dirs[0], periodic_log_name)
+    mixed_instructions, mixed_energy, _, _ = parse_periodic_log(mixed_periodic_file)
+    metrics['periodic']['mixed'] = {'instructions': mixed_instructions, 'energy': mixed_energy}
 
-    pcore_periodic_instructions, pcore_periodic_energy, pcore_mean_energy, pcore_mean_efficiency = parse_periodic_log(pcore_periodic_file)
-    mixed_periodic_instructions, mixed_periodic_energy, mixed_mean_energy, mixed_mean_efficiency = parse_periodic_log(mixed_periodic_file)
+    # Parse the execution logs for each frequency on P-cores and E-cores
+    for i, freq in enumerate(frequencies):
+        pcore_execution_file = os.path.join(pcore_dirs[i][0], execution_log_name)
+        ecore_execution_file = os.path.join(ecore_dirs[i][0], execution_log_name)
 
-    metrics['periodic']['pcore_instructions'] = pcore_periodic_instructions
-    metrics['periodic']['pcore_energy'] = pcore_periodic_energy
-    metrics['periodic']['mixed_instructions'] = mixed_periodic_instructions
-    metrics['periodic']['mixed_energy'] = mixed_periodic_energy
+        pcore_time, pcore_total_instructions, pcore_energy, _ = parse_execution_log(pcore_execution_file)
+        ecore_time, ecore_total_instructions, ecore_energy, _ = parse_execution_log(ecore_execution_file)
 
-    # Parse the execution logs
-    pcore_execution_file = os.path.join(pcore_dirs[0], execution_log_name)
+        metrics['execution'][f'pcore_{freq}'] = {'instructions': pcore_total_instructions, 'energy': pcore_energy}
+        metrics['execution'][f'ecore_{freq}'] = {'instructions': ecore_total_instructions, 'energy': ecore_energy}
+
+    # Parse the mixed execution logs
     mixed_execution_file = os.path.join(mixed_dirs[0], execution_log_name)
-
-    pcore_execution_time, pcore_total_instructions, pcore_execution_energy, pcore_cumulative_instructions = parse_execution_log(pcore_execution_file)
-    mixed_execution_time, mixed_total_instructions, mixed_execution_energy, mixed_cumulative_instructions = parse_execution_log(mixed_execution_file)
-
-    metrics['execution']['pcore_total_instructions'] = pcore_total_instructions
-    metrics['execution']['pcore_total_energy'] = pcore_execution_energy
-    metrics['execution']['mixed_total_instructions'] = mixed_total_instructions
-    metrics['execution']['mixed_total_energy'] = mixed_execution_energy
-
-    # Parse the logs for each governor
-    for governor in governors:
-        governor_periodic_file = glob.glob(os.path.join(config.PARSEC_GOVERNOR_FOLDER, f"*_{application_name}_{governor}/periodic_counters.log"))
-        governor_execution_file = glob.glob(os.path.join(config.PARSEC_GOVERNOR_FOLDER, f"*_{application_name}_{governor}/execution.log"))
-
-        if governor_periodic_file:
-            gov_periodic_instructions, gov_periodic_energy, gov_mean_energy, gov_mean_efficiency = parse_periodic_log(governor_periodic_file[0])
-            metrics['periodic'][governor] = {'instructions': gov_periodic_instructions, 'energy': gov_periodic_energy}
-
-        if governor_execution_file:
-            gov_execution_time, gov_total_instructions, gov_execution_energy, gov_cumulative_instructions = parse_execution_log(governor_execution_file[0])
-            metrics['execution'][governor] = {'instructions': gov_total_instructions, 'energy': gov_execution_energy}
+    mixed_time, mixed_total_instructions, mixed_energy, _ = parse_execution_log(mixed_execution_file)
+    metrics['execution']['mixed'] = {'instructions': mixed_total_instructions, 'energy': mixed_energy}
 
     return metrics
+
 # Function to generate LaTeX table with highlighted maximum value in each row
-def generate_latex_table(metric_data, metric_number, caption, local_mixed_folder):
+def generate_latex_table(metric_data, metric_number, caption, local_mixed_folder, frequencies):
     # Extract the part of the string after 'mixed_' and before the last '/'
     schedule_info = local_mixed_folder.split("mixed_")[1].strip('/')
 
@@ -129,9 +128,14 @@ def generate_latex_table(metric_data, metric_number, caption, local_mixed_folder
     latex_code = "\\begin{table*}[htbp]\n"  # Use table* for full width in two-column documents
     latex_code += "\\centering\n"
     latex_code += f"\\caption{{With slices of length {slice_info} instructions, optimizing {optimization_info.upper()}, the tables provides a comparison of system energy efficiency using Metric {metric_number}: {caption}}}\n"
-    latex_code += "\\begin{tabularx}{\\textwidth}{l|X|X|X|X|X|X|X}\n"  # Use tabularx with \textwidth for full width
+    latex_code += "\\begin{tabularx}{\\textwidth}{l|X" + "|X" * (len(frequencies)*2 + 1) + "}\n"  # 5 Pcore, 5 Ecore, 1 Mixed
     latex_code += "\\hline\n"
-    latex_code += "Application & Ours (Mixed) & Max Freq & Performance & Ondemand & Schedutil & Powersave & Conservative \\\\\n"
+    
+    # Convert frequencies from MHz to GHz and apply the line break
+    frequency_labels = [f"P Core\\\\{int(freq)/1000:.1f}GHz" for freq in frequencies] + \
+                       [f"E Core\\\\{int(freq)/1000:.1f}GHz" for freq in frequencies]
+                       
+    latex_code += "Application & Mixed & " + " & ".join(frequency_labels) + " \\\\\n"
     latex_code += "\\hline\n"
 
     for app_name, data in metric_data.items():
@@ -143,77 +147,145 @@ def generate_latex_table(metric_data, metric_number, caption, local_mixed_folder
 
     latex_code += "\\hline\n"
     latex_code += "\\end{tabularx}\n"
-    latex_code += "\\end{table*}\n"  # Use table* for full width
+    latex_code += "\\end{table*}\n"
 
     return latex_code
 
+# Function to plot grouped bars for all applications and annotate improvements
+def plot_grouped_metrics_with_improvement(metric_data, frequencies, metric_number, local_mixed_folder, metric_label):
+    # Define colors for P-cores, E-cores, and mixed execution
+    colors = {
+        "mixed": "red",
+        "P Core": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"],  # Different colors for each P-core frequency
+        "E Core": ["#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"]   # Different colors for each E-core frequency
+    }
+
+    # Extract the application names and corresponding data
+    app_names = list(metric_data.keys())
+    num_apps = len(app_names)
+
+    # Create a figure for the plot
+    plt.figure(figsize=(12, 6))
+
+    # Generate indices for each application on the x-axis
+    indices = np.arange(num_apps)
+    
+    # Bar width and position offset for grouped bars
+    bar_width = 0.07
+    offset = np.arange(-5, 6) * bar_width  # Adjusted to handle 11 elements (1 mixed + 5 P-core + 5 E-core)
+
+    # Store improvements for all applications
+    improvements = []
+
+    # Plot bars for each application and frequency
+    for i, app_name in enumerate(app_names):
+        # Get the data for the current application
+        data = metric_data[app_name]
+
+        # Ensure data has exactly 11 elements (1 mixed + 5 P-core + 5 E-core)
+        if len(data) != 11:
+            print(f"Error: Expected 11 data points, but got {len(data)} for application {app_name}. Skipping this application.")
+            continue
+
+        # Plot the mixed execution bar (first in the list)
+        plt.bar(indices[i] + offset[0], data[0], bar_width, label="Mixed" if i == 0 else "", color=colors["mixed"])
+
+        # Plot the bars for P-core frequencies
+        for j, freq in enumerate(frequencies):
+            plt.bar(indices[i] + offset[j+1], data[j+1], bar_width, label=f"P Core {int(freq)/1000:.1f}GHz" if i == 0 else "", color=colors["P Core"][j])
+
+        # Plot the bars for E-core frequencies
+        for j, freq in enumerate(frequencies):
+            plt.bar(indices[i] + offset[j+6], data[j+6], bar_width, label=f"E Core {int(freq)/1000:.1f}GHz" if i == 0 else "", color=colors["E Core"][j])
+
+        # Calculate the highest value among P-core and E-core executions
+        max_value = max(data[1:])  # Skip the mixed execution value (data[0])
+        mixed_value = data[0]
+
+        # Calculate the improvement (percentage)
+        improvement = ((mixed_value - max_value) / max_value) * 100 if max_value > 0 else 0
+        improvements.append(improvement)
+
+        # Annotate the plot with the individual improvement
+        plt.text(indices[i], mixed_value + 1, f'{improvement:.2f}%', ha='center', va='bottom', fontsize=10)
+
+    # Calculate max and mean improvement across all applications
+    max_improvement = max(improvements)
+    mean_improvement = np.mean(improvements)
+
+    # Set the x-ticks and labels
+    plt.xticks(indices, app_names, rotation=45, ha="right")
+    plt.ylabel(metric_label)
+    plt.title(f'Metric {metric_number}: {metric_label}\nMax Improvement: {max_improvement:.2f}% | Mean Improvement: {mean_improvement:.2f}%')
+    
+    # Add a legend (only once)
+    plt.legend(loc="upper right", bbox_to_anchor=(1.15, 1), fontsize='small')
+
+    # Save the plot
+    plot_file = os.path.join(local_mixed_folder, f'metric_{metric_number}_grouped_plot.png')
+    plt.tight_layout()
+    plt.savefig(plot_file)
+    plt.close()
+
+    print(f"Grouped plot saved for Metric {metric_number} as {plot_file}")
+
+
+
 
 # Function to compute metrics for all applications
-def compute_metrics_for_all(applications, governors, local_mixed_folder):
+def compute_metrics_for_all(applications, frequencies, local_mixed_folder):
     metric1_data = {}
     metric2_data = {}
-    metric3_data = {}
-    metric4_data = {}
 
     for application in applications:
-        metrics = gather_metrics(application, "3500MHz", governors, local_mixed_folder)
+        metrics = gather_metrics(application, frequencies, local_mixed_folder)
         if metrics is None:
             print(f"Metrics not found for {application}")
             continue
 
         # Metric 1: Instantaneous IPJ (Mean Efficiency)
-        mixed_ipj_1 = compute_ipj(metrics['periodic']['mixed_instructions'], metrics['periodic']['mixed_energy'])
-        pcore_ipj_1 = compute_ipj(metrics['periodic']['pcore_instructions'], metrics['periodic']['pcore_energy'])
-        governor_ipjs_1 = [compute_ipj(metrics['periodic'][gov]['instructions'], metrics['periodic'][gov]['energy']) for gov in governors]
+        mixed_ipj_1 = compute_ipj(metrics['periodic']['mixed']['instructions'], metrics['periodic']['mixed']['energy'])
+        pcore_ipjs_1 = [compute_ipj(metrics['periodic'][f'pcore_{freq}']['instructions'], metrics['periodic'][f'pcore_{freq}']['energy']) for freq in frequencies]
+        ecore_ipjs_1 = [compute_ipj(metrics['periodic'][f'ecore_{freq}']['instructions'], metrics['periodic'][f'ecore_{freq}']['energy']) for freq in frequencies]
 
         # Metric 2: Mean IPJ (Mean of instructions / mean of energy)
-        mixed_ipj_2 = compute_ipj(metrics['periodic']['mixed_instructions'], metrics['periodic']['mixed_energy'])
-        pcore_ipj_2 = compute_ipj(metrics['periodic']['pcore_instructions'], metrics['periodic']['pcore_energy'])
-        governor_ipjs_2 = [compute_ipj(metrics['periodic'][gov]['instructions'], metrics['periodic'][gov]['energy']) for gov in governors]
-
-        # Metric 3: Cumulative Instructions / Total Energy
-        mixed_ipj_3 = compute_ipj(metrics['execution']['mixed_total_instructions'], metrics['execution']['mixed_total_energy'])
-        pcore_ipj_3 = compute_ipj(metrics['execution']['pcore_total_instructions'], metrics['execution']['pcore_total_energy'])
-        governor_ipjs_3 = [compute_ipj(metrics['execution'][gov]['instructions'], metrics['execution'][gov]['energy']) for gov in governors]
-
-        # Metric 4: Total Instructions / Total Energy
-        mixed_ipj_4 = compute_ipj(metrics['execution']['mixed_total_instructions'], metrics['execution']['mixed_total_energy'])
-        pcore_ipj_4 = compute_ipj(metrics['execution']['pcore_total_instructions'], metrics['execution']['pcore_total_energy'])
-        governor_ipjs_4 = [compute_ipj(metrics['execution'][gov]['instructions'], metrics['execution'][gov]['energy']) for gov in governors]
+        mixed_ipj_2 = compute_ipj(metrics['periodic']['mixed']['instructions'], metrics['periodic']['mixed']['energy'])
+        pcore_ipjs_2 = [compute_ipj(metrics['periodic'][f'pcore_{freq}']['instructions'], metrics['periodic'][f'pcore_{freq}']['energy']) for freq in frequencies]
+        ecore_ipjs_2 = [compute_ipj(metrics['periodic'][f'ecore_{freq}']['instructions'], metrics['periodic'][f'ecore_{freq}']['energy']) for freq in frequencies]
 
         # Store data in corresponding metric tables
-        metric1_data[application] = [mixed_ipj_1, pcore_ipj_1] + governor_ipjs_1
-        metric2_data[application] = [mixed_ipj_2, pcore_ipj_2] + governor_ipjs_2
-        metric3_data[application] = [mixed_ipj_3, pcore_ipj_3] + governor_ipjs_3
-        metric4_data[application] = [mixed_ipj_4, pcore_ipj_4] + governor_ipjs_4
+        metric1_data[application] = [mixed_ipj_1] + pcore_ipjs_1 + ecore_ipjs_1
+        metric2_data[application] = [mixed_ipj_2] + pcore_ipjs_2 + ecore_ipjs_2
 
-    return metric1_data, metric2_data, metric3_data, metric4_data
+    return metric1_data, metric2_data
+
+
+def generate_latex_code(metric1_data, metric2_data, frequencies, local_mixed_folder):
+    # Generate LaTeX tables
+    latex_table_metric1 = generate_latex_table(metric1_data, 1, "Instantaneous IPJ as mean efficiency throughout the execution.", local_mixed_folder, frequencies)
+    latex_table_metric2 = generate_latex_table(metric2_data, 2, "IPJ computed as mean instructions/mean energy.", local_mixed_folder, frequencies)
+
+    # Save LaTeX tables to a file
+    with open("comparison_tables.tex", "a") as f:
+        f.write(latex_table_metric1)
+        f.write("\n")
+        f.write(latex_table_metric2)
+        f.write("\n")
 
 # Main function
 def main():
     applications = config.parsec_apps
-    governors = ["performance", "powersave", "ondemand", "conservative", "schedutil"]
-
+    frequencies = ["1500", "2000", "2500", "3000", "3500"]  # Example frequencies
 
     for local_mixed_folder in config.PARSEC_MIXED_STATIC_FOLDERS:
         # Compute metrics
-        metric1_data, metric2_data, metric3_data, metric4_data = compute_metrics_for_all(applications, governors, local_mixed_folder)
-
+        metric1_data, metric2_data = compute_metrics_for_all(applications, frequencies, local_mixed_folder)
         # Generate LaTeX tables
-        latex_table_metric1 = generate_latex_table(metric1_data, 1, "Instantaneous IPJ as mean efficiency throughout the execution.", local_mixed_folder)
-        latex_table_metric2 = generate_latex_table(metric2_data, 2, "IPJ computed as mean instructions/mean energy.", local_mixed_folder)
-        latex_table_metric3 = generate_latex_table(metric3_data, 3, "Cumulative instructions divided by total energy.", local_mixed_folder)
-        latex_table_metric4 = generate_latex_table(metric4_data, 4, "Total instructions divided by total energy.", local_mixed_folder)
-
-        # Save LaTeX tables to a file
-        with open("comparison_tables.tex", "a") as f:
-            f.write(latex_table_metric1)
-            f.write("\n")
-            f.write(latex_table_metric2)
-            f.write("\n")
-            f.write(latex_table_metric3)
-            f.write("\n")
-            f.write(latex_table_metric4)
+        generate_latex_code(metric1_data, metric2_data, frequencies, local_mixed_folder)
+        # Plot the results
+        #plot_grouped_metrics_with_improvement(metric1_data, frequencies, 1, local_mixed_folder, "Instantaneous IPJ")
+        plot_grouped_metrics_with_improvement(metric2_data, frequencies, 2, local_mixed_folder, "Mean IPJ")
+        
 
 if __name__ == "__main__":
     main()
