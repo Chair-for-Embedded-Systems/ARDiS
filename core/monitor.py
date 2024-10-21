@@ -35,10 +35,16 @@ class Monitor:
         self.__finished = True
         time.sleep(3)
 
-
     def getMetricAtCore(self, core, event):
-        return self.__current_core_values[str(core)][event]
-    
+        """Get the performance metric for a specific core and event."""
+        core_str = str(core)
+        if core_str in self.__current_core_values and event in self.__current_core_values[core_str]:
+            return self.__current_core_values[core_str][event]
+        else:
+            if DEBUG:
+                print(f"Core {core_str} or event {event} not found in current core values.")
+            return 0
+
     def getMetricForPID(self, pid, event):
         """Get the performance metric for a specific PID and event."""
         return self.__current_pid_values[str(pid)][event] if pid != "-1" else 0
