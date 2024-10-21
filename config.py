@@ -4,6 +4,7 @@ RESULTS_FOLDER="./results"
 MOTIVATIONAL_RESULTS_FOLDER="./results/motivational"
 EVALUATION_FOLDER="./evaluation/"
 UTILS_DIR="./utils"
+PLOTS_FOLDER="./plots"
 
 ROOTPATH=os.getcwd()
 DEBUG = False
