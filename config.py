@@ -3,6 +3,7 @@ import os
 RESULTS_FOLDER="./results"
 MOTIVATIONAL_RESULTS_FOLDER="./results/motivational"
 EVALUATION_FOLDER="./evaluation/"
+TRAINING_RESULTS_FOLDER="./results/training"
 UTILS_DIR="./utils"
 PLOTS_FOLDER="./plots"
 
@@ -69,10 +70,14 @@ system_cores = 24
 # platform specific stuff
 intel_p_core_ids = [2, 4, 6, 8, 10, 12, 14]
 intel_e_core_ids = [16, 17, 18, 19, 20, 21, 22, 23]
+
+
+intel_e_core_ids_cluster_1 = [16, 17, 18, 19]
+intel_e_core_ids_cluster_2 = [20, 21, 22, 23]
 # Number of workloads to run in the experiment
 num_workloads = 2
 # Interval in seconds to perform actions in the experiment
-action_interval = 0.1
+action_interval = 0.01
 
 # List of cores to use for explicit mapping
 explicit_mapping_cores = [2, 4, 17, 23]

@@ -184,6 +184,8 @@ class Monitor:
 
         # Now sum up the cpu_atom and cpu_core values for each core and event
         for core_id in self.__tracked_cores:
+            if core_id not in self.__current_core_values.keys():
+                    self.__current_core_values[core_id] = {event: 0 for event in periodic_app_level_events}
             for event in periodic_app_level_events:
                 total_value = temp_core_metrics[core_id][event]["cpu_atom"] + temp_core_metrics[core_id][event]["cpu_core"]
                 self.__current_core_values[core_id][event] = total_value  # Store the sum in the final dictionary

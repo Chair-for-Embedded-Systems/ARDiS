@@ -114,7 +114,7 @@ class Engine:
         mapped_cores = list(range(0, system_cores))
         # Start the monitoring thread
         if self.__monitoring_mode != MonitoringMode.OFF:
-            self.__monitor = Monitor(tracked_cores=mapped_cores, pids=[], monitoring_mode=self.__monitoring_mode)
+            self.__monitor = Monitor(tracked_cores=self.mapping.values(), pids=[], monitoring_mode=self.__monitoring_mode)
             self.__monitor.start()
         # Create the threads each application.
         self.__makeThreads()
@@ -160,18 +160,22 @@ class Engine:
                 if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                     self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
                 # Print the monitored metrics every 10 epochs
-                if self.__epochs % 10 == 0:
+                if self.__epochs % 5 == 0:
                     # monitor print
                     if config.DEBUG:
                         print("Monitored Metrics:")
                     if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_CORE:
                         for core in list(self.mapping.values()):
-                            app_metrics = [f"{event} = {self.__monitor.getMetricAtCore(core, event)}" for event in periodic_app_level_events]
-                            if config.DEBUG:
-                                print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(app_metrics)}")
-                            self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: {' | '.join(app_metrics)}")
-                            #self.__total_instructions += self.__monitor.getMetricAtCore(core, "instructions")
-                            #self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
+                            app_name = [app for app, core_id in self.mapping.items() if core_id == core][0]
+                            if core == -1:
+                                print(f"{app_name} should have finished by now")
+                            else:
+                                app_metrics = [f"{event} = {self.__monitor.getMetricAtCore(core, event)}" for event in periodic_app_level_events]
+                                if config.DEBUG:
+                                    print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: app = {app_name} | {' | '.join(app_metrics)}")
+                                self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: app = {app_name} | {' | '.join(app_metrics)}")
+                                #self.__total_instructions += self.__monitor.getMetricAtCore(core, "instructions")
+                                #self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
                     elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                         for app in self.mapping:
                             app_metrics = [f"{event} = {self.__monitor.getMetricForPID(self.PIDs[app], event)}" for event in periodic_app_level_events]
@@ -191,20 +195,13 @@ class Engine:
                         print("--------------------")
                 
                 # Apply migration policy every 5 epochs
-                if self.__epochs > 0 and  self.__epochs % 5 == 0:
+                if self.__epochs > 0 and  self.__epochs % 20 == 0:
                     #print("[" + str(round(current_time, 2)) + "s]: Checking Migrations")
                     if self.__migration_policy is not None:
-                        # update PIDs before calling the migration procedure
-                        if config.DEBUG:
-                            print("##################### Migrating applications #####################")
-                            print("########## Before PID update:", self.PIDs)
-                        if config.DEBUG:
-                            print("########## After PID update:", self.PIDs)
-                        
-                        new_mapping = self.__migration_policy.getStaticScheduleMapping(self.__total_instructions, self.mapping)
+                        new_mapping = self.__migration_policy.getNewMapping(self.__total_instructions, self.mapping)
                         # Executing the migration policy
+                        #print("Old Mapping: ", self.mapping)
                         #print("New Mapping: ", new_mapping)
-                        #print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Checking Migrations")
                         self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
                         self.mapping = new_mapping
                         
@@ -212,25 +209,11 @@ class Engine:
                             self.__monitor.updateTrackedCores(list(self.mapping.values()))
                         elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                             self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
-                        #print("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))                    
-                        if config.DEBUG:
-                            self.reporter.logEvent("[" + str(round(current_time, 2)) + "s]: Mapping changed to " + str(self.mapping))
+
+                        self.reporter.logPeriodicCounters("[" + str(round(current_time, 2)) + "s]: Migration executed ")
                         # Executing the DVFS policy
                         self.__dvfs_policy.executeDVFSPolicy(self.__total_instructions, self.mapping)
 
-                # Print the current mapping every 50 epochs
-                if self.__epochs % 50 == 0:
-                    
-                    if config.DEBUG:
-                        print("[" + str(round(current_time, 2)) + "s]: Current map")
-                    map = ""
-                    for app, core in self.mapping.items():
-                        if app in self.__active_threads:
-                            map += app + ", C" + str(core) + ", PID "  + str(self.PIDs[app]) + "  | "
-                            
-                    if config.DEBUG:
-                        print(map)
-                        print("--------------------")
                 # any other periodic action here
            
             # Increment the epoch counter and sleep for the action interval

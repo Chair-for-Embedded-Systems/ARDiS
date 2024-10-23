@@ -1,6 +1,8 @@
 from config import *
 from core.engine import *
 from core.policies.explicit_mapping import *
+from core.policies.migrate_following_schedule import *
+from core.policies.migrate_for_training import *
 from core.policies.consecutive_schedule import *
 from core.policies.intel_static_dvfs import *
 from core.dvfs import *
@@ -30,7 +32,7 @@ class Experiment:
     # Generate a random list of N unique applications to execute
     def generateRandomApps(self, N_apps):
         while len(self.__applications) < N_apps:
-            candidate = available_apps[randrange(len(available_apps))]
+            candidate = parsec_apps[randrange(len(parsec_apps))]
             if candidate not in self.__applications:
                 self.__applications.append(candidate)
     
@@ -195,7 +197,7 @@ def run_parsec_static_schedule_migration():
                             mapping_policy=ExplicitMapping([intel_e_core_ids[0]]), 
                             scheduler=scheduler, 
                             dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}),
-                            migration_policy=MigrationPolicy())
+                            migration_policy=StaticScheduleMigration())
             exp.setApplications([app])
             exp.executeExperiment()
         else:
@@ -370,7 +372,129 @@ def run_same_application_multiple_times():
                         print(f"Experiment {exp_name} already exists in the results folder.")
 
 
+def run_training_data_experiments_with_migrations():
+    # Number of experiments to generate
+    max_applications = 15
+    min_applications = 2
+    iterations_per_app_count = 3  # How many times to repeat each experiment
+
+    # Scheduler and DVFS policy setup
+    scheduler = ConsecutiveScheduler(0)
+    dvfs_policy = DVFSPolicy({core: 2500 for core in range(system_cores)})  # Example fixed frequency
+
+    # Core IDs for P-cores and E-cores
+    intel_p_core_ids = config.intel_p_core_ids
+    intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
+    intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
+    all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
+
+    experiment_target = 100
+    experiment_count = 0
+    while experiment_count < experiment_target:
+        app_count = random.randint(min_applications, max_applications)
+        # Randomly select a unique set of applications for this experiment
+        selected_apps = random.sample(parsec_apps, app_count)  # Or spec_apps depending on the apps used
+
+        # Generate a unique core for each application (no overlap of cores)
+        random_core_mapping = {}
+        available_cores = all_core_ids.copy()
+
+        for app in selected_apps:
+            core = random.choice(available_cores)
+            random_core_mapping[app] = core
+            available_cores.remove(core)  # Remove the core to ensure no two apps share the same core
+
+        # Randomly choose whether to migrate within cluster or across clusters
+        migrate_within_cluster = random.choice([True, False])
+
+        # Create a unique name for this experiment
+        exp_name = f"tr_exp_{app_count}apps_mig"
+
+        # Define the experiment
+        exp = Experiment(
+            name=exp_name,
+            mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
+            scheduler=scheduler,
+            dvfs_policy=dvfs_policy,
+            migration_policy=MigrationForTraining(migrate_within_cluster),  # Using the updated MigrationForTraining class
+            monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
+            results_folder=config.TRAINING_RESULTS_FOLDER  # Adjust folder path as needed
+        )
+
+        # Set the applications to the experiment
+        exp.setApplications(list(random_core_mapping.keys()))
+
+        # Print the initial mapping
+        print(f"{exp_name} => Initial mapping: {random_core_mapping}")
+
+        # Run the experiment
+        exp.executeExperiment()
+        experiment_count += 1
+        
+
+def run_training_data_experiments_without_migrations():
+    # Number of experiments to generate
+    max_applications = 15
+    min_applications = 2
+    iterations_per_app_count = 3  # How many times to repeat each experiment
+
+    # Scheduler and DVFS policy setup
+    scheduler = ConsecutiveScheduler(0)
+    dvfs_policy = DVFSPolicy({core: 2500 for core in range(system_cores)})  # Example fixed frequency
+
+    # Core IDs for P-cores and E-cores
+    intel_p_core_ids = config.intel_p_core_ids
+    intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
+    intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
+    all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
+    experiment_target = 100
+    experiment_count = 0
+    while experiment_count < experiment_target:
+        app_count = random.randint(min_applications, max_applications)
+        # Randomly select a unique set of applications for this experiment
+        selected_apps = random.sample(parsec_apps, app_count)  # Or spec_apps depending on the apps used
+
+        # Generate a unique core for each application (no overlap of cores)
+        random_core_mapping = {}
+        available_cores = all_core_ids.copy()
+
+        for app in selected_apps:
+            core = random.choice(available_cores)
+            random_core_mapping[app] = core
+            available_cores.remove(core)  # Remove the core to ensure no two apps share the same core
+
+        # Randomly choose whether to migrate within cluster or across clusters
+        migrate_within_cluster = random.choice([True, False])
+
+        # Create a unique name for this experiment
+        exp_name = f"tr_exp_{app_count}apps_nomig"
+
+        # Define the experiment
+        exp = Experiment(
+            name=exp_name,
+            mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
+            scheduler=scheduler,
+            dvfs_policy=dvfs_policy,
+            migration_policy=None,  # Using the updated MigrationForTraining class
+            monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
+            results_folder=config.TRAINING_RESULTS_FOLDER  # Adjust folder path as needed
+        )
+
+        # Set the applications to the experiment
+        exp.setApplications(list(random_core_mapping.keys()))
+
+        # Print the initial mapping
+        print(f"{exp_name} => Initial mapping: {random_core_mapping}")
+
+
+        # Run the experiment
+        exp.executeExperiment()
+        experiment_count += 1
+
+
 if __name__ == "__main__":
     #runExample()
     #runRandomExample()
-    runMotivationalExample()
+    #runMotivationalExample()
+    run_training_data_experiments_with_migrations()
+    run_training_data_experiments_without_migrations()
