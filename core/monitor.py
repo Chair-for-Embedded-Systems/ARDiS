@@ -4,27 +4,36 @@ import threading
 import subprocess
 import os
 import time
+from timeit import default_timer as timer
 
 
 
 lock = threading.Lock()
 class Monitor:
     def __init__(self,
-                 tracked_cores = [0, 1, 2, 3],
                  pids = [],
-                 monitoring_mode = MonitoringMode.PERIODIC_ON_CORE):
+                 tracked_mapping = {},
+                 monitoring_mode = MonitoringMode.PERIODIC_ON_CORE,
+                 reporter = None,
+                 engine_start_time = timer()):
         self.__sampling_rate = sampling_rate / 1000
         self.__inst_app_file = os.path.join(ROOTPATH, "perf_app.out")
         self.__inst_sys_file = os.path.join(ROOTPATH, "perf_sys.out")
         self.__one_shot_file = os.path.join(ROOTPATH, "one_shot.out")
         self.__finished = False
-        self.__tracked_cores = [str(core) for core in tracked_cores]
+        self.__tracked_mapping = tracked_mapping.copy()
+        self.__tracked_cores = [str(core) for core in self.__tracked_mapping.values()]
         self.__tracked_pids = [str(pid) for pid in pids]
         self.__current_core_values = {str(core): {event: 0 for event in periodic_app_level_events} for core in self.__tracked_cores}
         self.__current_pid_values = {str(pid): {event: 0 for event in periodic_app_level_events} for pid in self.__tracked_pids}
         self.__current_system_values = {event: 0 for event in periodic_system_wide_events}
         self.__monitoring_mode = monitoring_mode
+        self.__reporter = reporter
+        self.__engine_start_time = engine_start_time
 
+
+    def getElapsedTime(self):
+        return timer() - self.__engine_start_time
 
     def start(self):
         self.__perf_thread = threading.Thread(target=self.__poll)
@@ -53,8 +62,9 @@ class Monitor:
         """Get the performance metric for an event system wide."""
         return self.__current_system_values[event]
 
-    def updateTrackedCores(self, cores):
-        self.__tracked_cores = [str(core) for core in cores]	
+    def updateTrackedMapping(self, mapping):
+        self.__tracked_mapping = mapping.copy()	
+        self.__tracked_cores = [str(core) for core in self.__tracked_mapping.values()]	
 
         
     def updateTrackedPIDs(self, pids):
@@ -78,9 +88,9 @@ class Monitor:
     def __execute_perf_command(self):
         command = ""
         if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_CORE:
-            command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(periodic_app_level_events)} -B -A -o {self.__inst_app_file} sleep {self.__sampling_rate} 2{'> /dev/null' if not DEBUG else ''}"
+            command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(periodic_app_level_events)} -B -A -o {self.__inst_app_file} sleep {self.__sampling_rate} {'2> /dev/null' if not DEBUG else ''}"
         elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID and len(self.__tracked_pids) > 0 and all(pid != "-1" for pid in self.__tracked_pids):
-            command = f"perf stat -p {','.join(self.__tracked_pids)} -e {','.join(periodic_app_level_events)} -B -o {self.__inst_app_file} sleep {self.__sampling_rate} 2{'> /dev/null' if not DEBUG else ''}"
+            command = f"perf stat -p {','.join(self.__tracked_pids)} -e {','.join(periodic_app_level_events)} -B -o {self.__inst_app_file} sleep {self.__sampling_rate} {'2> /dev/null' if not DEBUG else ''}"
         if DEBUG:
             print("Command is: ", command)
         with lock:
@@ -97,7 +107,7 @@ class Monitor:
         subprocess.run(command, shell=True)
 
     def __execute_periodic_system_wide_perf(self):
-        command = f"perf stat -a -e {','.join(periodic_system_wide_events)} -o {self.__inst_sys_file} sleep {self.__sampling_rate} 2{'> /dev/null' if not DEBUG else ''}"
+        command = f"perf stat -a -e {','.join(periodic_system_wide_events)} -o {self.__inst_sys_file} sleep {self.__sampling_rate} {'2> /dev/null' if not DEBUG else ''}"
         if DEBUG:
             print("Command is: ", command)
         subprocess.run(command, shell=True)
@@ -123,7 +133,7 @@ class Monitor:
         else:
             print("file is not there")
             return
-        
+        system_metrics = []
         for line in lines[5:-3]:
             if "<not supported>" in line or "<not counted>" in line:
                 continue  # Skip unsupported metrics
@@ -134,12 +144,16 @@ class Monitor:
             for event in periodic_system_wide_events:
                 if event in line:
                     self.__current_system_values[event] = metric_value
+                    system_metrics.append(f"{event} = {metric_value}")
                     break  # Break the loop once the metric is found
+
+        if DEBUG:
+            print(f"[{str(round(self.getElapsedTime(), 2))}s] SYSTEM: {' | '.join(system_metrics)}")
+        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] SYSTEM: {' | '.join(system_metrics)}")
 
             
     def __update_app_core_stats(self):
         # Initialize or reset the lists for each metric based on the number of tracked cores
-        
         base_dir = os.path.dirname(os.path.dirname(__file__)) 
         perf_out_path = os.path.join(base_dir, self.__inst_app_file)
         
@@ -149,7 +163,6 @@ class Monitor:
         else:
             print("Perf output file is not available")
             return
-        
         # Temporary dictionary to hold metrics for each core
         temp_core_metrics = {core: {event: {"cpu_atom": 0, "cpu_core": 0} for event in periodic_app_level_events} for core in self.__tracked_cores}
         
@@ -183,12 +196,25 @@ class Monitor:
                     break  # Break once the event is found
 
         # Now sum up the cpu_atom and cpu_core values for each core and event
-        for core_id in self.__tracked_cores:
+        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Current mapped cores: {self.__tracked_mapping.values()}")
+
+        for app_name, core in self.__tracked_mapping.items():
+            core_id = str(core)
             if core_id not in self.__current_core_values.keys():
-                    self.__current_core_values[core_id] = {event: 0 for event in periodic_app_level_events}
+                self.__current_core_values[core_id] = {event: {"cpu_atom": 0, "cpu_core": 0} for event in periodic_app_level_events}    
+                         
+            if core_id not in temp_core_metrics.keys():
+                temp_core_metrics[core_id] = {event: {"cpu_atom": 0, "cpu_core": 0} for event in periodic_app_level_events}   
+
+            app_metrics = []
             for event in periodic_app_level_events:
                 total_value = temp_core_metrics[core_id][event]["cpu_atom"] + temp_core_metrics[core_id][event]["cpu_core"]
                 self.__current_core_values[core_id][event] = total_value  # Store the sum in the final dictionary
+                app_metrics.append(f"{event} = {total_value}")
+            if DEBUG:
+                print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | {' | '.join(app_metrics)}")
+            self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | {' | '.join(app_metrics)}")
+
                 
     def __update_app_pid_stats(self):
         # Initialize or reset the lists for each metric based on the tracked PIDs

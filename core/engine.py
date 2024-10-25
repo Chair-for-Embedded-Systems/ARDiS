@@ -49,13 +49,14 @@ class Engine:
         
         self.__benchmark_manager.runApplicationOnCore(app, None if self.__mapping_policy is None else core)
         end = timer()
-        core = self.mapping[app]
-        #TODO: since this is now a dictionary, the writing access should be thread safe
         # keeping the lock until properly evaluated
         with lock:
-            self.mapping[app] = -1
-            self.PIDs[app] = -1
-            self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
+            core = self.mapping[app]
+            self.mapping.pop(app)
+            self.PIDs.pop(app)
+            self.__monitor.updateTrackedMapping(self.mapping)
+            if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
+                self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
             self.__active_threads.remove(app)
         if config.DEBUG:
             print("[Core " + str(core) +"]: " + app + " finished execution!" )
@@ -68,7 +69,8 @@ class Engine:
         
     # Create a thread for each application in the mapping 
     def __makeThreads(self):
-        for app, core in self.mapping.items():
+        tmp_mapping = self.mapping.copy()
+        for app, core in tmp_mapping.items():
             self.__threads[app] = threading.Thread(target=self.__launchApp, args=(app, core))
             if config.DEBUG:
                 print("Thread for " + app + " created!")
@@ -87,10 +89,11 @@ class Engine:
         return timer() - self.startime
     
     def __startThread(self,  app):
+        print("Starting thread for ", app)
         self.__threads[app].start()
-        #TODO: not safe-thread, need a lock here as well?
-        self.__waiting_threads.remove(app)
-        self.__active_threads.append(app)    
+        with lock:
+            self.__waiting_threads.remove(app)
+            self.__active_threads.append(app)    
         if config.DEBUG:
             print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
             self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Thread for " + app + " started!")
@@ -110,20 +113,20 @@ class Engine:
         if config.DEBUG:
             self.reporter.logEvent("Mapping: " + str(self.mapping))
             print("Mapping: " + str(self.mapping))
-        #mapped_cores = list(self.mapping.values())
-        mapped_cores = list(range(0, system_cores))
-        # Start the monitoring thread
-        if self.__monitoring_mode != MonitoringMode.OFF:
-            self.__monitor = Monitor(tracked_cores=self.mapping.values(), pids=[], monitoring_mode=self.__monitoring_mode)
-            self.__monitor.start()
+            
         # Create the threads each application.
         self.__makeThreads()
         # then start the workload execution
         self.__start()
+        # Start the monitoring thread
+        if self.__monitoring_mode != MonitoringMode.OFF:
+            self.__monitor = Monitor(pids=[], tracked_mapping = self.mapping, monitoring_mode=self.__monitoring_mode, reporter=self.reporter, engine_start_time=self.startime)
+            self.__monitor.start()
         while self.running:
             current_time = self.getElapsedTime()
             # Check if the application is scheduled to start and if the thread is not already running
-            for app in self.mapping:
+            tmp_mapping = self.mapping.copy()
+            for app in tmp_mapping:
                 if self.__scheduler.isTimeToLaunch(app, current_time) and app in self.__waiting_threads:
                     # Start the thread
                     self.__startThread(app)
@@ -131,7 +134,7 @@ class Engine:
                     Thread(target=self.getProcessID, args=(app,)).start()
                     # using the pool executor should avoid race conditions but the performance is a bit worse
                     # self.__executor.submit(self.getProcessID, app)
-
+                      
             # Check if all threads are done before finishing
             if not self.__active_threads and not self.__waiting_threads:
                 self.running = False
@@ -152,71 +155,39 @@ class Engine:
                     self.reporter.logEvent("Total time elapsed (perf)= " + str(time_elapsed) + " seconds")
                 # Clear the caches after the experiment is done
                 self.__clearCaches()
-                self.postprocess_results()
                 break
             else:
-                for app in self.mapping:
-                    self.PIDs[app] = getPIDOfApp(app)
-                if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
-                    self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
-                # Print the monitored metrics every 10 epochs
-                if self.__epochs % 5 == 0:
-                    # monitor print
-                    if config.DEBUG:
-                        print("Monitored Metrics:")
-                    if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_CORE:
-                        for core in list(self.mapping.values()):
-                            app_name = [app for app, core_id in self.mapping.items() if core_id == core][0]
-                            if core == -1:
-                                print(f"{app_name} should have finished by now")
-                            else:
-                                app_metrics = [f"{event} = {self.__monitor.getMetricAtCore(core, event)}" for event in periodic_app_level_events]
-                                if config.DEBUG:
-                                    print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: app = {app_name} | {' | '.join(app_metrics)}")
-                                self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: app = {app_name} | {' | '.join(app_metrics)}")
-                                #self.__total_instructions += self.__monitor.getMetricAtCore(core, "instructions")
-                                #self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core}: Cumulative Instructions = {self.__total_instructions}")
-                    elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
-                        for app in self.mapping:
-                            app_metrics = [f"{event} = {self.__monitor.getMetricForPID(self.PIDs[app], event)}" for event in periodic_app_level_events]
-                            if config.DEBUG:
-                                print(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: {' | '.join(app_metrics)}")
-                            self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: {' | '.join(app_metrics)}")
-                            if self.__total_instructions is not None:
-                                self.__total_instructions[app] += self.__monitor.getMetricForPID(self.PIDs[app], "instructions")
-                                self.reporter.logEvent(f"[{str(round(self.getElapsedTime(), 2))}s] PID {self.PIDs[app]}: Cumulative Instructions = {self.__total_instructions[app]}")
-                        
-                    system_metrics = [f"{event} = {self.__monitor.getSystemWideMetric(event)}" for event in periodic_system_wide_events]
-                    if config.DEBUG:
-                        print(f"[{str(round(self.getElapsedTime(), 2))}s] SYSTEM: {' | '.join(system_metrics)}")
-                    self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] SYSTEM: {' | '.join(system_metrics)}")
-
-                    if config.DEBUG:
-                        print("--------------------")
-                
-                # Apply migration policy every 5 epochs
+                # Apply migration policy every X epochs
                 if self.__epochs > 0 and  self.__epochs % 20 == 0:
                     #print("[" + str(round(current_time, 2)) + "s]: Checking Migrations")
                     if self.__migration_policy is not None:
+                        print("######### TRIGGERRING MIGRATION #########")
+                        print("Current Mapping: ", self.mapping)
+                        with lock:
+                            for app in self.mapping:
+                                self.PIDs[app] = getPIDOfApp(app)
+
+                        if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
+                            self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
+                            
                         new_mapping = self.__migration_policy.getNewMapping(self.__total_instructions, self.mapping)
                         # Executing the migration policy
                         #print("Old Mapping: ", self.mapping)
                         #print("New Mapping: ", new_mapping)
-                        self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
-                        self.mapping = new_mapping
-                        
-                        if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_CORE:
-                            self.__monitor.updateTrackedCores(list(self.mapping.values()))
-                        elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
-                            self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
+                        with lock:
+                            self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
+                            self.mapping = new_mapping
+                            self.__monitor.updateTrackedMapping(self.mapping)
 
-                        self.reporter.logPeriodicCounters("[" + str(round(current_time, 2)) + "s]: Migration executed ")
-                        # Executing the DVFS policy
-                        self.__dvfs_policy.executeDVFSPolicy(self.__total_instructions, self.mapping)
+                        self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Migration Executed")
+
+                        if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
+                            self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
 
                 # any other periodic action here
            
             # Increment the epoch counter and sleep for the action interval
+            #print("Epoch: ", self.__epochs)
             self.__epochs += 1
             time.sleep(action_interval)
     
@@ -259,11 +230,6 @@ class Engine:
         
         # Return total energy, time elapsed, and total instructions
         return total_energy, time_elapsed, cpu_core_instructions + cpu_atom_instructions
-
-    # Post-process the results of the experiment, which cannot be done during the experiment
-    def postprocess_results(self):
-        pass
-
 
     def __clearCaches(self):
         runProc("sudo sync")
