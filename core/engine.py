@@ -120,7 +120,7 @@ class Engine:
         self.__start()
         # Start the monitoring thread
         if self.__monitoring_mode != MonitoringMode.OFF:
-            self.__monitor = Monitor(pids=[], tracked_mapping = self.mapping, monitoring_mode=self.__monitoring_mode, reporter=self.reporter, engine_start_time=self.startime)
+            self.__monitor = Monitor(pids=[], tracked_mapping = self.mapping, monitoring_mode=self.__monitoring_mode, reporter=self.reporter, engine_start_time=self.startime, core_frequencies=self.__dvfs_policy.getCoreFrequencies())
             self.__monitor.start()
         while self.running:
             current_time = self.getElapsedTime()
@@ -161,8 +161,9 @@ class Engine:
                 if self.__epochs > 0 and  self.__epochs % 20 == 0:
                     #print("[" + str(round(current_time, 2)) + "s]: Checking Migrations")
                     if self.__migration_policy is not None:
-                        print("######### TRIGGERRING MIGRATION #########")
-                        print("Current Mapping: ", self.mapping)
+                        #print("######### TRIGGERRING MIGRATION and DVFS #########")
+                        #print("Current Mapping: ", self.mapping)
+                        # setting the p cores to a random frequency from 1800 to 3200 with steps of 200MHz
                         with lock:
                             for app in self.mapping:
                                 self.PIDs[app] = getPIDOfApp(app)
@@ -170,16 +171,30 @@ class Engine:
                         if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                             self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
                             
-                        new_mapping = self.__migration_policy.getNewMapping(self.__total_instructions, self.mapping)
-                        # Executing the migration policy
-                        #print("Old Mapping: ", self.mapping)
-                        #print("New Mapping: ", new_mapping)
+                        new_mapping, app_to_migrate, current_core, new_core = self.__migration_policy.getNewMapping(self.__total_instructions, self.mapping)
+                        
+                        
+                        is_p_core = new_core in intel_p_core_ids
+                        new_current_frequencies = self.__dvfs_policy.getCoreFrequencies()
+                        if is_p_core:
+                            new_current_frequencies[new_core] = random.choice(range(1800, 3201, 200))
+                        else:
+                            new_common_e_core_frequency = random.choice(range(1800, 3201, 200))
+                            for core in new_current_frequencies.keys():
+                                if core in intel_e_core_ids:
+                                    new_current_frequencies[core] = new_common_e_core_frequency
+
                         with lock:
+                            # Executing the migration
                             self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
                             self.mapping = new_mapping
+                            # Executing the DVFS policy
+                            self.__dvfs_policy.executeDVFSPolicy(new_current_frequencies)
                             self.__monitor.updateTrackedMapping(self.mapping)
-
-                        self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Migration Executed")
+                            self.__monitor.updateCoreFrequencies(new_current_frequencies)
+                        if config.DEBUG:
+                            #self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Migrated {app_to_migrate} from core {current_core} to core {new_core}")
+                            print(f"[{str(round(self.getElapsedTime(), 2))}s] Migrated {app_to_migrate} from core {current_core} to core {new_core}")
 
                         if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                             self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
