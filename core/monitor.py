@@ -15,7 +15,8 @@ class Monitor:
                  tracked_mapping = {},
                  monitoring_mode = MonitoringMode.PERIODIC_ON_CORE,
                  reporter = None,
-                 engine_start_time = timer()):
+                 engine_start_time = timer(),
+                 core_frequencies={}):
         self.__sampling_rate = sampling_rate / 1000
         self.__inst_app_file = os.path.join(ROOTPATH, "perf_app.out")
         self.__inst_sys_file = os.path.join(ROOTPATH, "perf_sys.out")
@@ -30,6 +31,7 @@ class Monitor:
         self.__monitoring_mode = monitoring_mode
         self.__reporter = reporter
         self.__engine_start_time = engine_start_time
+        self.__core_frequencies = core_frequencies
 
 
     def getElapsedTime(self):
@@ -61,6 +63,11 @@ class Monitor:
     def getSystemWideMetric(self, event):
         """Get the performance metric for an event system wide."""
         return self.__current_system_values[event]
+
+
+    def updateCoreFrequencies(self, core_frequencies):
+        """Update the core frequencies for the DVFS policy."""
+        self.__core_frequencies = core_frequencies
 
     def updateTrackedMapping(self, mapping):
         self.__tracked_mapping = mapping.copy()	
@@ -197,7 +204,6 @@ class Monitor:
 
         # Now sum up the cpu_atom and cpu_core values for each core and event
         self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Current mapped cores: {self.__tracked_mapping.values()}")
-
         for app_name, core in self.__tracked_mapping.items():
             core_id = str(core)
             if core_id not in self.__current_core_values.keys():
@@ -213,7 +219,8 @@ class Monitor:
                 app_metrics.append(f"{event} = {total_value}")
             if DEBUG:
                 print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | {' | '.join(app_metrics)}")
-            self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | {' | '.join(app_metrics)}")
+            
+            self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {self.__core_frequencies[int(core_id)]} | {' | '.join(app_metrics)}")
 
                 
     def __update_app_pid_stats(self):
