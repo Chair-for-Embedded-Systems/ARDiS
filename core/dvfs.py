@@ -14,6 +14,9 @@ class DVFSPolicy():
             if DEBUG:
                 print(f"Core {core} set to {self.__core_frequencies[core]} MHz")
     
-    def executeDVFSPolicy(self, cores, frequency):
+    def getCoreFrequencies(self):
+        return self.__core_frequencies
+    
+    def executeDVFSPolicy(self, new_core_frequencies):
         pass
 

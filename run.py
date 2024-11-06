@@ -2,6 +2,7 @@ from config import *
 from core.engine import *
 from core.policies.explicit_mapping import *
 from core.policies.migrate_following_schedule import *
+from core.policies.dvfs_for_training import *
 from core.policies.migrate_for_training import *
 from core.policies.consecutive_schedule import *
 from core.policies.intel_static_dvfs import *
@@ -372,15 +373,14 @@ def run_same_application_multiple_times():
                         print(f"Experiment {exp_name} already exists in the results folder.")
 
 
-def run_training_data_experiments_with_migrations():
+def run_training_data_experiments_with_migrations_nodfvs():
     # Number of experiments to generate
     max_applications = 15
     min_applications = 2
-    iterations_per_app_count = 3  # How many times to repeat each experiment
 
     # Scheduler and DVFS policy setup
     scheduler = ConsecutiveScheduler(0)
-    dvfs_policy = DVFSPolicy({core: 2500 for core in range(system_cores)})  # Example fixed frequency
+    dvfs_policy = DVFSPolicy({core: 3200 for core in range(system_cores)})  # Example fixed frequency
 
     # Core IDs for P-cores and E-cores
     intel_p_core_ids = config.intel_p_core_ids
@@ -388,11 +388,14 @@ def run_training_data_experiments_with_migrations():
     intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
     all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
 
-    experiment_target = 100
-    experiment_count = 0
+    experiment_target = 200
+    experiment_count = 101
+
     while experiment_count < experiment_target:
+        # Randomly choose a number of applications for this experiment
         app_count = random.randint(min_applications, max_applications)
-        # Randomly select a unique set of applications for this experiment
+
+        # Randomly select a unique set of applications for this experiment (no duplicates)
         selected_apps = random.sample(parsec_apps, app_count)  # Or spec_apps depending on the apps used
 
         # Generate a unique core for each application (no overlap of cores)
@@ -408,7 +411,7 @@ def run_training_data_experiments_with_migrations():
         migrate_within_cluster = random.choice([True, False])
 
         # Create a unique name for this experiment
-        exp_name = f"tr_exp_{app_count}apps_mig"
+        exp_name = f"tr_exp_{app_count}apps_mig_{experiment_count}"
 
         # Define the experiment
         exp = Experiment(
@@ -429,29 +432,33 @@ def run_training_data_experiments_with_migrations():
 
         # Run the experiment
         exp.executeExperiment()
-        experiment_count += 1
-        
 
-def run_training_data_experiments_without_migrations():
+        experiment_count += 1
+
+    print("Experiment complete!")
+def run_training_data_experiments_with_migrations_with_dfvs():
     # Number of experiments to generate
     max_applications = 15
     min_applications = 2
-    iterations_per_app_count = 3  # How many times to repeat each experiment
 
     # Scheduler and DVFS policy setup
     scheduler = ConsecutiveScheduler(0)
-    dvfs_policy = DVFSPolicy({core: 2500 for core in range(system_cores)})  # Example fixed frequency
+    dvfs_policy = DVFSForTraining({core: 3200 for core in range(system_cores)})  # Example fixed frequency
 
     # Core IDs for P-cores and E-cores
     intel_p_core_ids = config.intel_p_core_ids
     intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
     intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
     all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
-    experiment_target = 100
+
+    experiment_target = 500
     experiment_count = 0
+
     while experiment_count < experiment_target:
+        # Randomly choose a number of applications for this experiment
         app_count = random.randint(min_applications, max_applications)
-        # Randomly select a unique set of applications for this experiment
+
+        # Randomly select a unique set of applications for this experiment (no duplicates)
         selected_apps = random.sample(parsec_apps, app_count)  # Or spec_apps depending on the apps used
 
         # Generate a unique core for each application (no overlap of cores)
@@ -467,7 +474,7 @@ def run_training_data_experiments_without_migrations():
         migrate_within_cluster = random.choice([True, False])
 
         # Create a unique name for this experiment
-        exp_name = f"tr_exp_{app_count}apps_nomig"
+        exp_name = f"tr_exp_{app_count}apps_mig_{experiment_count}"
 
         # Define the experiment
         exp = Experiment(
@@ -475,7 +482,7 @@ def run_training_data_experiments_without_migrations():
             mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
             scheduler=scheduler,
             dvfs_policy=dvfs_policy,
-            migration_policy=None,  # Using the updated MigrationForTraining class
+            migration_policy=MigrationForTraining(migrate_within_cluster),  # Using the updated MigrationForTraining class
             monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
             results_folder=config.TRAINING_RESULTS_FOLDER  # Adjust folder path as needed
         )
@@ -486,15 +493,172 @@ def run_training_data_experiments_without_migrations():
         # Print the initial mapping
         print(f"{exp_name} => Initial mapping: {random_core_mapping}")
 
+        # Run the experiment
+        exp.executeExperiment()
+
+        experiment_count += 1
+
+    print("Experiment complete!")
+
+
+
+def run_training_data_experiments_without_migrations():
+    # Number of experiments to generate
+    max_applications = 15
+    min_applications = 2
+
+    # Scheduler and DVFS policy setup
+    scheduler = ConsecutiveScheduler(0)
+    dvfs_policy = DVFSPolicy({core: 3200 for core in range(system_cores)})  # Example fixed frequency
+
+    # Core IDs for P-cores and E-cores
+    intel_p_core_ids = config.intel_p_core_ids
+    intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
+    intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
+    all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
+
+    experiment_target = 200
+    experiment_count = 101
+
+    while experiment_count < experiment_target:
+        # Randomly choose a number of applications for this experiment
+        app_count = random.randint(min_applications, max_applications)
+
+        # Randomly select a unique set of applications for this experiment (no duplicates)
+        selected_apps = random.sample(parsec_apps, app_count)  # Or spec_apps depending on the apps used
+
+        # Generate a unique core for each application (no overlap of cores)
+        random_core_mapping = {}
+        available_cores = all_core_ids.copy()
+
+        for app in selected_apps:
+            core = random.choice(available_cores)
+            random_core_mapping[app] = core
+            available_cores.remove(core)  # Remove the core to ensure no two apps share the same core
+
+        # Randomly choose whether to migrate within cluster or across clusters
+        migrate_within_cluster = random.choice([True, False])
+
+        # Create a unique name for this experiment
+        exp_name = f"tr_exp_{app_count}apps_nomig_{experiment_count}"
+
+        # Define the experiment
+        exp = Experiment(
+            name=exp_name,
+            mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
+            scheduler=scheduler,
+            dvfs_policy=dvfs_policy,
+            migration_policy=None,
+            monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
+            results_folder=config.TRAINING_RESULTS_FOLDER  # Adjust folder path as needed
+        )
+
+        # Set the applications to the experiment
+        exp.setApplications(list(random_core_mapping.keys()))
+
+        # Print the initial mapping
+        print(f"{exp_name} => Initial mapping: {random_core_mapping}")
 
         # Run the experiment
         exp.executeExperiment()
+
         experiment_count += 1
 
+    print("Experiment complete!")
+
+def run_aoi_with_background_experiments():
+    # Parameters
+    max_background_apps = 14
+    min_background_apps = 1
+
+    # Scheduler setup
+    scheduler = ConsecutiveScheduler(0)
+
+    # Core IDs for P-cores and E-cores
+    intel_p_core_ids = config.intel_p_core_ids
+    intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
+    intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
+    all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
+    e_cores = intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
+
+    # Experiment limits
+    experiment_target = 1000
+    experiment_count = 174
+
+    # Loop until reaching the target number of experiments
+    while experiment_count < experiment_target:
+        # Select an application of interest (AOI)
+        aoi = random.choice(parsec_apps)  # Replace parsec_apps with the actual AOI list if different
+
+        # Randomly choose a number of background applications
+        background_app_count = random.randint(min_background_apps, max_background_apps)
+
+        # Select a unique set of background applications (no duplicates with AOI)
+        background_apps = random.sample([app for app in parsec_apps if app != aoi], background_app_count)
+
+        # Generate two experiments: AOI mapped to a P-core and AOI mapped to an E-core
+        for core_type, core_id_list in {"p_core": intel_p_core_ids, "e_core": e_cores}.items():
+            # Ensure there are available cores to map background apps
+            if len(background_apps) + 1 > len(all_core_ids):
+                print("Not enough cores for this setup.")
+                continue
+
+            # Core mapping
+            random_core_mapping = {}
+            available_cores = all_core_ids.copy()
+
+            # Map AOI to a specific core type (P-core or E-core)
+            aoi_core = random.choice(core_id_list)
+            random_core_mapping[aoi] = aoi_core
+            available_cores.remove(aoi_core)
+
+            # Map background applications to the remaining cores randomly
+            for app in background_apps:
+                core = random.choice(available_cores)
+                random_core_mapping[app] = core
+                available_cores.remove(core)  # Ensure no two apps share the same core
+
+            # Randomly select a frequency from 1800 to 3200 in steps of 200
+            frequency = random.choice(range(1800, 3201, 200))
+            dvfs_policy = DVFSPolicy({core: frequency for core in range(system_cores)})
+
+            # Construct a codified name for the background applications
+            bg_apps_code = "".join([app[7:9] for app in background_apps])
+
+            # Experiment name to reflect AOI, background applications, core type, and frequency
+            exp_name = f"tr_exp_{aoi.replace('parsec-','')}_bg_{bg_apps_code}_{core_type}_{experiment_count}"
+            print(f"Experiment {exp_name} at {frequency} MHz")
+            
+            # Define the experiment with a frequency-specific results folder
+            results_folder = f"{config.MOTIVATIONAL_RESULTS_FOLDER}/{frequency}MHz"
+            exp = Experiment(
+                name=exp_name,
+                mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
+                scheduler=scheduler,
+                dvfs_policy=dvfs_policy,
+                migration_policy=None,
+                monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
+                results_folder=results_folder
+            )
+
+            # Set the applications to the experiment
+            exp.setApplications(list(random_core_mapping.keys()))
+
+            # Print the initial mapping
+            print(f"{exp_name} => Initial mapping: {random_core_mapping}")
+
+            # Run the experiment
+            exp.executeExperiment()
+            
+            experiment_count += 1
+            
+    print("Experiment complete!")
 
 if __name__ == "__main__":
     #runExample()
     #runRandomExample()
     #runMotivationalExample()
-    run_training_data_experiments_with_migrations()
-    run_training_data_experiments_without_migrations()
+    #run_training_data_experiments_with_migrations_nodfvs()
+    run_training_data_experiments_with_migrations_with_dfvs()
+    #run_training_data_experiments_without_migrations()
+    #run_aoi_with_background_experiments()
