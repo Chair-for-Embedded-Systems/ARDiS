@@ -67,4 +67,4 @@ class MigrationForTraining(MigrationPolicy):
             new_mapping[app_to_migrate] = new_core
 
         #print(f"Migrating {app_to_migrate} from core {current_core} to core {new_core}")
-        return new_mapping
+        return new_mapping, app_to_migrate, current_core, new_core
