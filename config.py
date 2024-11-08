@@ -4,6 +4,7 @@ RESULTS_FOLDER="./results"
 MOTIVATIONAL_RESULTS_FOLDER="./results/motivational"
 EVALUATION_FOLDER="./evaluation/"
 TRAINING_RESULTS_FOLDER="./results/training"
+SINGLE_RESULTS_FOLDER="./results/singles"
 UTILS_DIR="./utils"
 PLOTS_FOLDER="./plots"
 
@@ -77,7 +78,7 @@ intel_e_core_ids_cluster_2 = [20, 21, 22, 23]
 # Number of workloads to run in the experiment
 num_workloads = 2
 # Interval in seconds to perform actions in the experiment
-action_interval = 0.01
+action_interval = 0.1
 
 # List of cores to use for explicit mapping
 explicit_mapping_cores = [2, 4, 17, 23]
