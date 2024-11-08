@@ -452,7 +452,7 @@ def run_training_data_experiments_with_migrations_with_dfvs():
     all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
 
     experiment_target = 500
-    experiment_count = 0
+    experiment_count = 188
 
     while experiment_count < experiment_target:
         # Randomly choose a number of applications for this experiment
