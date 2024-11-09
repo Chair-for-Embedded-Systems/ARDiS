@@ -54,7 +54,8 @@ class Engine:
             core = self.mapping[app]
             self.mapping.pop(app)
             self.PIDs.pop(app)
-            self.__monitor.updateTrackedMapping(self.mapping)
+            if self.__monitoring_mode != MonitoringMode.OFF:
+                self.__monitor.updateTrackedMapping(self.mapping)
             if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
                 self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
             self.__active_threads.remove(app)
@@ -189,9 +190,13 @@ class Engine:
                             self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
                             self.mapping = new_mapping
                             # Executing the DVFS policy
-                            self.__dvfs_policy.executeDVFSPolicy(new_current_frequencies)
-                            self.__monitor.updateTrackedMapping(self.mapping)
-                            self.__monitor.updateCoreFrequencies(new_current_frequencies)
+                            if self.__dvfs_policy is not None:
+                                self.__dvfs_policy.executeDVFSPolicy(new_current_frequencies)
+                                self.__monitor.updateCoreFrequencies(new_current_frequencies)
+
+                            if self.__monitoring_mode != MonitoringMode.OFF:
+                                self.__monitor.updateTrackedMapping(self.mapping)
+                                
                         if config.DEBUG:
                             #self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Migrated {app_to_migrate} from core {current_core} to core {new_core}")
                             print(f"[{str(round(self.getElapsedTime(), 2))}s] Migrated {app_to_migrate} from core {current_core} to core {new_core}")
