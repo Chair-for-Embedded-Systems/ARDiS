@@ -73,6 +73,7 @@ class CPUFrequencyManager:
 
     def __frequency_to_pstate(self, core, frequency):
         # m = (max_frequency - min_frequency)/len(pcore_action_to_pstate)
+        #TODO: should be changed based on processor capabilities and configuration 
         scaling_factor_pcore = 97.72727272727273
         scaling_factor_ecore = 1e5
         min_frequency = 800
