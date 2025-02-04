@@ -2,7 +2,8 @@ import os
 
 RESULTS_FOLDER="./results"
 MOTIVATIONAL_RESULTS_FOLDER="./results/motivational"
-EVALUATION_FOLDER="./evaluation/"
+OVERHEAD_RESULTS_FOLDER="./results/overhead"
+EVALUATION_FOLDER="./results/evaluation"
 TRAINING_RESULTS_FOLDER="./results/training"
 SINGLE_RESULTS_FOLDER="./results/singles"
 UTILS_DIR="./utils"
@@ -69,7 +70,7 @@ parsec_apps = [
 # Number of cores in the system
 system_cores = 24
 # platform specific stuff
-intel_p_core_ids = [2, 4, 6, 8, 10, 12, 14]
+intel_p_core_ids = [0, 2, 4, 6, 8, 10, 12, 14]
 intel_e_core_ids = [16, 17, 18, 19, 20, 21, 22, 23]
 
 
@@ -111,3 +112,26 @@ one_shot_system_wide_events = [
 ]
 
 enable_monitoring = True 
+#scaler paths
+ENERGY_SEQUENCE_SCALER_PATH="./ml/energy_sequence_scaler.joblib"
+PERFORMANCE_SEQUENCE_SCALER_PATH="./ml/performance_sequence_scaler.joblib"
+ENERGY_INSTANT_SCALER_PATH="./ml/energy_instant_scaler.joblib"
+PERFORMANCE_INSTANT_SCALER_PATH="./ml/performance_instant_scaler.joblib"
+#transformer models
+ENERGY_TRANSFORMER_MODEL_PATH="./ml/energy_transformer_model_5steps.keras"
+PERFORMANCE_TRANSFORMER_MODEL_PATH="./ml/performance_transformer_model_5steps.keras"
+#rnn models
+ENERGY_RNN_MODEL_PATH="./ml/energy_rnn_model_5steps.keras"
+PERFORMANCE_RNN_MODEL_PATH="./ml/performance_rnn_model_5steps.keras"
+#nn models
+ENERGY_NN_MODEL_PATH="./ml/energy_nn_model.keras"
+PERFORMANCE_NN_MODEL_PATH="./ml/performance_nn_model.keras"
+#xgb models
+ENERGY_XGB_MODEL_PATH="./ml/energy_xgb_model.keras"
+PERFORMANCE_XGB_MODEL_PATH="./ml/performance_xgb_model.keras"
+#RF models
+ENERGY_RF_MODEL_PATH="./ml/energy_rf_model.keras"
+PERFORMANCE_RF_MODEL_PATH="./ml/performance_rf_model.keras"
+
+
+ML_BASED_MIGRATION_DVFS = True

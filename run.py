@@ -501,6 +501,70 @@ def run_training_data_experiments_with_migrations_with_dfvs():
     print("Experiment complete!")
 
 
+def run_experiment_with_ml_predictions():
+    # Number of experiments to generate
+    max_applications = 15
+    min_applications = 2
+
+    # Scheduler and DVFS policy setup
+    scheduler = ConsecutiveScheduler(0)
+    dvfs_policy = DVFSForTraining({core: 3200 for core in range(system_cores)})  # Example fixed frequency
+
+    # Core IDs for P-cores and E-cores
+    intel_p_core_ids = config.intel_p_core_ids
+    intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
+    intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
+    all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
+
+    experiment_target = 500
+    experiment_count = 0
+
+    while experiment_count < experiment_target:
+        # Randomly choose a number of applications for this experiment
+        app_count = random.randint(min_applications, max_applications)
+
+        # Randomly select a unique set of applications for this experiment (no duplicates)
+        selected_apps = random.sample(parsec_apps, app_count)  # Or spec_apps depending on the apps used
+
+        # Generate a unique core for each application (no overlap of cores)
+        random_core_mapping = {}
+        available_cores = all_core_ids.copy()
+
+        for app in selected_apps:
+            core = random.choice(available_cores)
+            random_core_mapping[app] = core
+            available_cores.remove(core)  # Remove the core to ensure no two apps share the same core
+
+        # Randomly choose whether to migrate within cluster or across clusters
+        migrate_within_cluster = random.choice([True, False])
+
+        # Create a unique name for this experiment
+        exp_name = f"tr_exp_{app_count}apps_mig_{experiment_count}"
+
+        # Define the experiment
+        exp = Experiment(
+            name=exp_name,
+            mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
+            scheduler=scheduler,
+            dvfs_policy=dvfs_policy,
+            migration_policy=MigrationForTraining(migrate_within_cluster),  # Using the updated MigrationForTraining class
+            monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
+            results_folder=config.EVALUATION_FOLDER  # Adjust folder path as needed
+        )
+
+        # Set the applications to the experiment
+        exp.setApplications(list(random_core_mapping.keys()))
+
+        # Print the initial mapping
+        print(f"{exp_name} => Initial mapping: {random_core_mapping}")
+
+        # Run the experiment
+        exp.executeExperiment()
+
+        experiment_count += 1
+
+    print("Experiment complete!")
+
 
 def run_training_data_experiments_without_migrations():
     # Number of experiments to generate
@@ -654,11 +718,144 @@ def run_aoi_with_background_experiments():
             
     print("Experiment complete!")
 
+def run_overhead_analysis_without_monitoring():
+    # Number of experiments to generate
+    num_applications = 16
+    scheduler = ConsecutiveScheduler(0)
+
+    intel_p_core_ids = config.intel_p_core_ids
+    intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
+    intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
+    all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
+    print(all_core_ids)
+    experiment_target = 15
+    experiment_count = 1
+
+    while experiment_count < experiment_target:
+        # Randomly choose a number of applications for this experiment
+
+        # Randomly select a unique set of applications for this experiment (no duplicates)
+        selected_apps = random.sample(config.spec_apps, num_applications)  # Or spec_apps depending on the apps used
+
+        # Generate a unique core for each application (no overlap of cores)
+        random_core_mapping = {}
+        available_cores = all_core_ids.copy()
+
+        for app in selected_apps:
+            core = random.choice(available_cores)
+            random_core_mapping[app] = core
+            available_cores.remove(core)  # Remove the core to ensure no two apps share the same core
+
+        # Create a unique name for this experiment
+        exp_name = f"exp_{num_applications}apps_mig_{experiment_count}_without_monitoring"
+
+        # Define the experiment
+        exp = Experiment(
+            name=exp_name,
+            mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
+            scheduler=scheduler,
+            dvfs_policy=None,
+            migration_policy=None,  # Using the updated MigrationForTraining class
+            monitoring_mode=MonitoringMode.OFF,
+            results_folder=config.OVERHEAD_RESULTS_FOLDER  # Adjust folder path as needed
+        )
+
+        # Set the applications to the experiment
+        exp.setApplications(list(random_core_mapping.keys()))
+
+        # Run the experiment
+        exp.executeExperiment()
+
+        experiment_count += 1
+
+    print("Experiment complete!")
+
+
+
+def run_overhead_analysis():
+    # Number of experiments to generate
+    num_applications = 16
+    scheduler = ConsecutiveScheduler(0)
+
+    intel_p_core_ids = config.intel_p_core_ids
+    intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
+    intel_e_core_ids_cluster_2 = config.intel_e_core_ids_cluster_2
+    all_core_ids = intel_p_core_ids + intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
+    print(all_core_ids)
+    experiment_target = 15
+    experiment_count = 1
+
+
+    experiment_target = 30
+    experiment_count = 7
+
+    while experiment_count < experiment_target:
+        # Randomly choose a number of applications for this experiment
+
+        # Randomly select a unique set of applications for this experiment (no duplicates)
+        selected_apps = random.sample(config.spec_apps, num_applications)  # Or spec_apps depending on the apps used
+
+        # Generate a unique core for each application (no overlap of cores)
+        random_core_mapping = {}
+        available_cores = all_core_ids.copy()
+
+        for app in selected_apps:
+            core = random.choice(available_cores)
+            random_core_mapping[app] = core
+            available_cores.remove(core)  # Remove the core to ensure no two apps share the same core
+
+        # Create a unique name for this experiment
+        exp_name = f"exp_{num_applications}apps_mig_{experiment_count}_with_monitoring"
+
+        # Define the experiment
+        exp = Experiment(
+            name=exp_name,
+            mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
+            scheduler=scheduler,
+            dvfs_policy=DVFSPolicy({core: 3200 for core in range(system_cores)}),
+            migration_policy=None,  # Using the updated MigrationForTraining class
+            monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
+            results_folder=config.OVERHEAD_RESULTS_FOLDER  # Adjust folder path as needed
+        )
+
+        # Set the applications to the experiment
+        exp.setApplications(list(random_core_mapping.keys()))
+
+        # Run the experiment
+        exp.executeExperiment()
+
+        # Create a unique name for this experiment
+        exp_name2 = f"exp_{num_applications}apps_mig_{experiment_count}_without_monitoring"
+
+        # Define the experiment
+        exp2 = Experiment(
+            name=exp_name2,
+            mapping_policy=ExplicitMapping(list(random_core_mapping.values())),
+            scheduler=scheduler,
+            dvfs_policy=None,
+            migration_policy=None,  # Using the updated MigrationForTraining class
+            monitoring_mode=MonitoringMode.OFF,
+            results_folder=config.OVERHEAD_RESULTS_FOLDER  # Adjust folder path as needed
+        )
+
+        # Set the applications to the experiment
+        exp2.setApplications(list(random_core_mapping.keys()))
+
+        # Run the experiment
+        exp2.executeExperiment()
+
+        experiment_count += 1
+    print("Experiment complete!")
+
+
 if __name__ == "__main__":
     #runExample()
     #runRandomExample()
     #runMotivationalExample()
     #run_training_data_experiments_with_migrations_nodfvs()
-    run_training_data_experiments_with_migrations_with_dfvs()
+    #run_training_data_experiments_with_migrations_with_dfvs()
     #run_training_data_experiments_without_migrations()
     #run_aoi_with_background_experiments()
+    #run_overhead_analysis()
+    #run_overhead_analysis_without_monitoring()
+    run_experiment_with_ml_predictions()

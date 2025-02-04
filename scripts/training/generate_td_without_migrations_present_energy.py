@@ -161,5 +161,5 @@ def process_experiment_results(results_folder):
     return pd.DataFrame(dataset)
 
 # Example usage:
-results_df = process_experiment_results(MOTIVATIONAL_RESULTS_FOLDER)
+results_df = process_experiment_results(TRAINING_RESULTS_FOLDER+"/dynamic_map_dynamic_freq")
 results_df.to_csv('present_contention_energy.csv', index=False)

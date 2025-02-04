@@ -1,22 +1,117 @@
-'''
-    This script is used to parse the results from experiments with dynamic mapping and static frequencies.
-    In this version, we had not yet added the periodic logging of VF level per core.
-'''
-import os
-import re
-import pandas as pd
-
-import sys
+import sys, os
 import numpy as np
+from tensorflow.keras.models import load_model
+import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import pandas as pd
+import joblib
+import time
+import re
+
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from config import *
+import config
 
+class MLPredictor():
+    def __init__(self, objective='Energy', model_type='transformer'):
+        self.__sequence_length = 5
+        self.__target_variable = objective
+        if 'Energy' in self.__target_variable:
+            if model_type == 'transformer':
+                self.__scaler_filename = config.ENERGY_SEQUENCE_SCALER_PATH
+                self.__model_filename = config.ENERGY_TRANSFORMER_MODEL_PATH
+            elif model_type == 'rnn':
+                self.__scaler_filename = config.ENERGY_SEQUENCE_SCALER_PATH
+                self.__model_filename = config.ENERGY_RNN_MODEL_PATH
+            elif model_type == 'nn':
+                self.__scaler_filename = config.ENERGY_INSTANT_SCALER_PATH
+                self.__model_filename = config.ENERGY_NN_MODEL_PATH
+            elif model_type == 'xgb':
+                self.__scaler_filename = config.ENERGY_INSTANT_SCALER_PATH
+                self.__model_filename = config.ENERGY_XGB_MODEL_PATH
+            elif model_type == 'rf':
+                self.__scaler_filename = config.ENERGY_INSTANT_SCALER_PATH
+                self.__model_filename = config.ENERGY_RF_MODEL_PATH
+        elif 'IPC' in self.__target_variable:
+            if model_type == 'transformer':
+                self.__scaler_filename = config.PERFORMANCE_SEQUENCE_SCALER_PATH
+                self.__model_filename = config.PERFORMANCE_TRANSFORMER_MODEL_PATH
+            elif model_type == 'rnn':
+                self.__scaler_filename = config.PERFORMANCE_SEQUENCE_SCALER_PATH
+                self.__model_filename = config.PERFORMANCE_RNN_MODEL_PATH
+            elif model_type == 'nn':
+                self.__scaler_filename = config.PERFORMANCE_INSTANT_SCALER_PATH
+                self.__model_filename = config.PERFORMANCE_NN_MODEL_PATH
+            elif model_type == 'xgb':
+                self.__scaler_filename = config.PERFORMANCE_INSTANT_SCALER_PATH
+                self.__model_filename = config.PERFORMANCE_XGB_MODEL_PATH
+            elif model_type == 'rf':
+                self.__scaler_filename = config.PERFORMANCE_INSTANT_SCALER_PATH
+                self.__model_filename = config.PERFORMANCE_RF_MODEL_PATH
+
+        # Load the saved model and scaler
+        self.__scaler = joblib.load(self.__scaler_filename)
+        self.__model = load_model(self.__model_filename)
+
+
+    def preprocess_input(self, input_data):
+        cluster_mapping = {'P': 0, 'E1': 1, 'E2': 2}
+        input_data['AOI_Cluster'] = input_data['AOI_Cluster'].map(cluster_mapping)
+        input_data['Other1_Cluster'] = input_data['Other1_Cluster'].map(cluster_mapping)
+        input_data['Other2_Cluster'] = input_data['Other2_Cluster'].map(cluster_mapping)
+
+        # Drop columns that were not used during training
+        input_data = input_data.drop(columns=['Other1_Applications', 'Other2_Applications', 'Same_Cluster_Applications'])
+
+        # Scale the features
+        features_to_scale = input_data
+        scaled_features = self.__scaler.transform(features_to_scale)
+
+        # Reshape as a sequence for the model input
+        X_sequence = np.array([scaled_features.flatten()] * self.__sequence_length)
+        X_sequence = X_sequence.reshape(1, self.__sequence_length, -1)
+
+        return X_sequence
+
+    def run_inference_and_report(self, input_data):
+        X_input_sequence = self.preprocess_input(input_data)
+        
+        start_time = time.time()
+        prediction = self.__model.predict_on_batch(X_input_sequence)
+        end_time = time.time()
+        
+        inference_time_ms = (end_time - start_time) * 1000
+        print(f"Prediction: {prediction[0][0]}")
+        print(f"Inference Time: {inference_time_ms:.3f} ms")
+        
+        return prediction[0][0], inference_time_ms
+
+    def load_data_from_files(self, results_folder, frequency=3200):
+        dataset = []
+        log_path = os.path.join(results_folder, 'periodic_counters.log')
+        if os.path.isfile(log_path):
+            epochs = parse_log_file(log_path)
+            dataset.extend(create_dataset(epochs, frequency, results_folder).to_dict(orient='records'))
+        return pd.DataFrame(dataset)
+
+    def run_inference_from_files(self, results_folder, frequency=3200):
+        # Load and prepare data from log files
+        data = self.load_data_from_files(results_folder, frequency)
+        
+        # Iterate over each row in the prepared dataset and make predictions
+        predictions = []
+        for _, row in data.iterrows():
+            input_data = pd.DataFrame([row])  # Convert row to a DataFrame for processing
+            print(input_data)
+            prediction, inference_time_ms = self.run_inference_and_report(input_data)
+            predictions.append({'Prediction': prediction, 'Inference Time (ms)': inference_time_ms})
+        
+        return pd.DataFrame(predictions)
 
 # Map each core to its cluster type
-core_to_cluster = {core: 'P' for core in intel_p_core_ids}
-core_to_cluster.update({core: 'E1' for core in intel_e_core_ids_cluster_1})
-core_to_cluster.update({core: 'E2' for core in intel_e_core_ids_cluster_2})
+core_to_cluster = {core: 'P' for core in config.intel_p_core_ids}
+core_to_cluster.update({core: 'E1' for core in config.intel_e_core_ids_cluster_1})
+core_to_cluster.update({core: 'E2' for core in config.intel_e_core_ids_cluster_2})
 
 def parse_log_file(filepath):
     """Parses periodic_counters.log and returns a structured list of epochs."""
@@ -38,6 +133,7 @@ def parse_log_file(filepath):
         if current_epoch:
             epochs.append(current_epoch)
     return epochs
+
 
 def parse_core_line(line):
     """Extracts core information from a log line."""
@@ -85,8 +181,8 @@ def create_dataset(epochs, frequency, log_path):
                 other2_apps = {c: d for c, d in epoch['cores'].items() if d['cluster'] == other2_cluster}
                 # Proceed with data aggregation and row construction as before
                 row = {
-                    'Experiment_ID': path_date_time,
-                    'AOI_Application': aoidata['app'],
+                    #'Experiment_ID': path_date_time,
+                    #'AOI_Application': aoidata['app'],
                     'AOI_Core': aoicore,
                     'AOI_Cluster': aoi_cluster,
                     'AOI_IPC': aoidata['instructions'] / aoidata['cycles'] if aoidata['cycles'] else 0,
@@ -99,7 +195,7 @@ def create_dataset(epochs, frequency, log_path):
                     'AOI_Branch_Misses': aoidata.get('branch-misses', 0),
                     'AOI_Branches': aoidata.get('branches', 0),
                     'Frequency': aoidata.get('frequency',0),
-                    'Energy': epoch['system']['power/energy-psys/'],
+                    #'Energy': epoch['system']['power/energy-psys/'],
                 }
 
                 # Add same cluster characteristics
@@ -146,23 +242,9 @@ def create_dataset(epochs, frequency, log_path):
 
     return pd.DataFrame(data_rows)
 
-# Main function to process all log files and compile dataset
-def process_experiment_results(results_folder, frequency=3200):
-    dataset = []
-    for experiment_folder in os.listdir(results_folder):
-        #if "2024-11-06_16-07-16_tr_exp_4apps_mig_7" in experiment_folder:
-        log_path = os.path.join(results_folder, experiment_folder, 'periodic_counters.log')
-        print(experiment_folder)
-        if os.path.isfile(log_path):
-            print(experiment_folder)
-            epochs = parse_log_file(log_path)
-            print(experiment_folder)
-            dataset.extend(create_dataset(epochs, frequency, experiment_folder).to_dict(orient='records'))
-    return pd.DataFrame(dataset)
 
-# Example usage:
-results_df = process_experiment_results(TRAINING_RESULTS_FOLDER+"/dynamic_map_dynamic_freq")
-results_df.to_csv('contention_with_migrations_dynamic_freq.csv', index=False)
 
-#results_df = process_experiment_results(TRAINING_RESULTS_FOLDER+"/dynamic_map_static_freq", 3200)
-#results_df.to_csv('present_contention_with_migrations_static_freq_sample.csv', index=False)
+if __name__ == '__main__':
+    predictor = MLPredictor(objective='Energy', model_type='transformer')
+    results_folder = config.TRAINING_RESULTS_FOLDER + "/dynamic_map_dynamic_freq/2024-11-06_19-55-39_tr_exp_9apps_mig_45"
+    predictor.run_inference_from_files(results_folder)

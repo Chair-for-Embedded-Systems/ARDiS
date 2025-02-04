@@ -73,7 +73,9 @@ class Monitor:
         self.__tracked_mapping = mapping.copy()	
         self.__tracked_cores = [str(core) for core in self.__tracked_mapping.values()]	
 
-        
+    def recordPeriodicEntry(self, entry):
+        """Record a periodic entry in the reporter."""
+        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] {entry}")
     def updateTrackedPIDs(self, pids):
         """Update the list of PIDs being tracked."""
         with lock:
