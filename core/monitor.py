@@ -205,7 +205,7 @@ class Monitor:
                     break  # Break once the event is found
 
         # Now sum up the cpu_atom and cpu_core values for each core and event
-        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Current mapped cores: {self.__tracked_mapping.values()}")
+        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Current mapped cores: {self.__tracked_cores}")
         for app_name, core in self.__tracked_mapping.items():
             core_id = str(core)
             if core_id not in self.__current_core_values.keys():
@@ -247,7 +247,7 @@ class Monitor:
                 break
         
         if pid is None:
-            print("PID not found in the output")
+            #print("PID not found in the output")
             return
         
         # Initialize PID-based metrics dictionary if not already
@@ -285,8 +285,14 @@ class Monitor:
                         temp_metrics.setdefault(event, {"cpu_atom": 0, "cpu_core": 0})["cpu_core"] = metric_value
                     
                     break  # Break once the metric is found and stored
-
+        app_metrics = []
         # Sum cpu_atom and cpu_core values and store in the final dictionary
         for event, values in temp_metrics.items():
             total_value = values["cpu_atom"] + values["cpu_core"]
             self.__current_pid_values[pid][event] = total_value
+            app_metrics.append(f"{event} = {total_value}")
+        with lock:
+            if self.__tracked_mapping is not None and len(self.__tracked_mapping) > 0:
+                app_name = next(iter(self.__tracked_mapping))
+                core_id = self.__tracked_mapping[app_name]
+                self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {self.__core_frequencies[int(core_id)]} | {' | '.join(app_metrics)}")
