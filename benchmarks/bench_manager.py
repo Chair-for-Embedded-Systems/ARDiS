@@ -3,8 +3,8 @@ import subprocess
 from config import *
 
 #TODO: maybe we move this to the config file
-PARSECBASE = "/home/sikmoh00/Subjects/RealHardware/parsec-3.0/"
-SPECPBASE = "/home/sikmoh00/Subjects/RealHardware/cpu2006/"
+PARSECBASE = "/home/kg3813/Subjects/RealHardware/parsec-3.0/"
+SPECPBASE = "/home/kg3813/Subjects/RealHardware/cpu2006/"
 CONFIGFILE = "mytest.cfg"
 
 
