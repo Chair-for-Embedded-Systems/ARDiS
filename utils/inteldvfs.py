@@ -5,11 +5,16 @@ import subprocess
 MSR_HWP_REQUEST = 0x774
 
 class CPUFrequencyManager:
-    def __init__(self):
+    def __init__(self, min_frequency, max_frequency, governor="userspace"):
         self.cores = list(range(system_cores))
-        self.__set_pstate_status_to_passive()
-        self.__set_governor_to_userspace()
-        self.__disable_thermald()
+        self.governor = governor
+        if self.governor == "userspace":
+            self.__set_pstate_status_to_passive()
+            self.__disable_thermald()
+        else:
+            # TODO: Make sure this is reset at the end of the experiment
+            self.set_frequency_limits(min_frequency, max_frequency)
+        self.__set_governor_to(governor)
         
 
     def __set_pstate_status_to_passive(self):
@@ -22,14 +27,14 @@ class CPUFrequencyManager:
         except IOError as e:
                 print(f"Failed to set intel_pstate status to passive: {e}")
 
-    def __set_governor_to_userspace(self):
+    def __set_governor_to(self, governor):
         for core in self.cores:
             governor_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_governor"
             try:
                 with open(governor_path, 'w') as f:
-                    f.write("userspace")
+                    f.write(governor)
                 if DEBUG:
-                    print(f"Governor of core {core} set to userspace")
+                    print(f"Governor of core {core} set to {governor}")
             except IOError as e:
                 if DEBUG:
                     print(f"Failed to set governor for core {core}: {e}")
@@ -136,15 +141,37 @@ class CPUFrequencyManager:
                 new_hwp_request = self.__read_msr(core, MSR_HWP_REQUEST)
                 print(f"Updated HWP_REQUEST value: {new_hwp_request:#x}")
 
+    def set_frequency_limits(self, min_freq_mhz, max_freq_mhz):
+        """
+        Set the minimum and maximum frequencies for all cores.
+        :param min_freq_mhz: Minimum frequency in MHz.
+        :param max_freq_mhz: Maximum frequency in MHz.
+        """
+        # Convert MHz to kHz
+        min_freq_khz = min_freq_mhz * 1000
+        max_freq_khz = max_freq_mhz * 1000
 
-# # Example usage:
-# if __name__ == "__main__":
-#     # Simple mode
-#     cores = [0, 2, 4, 6, 16, 17, 18, 19, 20, 21, 22, 23]  # List of cores to manage
-#     manager = CPUFrequencyManager(cores)
-#     core = 0  # Replace with the core number you want to target
-#     desired_frequency = 2000  # Example frequency value in MHz, replace with the actual desired value
-#     for core in cores:
-#         manager.setFrequency(core, desired_frequency)
+        for core in self.cores:
+            min_freq_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_min_freq"
+            max_freq_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_max_freq"
+            
+            try:
+                # Set the minimum frequency
+                with open(min_freq_path, 'w') as f:
+                    f.write(str(min_freq_khz))
+                if DEBUG:
+                    print(f"Minimum frequency for core {core} set to {min_freq_mhz} MHz ({min_freq_khz} kHz)")
+                
+                # Set the maximum frequency
+                with open(max_freq_path, 'w') as f:
+                    f.write(str(max_freq_khz))
+                if DEBUG:
+                    print(f"Maximum frequency for core {core} set to {max_freq_mhz} MHz ({max_freq_khz} kHz)")
+            
+            except IOError as e:
+                print(f"Failed to set frequency limits for core {core}: {e}")
 
 
+# Example usage:
+# manager = CPUFrequencyManager(governor="performance")  # Set the desired governor, e.g., "ondemand", "powersave"
+# manager.setFrequency(0, 2000)  # Example of setting frequency to 2000 MHz for core 0

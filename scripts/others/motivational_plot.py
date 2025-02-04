@@ -1,0 +1,279 @@
+import sys
+import os
+import re
+import glob
+from scipy.spatial import ConvexHull
+
+import numpy as np
+import matplotlib.pyplot as plt
+import itertools
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+from config import *
+
+# Enable LaTeX rendering in Matplotlib (if needed)
+plt.rcParams.update({
+    "text.usetex": True,  # Use LaTeX to render text
+    "font.family": "serif",  # Use serif fonts
+    "font.serif": ["Times"],  # Use Times font for the plot
+    "axes.labelsize": 16,  # Font size for axis labels
+    "axes.labelweight": "bold",  # Make axis labels bold
+    "xtick.labelsize": 14,  # Font size for x-axis tick labels
+    "ytick.labelsize": 14,  # Font size for y-axis tick labels
+    "legend.fontsize": 14,  # Font size for the legend
+    "axes.titlesize": 14  # Font size for the title
+})
+
+# Adjusted function to parse execution log and retrieve instructions, energy, and time
+def parse_execution_log(log_file):
+    total_time = None
+    total_energy = None
+    total_instructions = None
+
+    with open(log_file, 'r') as file:
+        for line in file:
+            if "Total time elapsed (perf)=" in line:
+                total_time = float(re.search(r'Total time elapsed \(perf\)= (\d+\.\d+)', line).group(1))
+            if "Total instructions executed =" in line:
+                total_instructions = int(re.search(r'Total instructions executed = (\d+)', line).group(1))
+            if "Total energy consumed (perf)=" in line:
+                total_energy = float(re.search(r'Total energy consumed \(perf\)= (\d+\.\d+)', line).group(1))
+    
+    return total_time, total_instructions, total_energy
+
+
+# Function to parse periodic log and accumulate instructions and energy
+def parse_periodic_log(log_file):
+    total_instructions = 0
+    total_energy = 0
+    all_energies = []
+    all_instructions = []
+    all_efficiencies = []
+
+    with open(log_file, 'r') as file:
+        for line in file:
+            # Check for PID entries and accumulate instructions
+            pid_match = re.search(r'PID \d+: instructions = (\d+)', line)
+            if pid_match:
+                instructions = int(pid_match.group(1))
+                total_instructions += instructions
+                all_instructions.append(instructions)
+
+            # Check for SYSTEM entries and accumulate energy (for energy-pkg)
+            energy_match = re.search(r'power/energy-psys/ = (\d+\.\d+)', line)
+            if energy_match:
+                energy = float(energy_match.group(1))
+                all_energies.append(energy)
+                total_energy += energy
+    all_efficiencies = [((instructions / energy) * 1e-6) for instructions, energy in zip(all_instructions, all_energies)]
+    return total_instructions, total_energy, np.mean(all_energies), np.mean(all_efficiencies)
+
+
+
+# Adjusted function to gather metrics for P-core and E-core results across frequencies
+def gather_metrics(application_name, frequency, core_type):
+    core_dirs = glob.glob(os.path.join(PARSEC_FIXED_FREQ_FOLDER, f"*_{application_name}_{frequency}_{core_type}"))
+    
+    if not core_dirs:
+        return None
+
+    log_file = os.path.join(core_dirs[0], "execution.log")
+    time, _, _ = parse_execution_log(os.path.join(core_dirs[0], "execution.log"))
+
+    
+    _, _, _, efficieny = parse_periodic_log(os.path.join(core_dirs[0], "periodic_counters.log"))
+    
+    return time, efficieny
+# Function to normalize the energy efficiency values
+def normalize_efficiency(efficiency, max_efficiency):
+    return efficiency / max_efficiency if max_efficiency > 0 else np.nan
+
+# Function to normalize the execution time values
+def normalize_execution_time(execution_time, min_execution_time):
+    return execution_time / min_execution_time if min_execution_time > 0 else np.nan
+
+# Function to draw a convex hull around a set of points
+# Function to fill the convex hull area with a background color
+def fill_convex_hull(points, ax, color, alpha=0.2):
+    if len(points) < 3:
+        return  # A convex hull requires at least 3 points
+    hull = ConvexHull(points)
+    hull_points = np.append(hull.vertices, hull.vertices[0])  # Close the hull
+
+    # Extract the x and y coordinates for the hull
+    hull_x = points[hull_points, 0]
+    hull_y = points[hull_points, 1]
+    
+    # Fill the hull area with the specified color and alpha transparency
+    ax.fill(hull_x, hull_y, color=color, alpha=alpha)
+
+from scipy.interpolate import splprep, splev
+
+# Function to create a smooth (rounded) convex hull and fill it
+def fill_rounded_convex_hull(points, ax, color, alpha=0.2, smooth_factor=100):
+    if len(points) < 3:
+        return  # A convex hull requires at least 3 points
+
+    # Compute the convex hull
+    hull = ConvexHull(points)
+    hull_points = points[hull.vertices]
+    
+    # Close the polygon by repeating the first point at the end
+    hull_points = np.vstack([hull_points, hull_points[0]])
+
+    # Use splprep and splev to create smooth curves between the hull points
+    tck, u = splprep([hull_points[:, 0], hull_points[:, 1]], s=0, per=True)
+    smooth_hull = splev(np.linspace(0, 1, smooth_factor), tck)
+    
+    # Fill the smooth convex hull area
+    ax.fill(smooth_hull[0], smooth_hull[1], color=color, alpha=alpha)
+
+# Function to generate scatter plot for normalized energy efficiency vs normalized execution time
+# for all applications, and highlight the encircled area for all P-core and E-core points with rounded convex hulls
+def plot_normalized_efficiency_vs_time_with_rounded(applications, results, output_dir):
+    plt.figure(figsize=(6.2, 5))
+    ax = plt.gca()
+
+    # Define markers for core types
+    pcore_marker = 'o'  # Circle marker for P-core points
+    ecore_marker = 's'  # Square marker for E-core points
+
+    # Define unique colors for each application
+    colors = itertools.cycle(plt.cm.tab10(np.linspace(0, 1, len(applications))))  # Unique color for each application
+    
+    # Lists to collect all P-core and E-core points across applications
+    all_pcore_points = []
+    all_ecore_points = []
+
+    for app_idx, app_name in enumerate(applications):
+        app_results = results[app_name]
+        color = next(colors)  # Get unique color for the application
+
+        # Plot P-core data points (already normalized)
+        pcore_data = app_results['P-core']
+        pcore_time, pcore_efficiency = zip(*pcore_data) if pcore_data else ([], [])
+
+        # Scatter plot for P-core (same marker, unique color)
+        ax.scatter(pcore_time, pcore_efficiency, 
+                   color=color, marker=pcore_marker, alpha=0.7, label=f"{app_name} (P-core)")
+        
+        # Collect all P-core points for the global hull
+        all_pcore_points.extend(list(zip(pcore_time, pcore_efficiency)))
+
+        # Plot E-core data points (already normalized)
+        ecore_data = app_results['E-core']
+        ecore_time, ecore_efficiency = zip(*ecore_data) if ecore_data else ([], [])
+        
+        # Scatter plot for E-core (same marker, unique color)
+        ax.scatter(ecore_time, ecore_efficiency, 
+                   color=color, marker=ecore_marker, alpha=0.7, label=f"{app_name} (E-core)")
+
+        # Collect all E-core points for the global hull
+        all_ecore_points.extend(list(zip(ecore_time, ecore_efficiency)))
+
+    # Convert lists to NumPy arrays for hull calculation
+    all_pcore_points = np.array(all_pcore_points)
+    all_ecore_points = np.array(all_ecore_points)
+
+    # Fill rounded convex hull for all P-core points with light blue color
+    if len(all_pcore_points) > 2:  # Ensure there are enough points to draw a hull
+        fill_rounded_convex_hull(all_pcore_points, ax, '#4E598C', alpha=0.2)
+
+    # Fill rounded convex hull for all E-core points with light red color
+    if len(all_ecore_points) > 2:  # Ensure there are enough points to draw a hull
+        fill_rounded_convex_hull(all_ecore_points, ax, '#F9C784', alpha=0.2)
+
+    plt.xlabel('Normalized Execution Time', fontweight='bold')
+    plt.ylabel('Normalized Energy Efficiency', fontweight='bold')
+
+    ax.grid(True, which='both', linestyle='--', linewidth=1.2, color='#333', alpha=0.6)
+    #plt.grid(True)
+    # Make the outer edges of the plot (spines) bolder
+    ax.spines['top'].set_linewidth(1.5)
+    ax.spines['right'].set_linewidth(1.5)
+    ax.spines['bottom'].set_linewidth(1.5)
+    ax.spines['left'].set_linewidth(1.5)
+    # Set xlim and ylim to have minimum values of 0
+    ax.set_xlim(left=0.21)
+    ax.set_ylim(bottom=0.301)
+
+    # Create legends for core types
+    #core_legend = [
+    #    plt.Line2D([0], [0], marker=pcore_marker, color='w', label='P-core Execution', markerfacecolor='none', markeredgecolor='black', markersize=10),
+    #    plt.Line2D([0], [0], marker=ecore_marker, color='w', label='E-core Execution', markerfacecolor='none', markeredgecolor='black', markersize=10)
+    #]
+    # Create dummy entries for the convex hulls
+    hull_legend = [
+        plt.Line2D([0], [0], color='#4E598C', lw=4, label='P-core Region'),
+        plt.Line2D([0], [0], color='#F9C784', lw=4, label='E-core Region')
+    ]
+    # Add the core type legend (symbols for P-core and E-core)
+    #plt.legend(handles=core_legend, loc='lower left', title='Core Type')
+    # Combine the legends for core types and convex hulls
+    plt.legend(handles=hull_legend, loc='upper right')
+
+
+    plt.tight_layout(pad=1.0)
+    plt.savefig(os.path.join(output_dir, "motivational_example.pdf"), dpi=300, format='pdf')
+    plt.close()
+
+
+# Main function to process and plot results for all frequencies and applications
+def main():
+    applications = parsec_apps
+    frequencies = [f"{freq}MHz" for freq in range(1500, 3600, 100)]
+    core_types = ["Pcore", "Ecore"]
+    
+    output_dir = PAPERPLOT_FOLDER
+    os.makedirs(output_dir, exist_ok=True)
+
+    results = {app: {'P-core': [], 'E-core': []} for app in applications}
+
+    for application_name in applications:
+        max_efficiency = 0  # Reset max efficiency for each application
+        max_time = 0  # Reset max E-core time for each application
+        
+        print(f"Processing {application_name}")
+        for frequency in frequencies:
+            
+            # Step 1: Gather metrics for P-core
+            pcore_metrics = gather_metrics(application_name, frequency, "Pcore")
+            if pcore_metrics:
+                pcore_time, pcore_efficiency = pcore_metrics
+                if pcore_time > 0:  # Ensure no division by zero
+                    results[application_name]['P-core'].append((pcore_time, pcore_efficiency))
+                    max_efficiency = max(max_efficiency, pcore_efficiency)  # Track max efficiency for normalization
+                    max_time = max(max_time, pcore_time)  # Track max time for normalization
+            
+            # Step 2: Gather metrics for E-core
+            ecore_metrics = gather_metrics(application_name, frequency, "Ecore")
+            if ecore_metrics:
+                ecore_time, ecore_efficiency = ecore_metrics
+                if ecore_time > 0:  # Ensure no division by zero
+                    results[application_name]['E-core'].append((ecore_time, ecore_efficiency))
+                    max_efficiency = max(max_efficiency, ecore_efficiency)  # Track max efficiency for normalization
+                    max_time = max(max_time, ecore_time)  # Track max time for normalization
+
+        if max_efficiency == 0:
+            print(f"No valid P-core efficiency found for {application_name}, skipping normalization.")
+            continue
+        
+        if max_time == 0:
+            print(f"No valid E-core execution time found for {application_name}, skipping normalization.")
+            continue
+        # Normalize the data per application
+        for i, (time, efficiency) in enumerate(results[application_name]['P-core']):
+            normalized_efficiency = normalize_efficiency(efficiency, max_efficiency)
+            normalized_time = normalize_execution_time(time, max_time)
+            results[application_name]['P-core'][i] = (normalized_time, normalized_efficiency)
+
+        for i, (time, efficiency) in enumerate(results[application_name]['E-core']):
+            normalized_efficiency = normalize_efficiency(efficiency, max_efficiency)
+            normalized_time = normalize_execution_time(time, max_time)
+            results[application_name]['E-core'][i] = (normalized_time, normalized_efficiency)
+        #print(results[application_name]['E-core'])
+    # Step 3: Plot the normalized energy efficiency vs normalized execution time for all applications
+    #plot_normalized_efficiency_vs_time(applications, results, output_dir)
+    plot_normalized_efficiency_vs_time_with_rounded(applications, results, output_dir)
+
+if __name__ == "__main__":
+    main()

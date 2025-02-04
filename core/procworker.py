@@ -29,8 +29,8 @@ def getPIDThread(proc):
         except:
             tries+=1
             time.sleep(0.005)
-            if tries >= 1000:
-                print("Warning: Process ", proc, " has probably finished")
+            if tries >= 100:
+                print("Warning: Process ", proc, " has probably not started yet.")
                 found = True
     return pid
 
