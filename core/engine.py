@@ -56,8 +56,7 @@ class Engine:
             self.PIDs.pop(app)
             if self.__monitoring_mode != MonitoringMode.OFF:
                 self.__monitor.updateTrackedMapping(self.mapping)
-            if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
-                self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
+                self.__monitor.updateTrackedPIDs(self.PIDs)
             self.__active_threads.remove(app)
         if config.DEBUG:
             print("[Core " + str(core) +"]: " + app + " finished execution!" )
@@ -121,7 +120,7 @@ class Engine:
         self.__start()
         # Start the monitoring thread
         if self.__monitoring_mode != MonitoringMode.OFF:
-            self.__monitor = Monitor(pids=[], tracked_mapping = self.mapping, monitoring_mode=self.__monitoring_mode, reporter=self.reporter, engine_start_time=self.startime, core_frequencies=self.__dvfs_policy.getCoreFrequencies())
+            self.__monitor = Monitor(pids={}, tracked_mapping = self.mapping, monitoring_mode=self.__monitoring_mode, reporter=self.reporter, engine_start_time=self.startime, core_frequencies=self.__dvfs_policy.getCoreFrequencies())
             self.__monitor.start()
         while self.running:
             current_time = self.getElapsedTime()
@@ -157,15 +156,14 @@ class Engine:
                 break
             else:
                 # Apply migration policy every X epochs
-                if self.__epochs > 0 and  self.__epochs % 20 == 0:
+                if self.__epochs > 0:
                     with lock:
                         for app in self.mapping:
                             self.PIDs[app] = getPIDOfApp(app)
-
-                    if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
-                        self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
-
-                    if self.__migration_policy is not None:
+                    self.__monitor.updateTrackedPIDs(self.PIDs)
+                    
+                    
+                    if self.__epochs % 20 == 0 and self.__migration_policy is not None:
                         #print("######### TRIGGERRING MIGRATION and DVFS #########")
                         #print("Current Mapping: ", self.mapping)
                         # setting the p cores to a random frequency from 1800 to 3200 with steps of 200MHz
@@ -200,7 +198,7 @@ class Engine:
                             print(f"[{str(round(self.getElapsedTime(), 2))}s] Migrated {app_to_migrate} from core {current_core} to core {new_core}")
 
                         if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
-                            self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
+                            self.__monitor.updateTrackedPIDs(self.PIDs)
 
                 # any other periodic action here
            
