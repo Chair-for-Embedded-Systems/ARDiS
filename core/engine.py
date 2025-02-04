@@ -9,7 +9,6 @@ from core.dvfs import *
 from core.scheduler import *
 from core.migration import *
 from core.monitoringmode import *
-from core.policies.ml_predictor import *
 import re
 import threading
 from timeit import default_timer as timer
@@ -37,8 +36,6 @@ class Engine:
         self.__monitoring_mode = monitoring_mode
         self.__one_shot_file = os.path.join(ROOTPATH, "one_shot.out")
         self.__benchmark_manager = BenchManager()
-        if config.ML_BASED_MIGRATION_DVFS:
-            self.__ml_predictor = MLPredictor(objective='Energy', model_type='rnn')
             
 
     def __start(self):
@@ -143,15 +140,13 @@ class Engine:
             if not self.__active_threads and not self.__waiting_threads:
                 self.running = False
                 self.endtime = timer()
-                if config.DEBUG:
-                    print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
-                    print("Total execution time of experiment = ", str(round(self.endtime - self.startime, 2)) + "s")
+                print("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
+                print("Total execution time of experiment = ", str(round(self.endtime - self.startime, 2)) + "s")
                 self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
                 self.reporter.logEvent("Total execution time of experiment = " + str(round(self.endtime - self.startime, 2)) + "s")
                 # Stop the monitoring thread
                 if self.__monitoring_mode != MonitoringMode.OFF:
                     self.__monitor.stop()
-                    
                     # Fetch the energy, time, and instructions from the one_shot.out file
                     energy, time_elapsed, executed_instructions = self.fetch_perf_data(self.__one_shot_file)
                     self.reporter.logEvent("Total instructions executed = " + str(executed_instructions))
@@ -163,66 +158,17 @@ class Engine:
             else:
                 # Apply migration policy every X epochs
                 if self.__epochs > 0 and  self.__epochs % 20 == 0:
-                    #print("[" + str(round(current_time, 2)) + "s]: Checking Migrations")
+                    with lock:
+                        for app in self.mapping:
+                            self.PIDs[app] = getPIDOfApp(app)
+
+                    if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
+                        self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
+
                     if self.__migration_policy is not None:
-                        if config.ML_BASED_MIGRATION_DVFS:                       
-                            input_vector = pd.DataFrame({
-                                #'Experiment_ID': [1],           # Replace with actual Experiment ID
-                                #'AOI_Application': ['Example'],   # Replace with actual AOI application name
-                                'AOI_Core': [2],                  # Replace with actual value
-                                'AOI_Cluster': ['E1'],            # Replace with actual value ('P', 'E1', 'E2')
-                                'AOI_IPC': [3.2],                 # Replace with actual value
-                                'AOI_Instructions': [1000],       # Replace with actual value
-                                'AOI_LLC_Loads': [200],           # Replace with actual value
-                                'AOI_LLC_Misses': [15],           # Replace with actual value
-                                'AOI_Stores': [80],               # Replace with actual value
-                                'AOI_Store_Misses': [5],          # Replace with actual value
-                                'AOI_Cycles': [1500],             # Replace with actual value
-                                'AOI_Branch_Misses': [10],        # Replace with actual value
-                                'AOI_Branches': [50],             # Replace with actual value
-                                'Frequency': [1.5],               # Replace with actual value
-                                #'Energy': [50],     
-                                'Same_Cluster_Applications': [''],              # Target, can be left as a placeholder
-                                'Same_Cluster_Instructions': [900],   # Replace with actual value
-                                'Same_Cluster_LLC_Loads': [180],      # Replace with actual value
-                                'Same_Cluster_LLC_Misses': [12],      # Replace with actual value
-                                'Same_Cluster_Stores': [70],          # Replace with actual value
-                                'Same_Cluster_Store_Misses': [4],     # Replace with actual value
-                                'Same_Cluster_Cycles': [1300],        # Replace with actual value
-                                'Same_Cluster_Branch_Misses': [9],    # Replace with actual value
-                                'Same_Cluster_Branches': [45],        # Replace with actual value
-                                'Other1_Applications': [''],          # Target, can be left as a placeholder    
-                                'Other1_Cluster': ['P'],              # Replace with actual value
-                                'Other1_Instructions': [850],         # Replace with actual value
-                                'Other1_LLC_Loads': [170],            # Replace with actual value
-                                'Other1_LLC_Misses': [14],            # Replace with actual value
-                                'Other1_Stores': [60],                # Replace with actual value
-                                'Other1_Store_Misses': [3],           # Replace with actual value
-                                'Other1_Cycles': [1250],              # Replace with actual value
-                                'Other1_Branch_Misses': [8],          # Replace with actual value
-                                'Other1_Branches': [40],              # Replace with actual value
-                                'Other2_Applications': [''],          # Target, can be left as a placeholder
-                                'Other2_Cluster': ['E2'],             # Replace with actual value
-                                'Other2_Instructions': [800],         # Replace with actual value
-                                'Other2_LLC_Loads': [160],            # Replace with actual value
-                                'Other2_LLC_Misses': [13],            # Replace with actual value
-                                'Other2_Stores': [55],                # Replace with actual value
-                                'Other2_Store_Misses': [2],           # Replace with actual value
-                                'Other2_Cycles': [1200],              # Replace with actual value
-                                'Other2_Branch_Misses': [7],          # Replace with actual value
-                                'Other2_Branches': [35]               # Replace with actual value
-                            })
-                            future_label = self.__ml_predictor.run_inference_and_report(input_vector)
-                            self.__monitor.recordPeriodicEntry(f"PREDICTED SYSTEM ENERGY: {future_label}")
                         #print("######### TRIGGERRING MIGRATION and DVFS #########")
                         #print("Current Mapping: ", self.mapping)
                         # setting the p cores to a random frequency from 1800 to 3200 with steps of 200MHz
-                        with lock:
-                            for app in self.mapping:
-                                self.PIDs[app] = getPIDOfApp(app)
-
-                        if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
-                            self.__monitor.updateTrackedPIDs(list(self.PIDs.values()))
                             
                         new_mapping, app_to_migrate, current_core, new_core = self.__migration_policy.getNewMapping(self.__total_instructions, self.mapping)
                         
