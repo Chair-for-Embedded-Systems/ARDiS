@@ -5,7 +5,8 @@ import subprocess
 import os
 import time
 from timeit import default_timer as timer
-
+import tempfile
+import shutil
 
 
 lock = threading.Lock()
@@ -33,6 +34,9 @@ class Monitor:
         self.__reporter = reporter
         self.__engine_start_time = engine_start_time
         self.__core_frequencies = core_frequencies
+        self.__temp_dir = tempfile.mkdtemp(prefix="perf_monitor_")
+        if DEBUG:
+            print(f"Temporary directory created: {self.__temp_dir}")
 
 
     def getElapsedTime(self):
@@ -92,24 +96,39 @@ class Monitor:
         while not self.__finished:
             self.__execute_perf_command()
             self.__execute_periodic_system_wide_perf()
-        os.remove(self.__inst_app_file)
+        if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
+            # Remove temporary directory and all contents
+            if os.path.exists(self.__temp_dir):
+                shutil.rmtree(self.__temp_dir)
+                if DEBUG:
+                    print(f"Temporary directory {self.__temp_dir} removed.")
+        elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_CORE:
+            os.remove(self.__inst_app_file)
         os.remove(self.__inst_sys_file)
         self.__kill_perf()
 
     def __execute_perf_command(self):
-        command = ""
         if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_CORE:
             command = f"perf stat -C {','.join(self.__tracked_cores)} -e {','.join(periodic_app_level_events)} -B -A -o {self.__inst_app_file} sleep {self.__sampling_rate} {'2> /dev/null' if not DEBUG else ''}"
-        elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID and len(self.__tracked_pid_values) > 0 and all(pid != "-1" for pid in self.__tracked_pid_values):
-            command = f"perf stat -p {','.join(self.__tracked_pid_values)} -e {','.join(periodic_app_level_events)} -B -o {self.__inst_app_file} sleep {self.__sampling_rate} {'2> /dev/null' if not DEBUG else ''}"
-        if DEBUG:
-            print("Command is: ", command)
-        with lock:
-            subprocess.run(command, shell=True)
-        if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_CORE:
+            if DEBUG:
+                print("Command is: ", command)
+
+            with lock:
+                subprocess.run(command, shell=True)
             self.__update_app_core_stats()
-        elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID and all(pid != "-1" for pid in self.__tracked_pid_values):
+
+        elif self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID and len(self.__tracked_pid_values) > 0:
+            # Run perf separately for each PID
+            for pid in self.__tracked_pid_values:
+                if pid != "-1":
+                    perf_output_file = os.path.join(self.__temp_dir, f"perf_pid_{pid}.out")  # Store in temp dir
+                    command = f"perf stat -p {pid} -e {','.join(periodic_app_level_events)} -B -o {perf_output_file} sleep {self.__sampling_rate} {'2> /dev/null' if not DEBUG else ''}"
+                    if DEBUG:
+                        print(f"Executing for PID {pid}: {command}")
+                    with lock:
+                        subprocess.run(command, shell=True)
             self.__update_app_pid_stats()
+
 
     def __execute_oneshot_system_wide_perf(self):
         command = f"perf stat -a -e {','.join(one_shot_system_wide_events)} -o {self.__one_shot_file}"
@@ -226,75 +245,67 @@ class Monitor:
                     print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | {' | '.join(app_metrics)}")
                 
                 self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {self.__core_frequencies[int(core_id)]} | {' | '.join(app_metrics)}")
-                
+              
     def __update_app_pid_stats(self):
-        # Initialize or reset the lists for each metric based on the tracked PIDs
+        """Update per-PID statistics from individual perf output files."""
         
-        base_dir = os.path.dirname(os.path.dirname(__file__)) 
-        perf_out_path = os.path.join(base_dir, self.__inst_app_file)  
-        
-        if os.path.exists(perf_out_path):
-            with open(perf_out_path, 'r') as f:
-                lines = f.readlines()
-        else:
-            print("Perf output file is not available")
-            return
-        
-        pid = None  # Variable to store the PID
-        
-        # Extract the PID from the header (assuming it's always on the 3rd line)
-        for line in lines:
-            if "Performance counter stats for process id" in line:
-                pid = line.split("'")[1]  # Extract PID from the string
-                break
-        
-        if pid is None:
-            #print("PID not found in the output")
-            return
-        
-        # Initialize PID-based metrics dictionary if not already
-        if pid not in self.__current_pid_values:
-            self.__current_pid_values[pid] = {}  # Dictionary to store metrics for this PID
-        
-        # Temporary storage for both cpu_atom and cpu_core values
-        temp_metrics = {}
+        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Current mapped cores: {self.__tracked_cores}")
+        for pid in self.__tracked_pid_values:
+            if pid != "-1":
+                perf_out_path = os.path.join(self.__temp_dir, f"perf_pid_{pid}.out")  # Use temp directory
 
-        # Process the lines containing performance data
-        for line in lines[5:-3]:  # Adjust this based on where relevant data starts and ends
-            if "<not supported>" in line or "<not counted>" in line:
-                continue  # Skip unsupported or not counted metrics
+                if not os.path.exists(perf_out_path):
+                    if DEBUG:
+                        print(f"Perf output file for PID {pid} is not available")
+                    continue  # Skip if the file does not exist
 
-            parts = line.split()
-            if len(parts) < 2:
-                continue  # Skip lines that don't have enough information
+                with open(perf_out_path, 'r') as f:
+                    lines = f.readlines()
 
-            # Parse the metric value, removing commas or dots for clean conversion to int
-            try:
-                metric_value = int(parts[0].replace(".", "").replace(",", ""))
-            except ValueError:
-                continue  # In case the metric value is not parsable, skip this line
-            
-            # Get the event name (e.g., `cpu_atom/instructions/` or `cpu_core/instructions/`)
-            event_name = parts[1]
-            
-            # Check if the event is in the list of events being tracked
-            for event in periodic_app_level_events:
-                if event in event_name:
-                    # Determine if it's cpu_atom or cpu_core
-                    if "cpu_atom" in event_name:
-                        temp_metrics.setdefault(event, {"cpu_atom": 0, "cpu_core": 0})["cpu_atom"] = metric_value
-                    elif "cpu_core" in event_name:
-                        temp_metrics.setdefault(event, {"cpu_atom": 0, "cpu_core": 0})["cpu_core"] = metric_value
+                # Initialize PID-based metrics dictionary if not already
+                if pid not in self.__current_pid_values:
+                    self.__current_pid_values[pid] = {event: 0 for event in periodic_app_level_events}  
+
+                temp_metrics = {}  # Temporary storage for both cpu_atom and cpu_core values
+
+                # Process the lines containing performance data
+                for line in lines[5:-3]:  # Adjust this based on where relevant data starts and ends
+                    if "<not supported>" in line or "<not counted>" in line:
+                        continue  # Skip unsupported or not counted metrics
+
+                    parts = line.split()
+                    if len(parts) < 2:
+                        continue  # Skip lines that don't have enough information
+
+                    # Parse the metric value, removing commas or dots for clean conversion to int
+                    try:
+                        metric_value = int(parts[0].replace(".", "").replace(",", ""))
+                    except ValueError:
+                        continue  # In case the metric value is not parsable, skip this line
                     
-                    break  # Break once the metric is found and stored
-        app_metrics = []
-        # Sum cpu_atom and cpu_core values and store in the final dictionary
-        for event, values in temp_metrics.items():
-            total_value = values["cpu_atom"] + values["cpu_core"]
-            self.__current_pid_values[pid][event] = total_value
-            app_metrics.append(f"{event} = {total_value}")
-        with lock:
-            if self.__tracked_mapping is not None and len(self.__tracked_mapping) > 0:
-                app_name = next(iter(self.__tracked_mapping))
-                core_id = self.__tracked_mapping[app_name]
-                self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {self.__core_frequencies[int(core_id)]} | {' | '.join(app_metrics)}")
+                    # Get the event name (e.g., `cpu_atom/instructions/` or `cpu_core/instructions/`)
+                    event_name = parts[1]
+                    
+                    # Check if the event is in the list of events being tracked
+                    for event in periodic_app_level_events:
+                        if event in event_name:
+                            # Determine if it's cpu_atom or cpu_core
+                            if "cpu_atom" in event_name:
+                                temp_metrics.setdefault(event, {"cpu_atom": 0, "cpu_core": 0})["cpu_atom"] = metric_value
+                            elif "cpu_core" in event_name:
+                                temp_metrics.setdefault(event, {"cpu_atom": 0, "cpu_core": 0})["cpu_core"] = metric_value
+                            
+                            break  # Break once the metric is found and stored
+                
+                app_metrics = []
+                # Sum cpu_atom and cpu_core values and store in the final dictionary
+                for event, values in temp_metrics.items():
+                    total_value = values["cpu_atom"] + values["cpu_core"]
+                    self.__current_pid_values[pid][event] = total_value
+                    app_metrics.append(f"{event} = {total_value}")
+
+                with lock:
+                    app_name = next((key for key, value in self.__tracked_pids.items() if value == int(pid)), None)
+                    if app_name is not None:
+                        core_id = self.__tracked_mapping[app_name]
+                        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {self.__core_frequencies[int(core_id)]} | {' | '.join(app_metrics)}")
