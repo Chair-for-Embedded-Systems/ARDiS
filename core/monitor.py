@@ -245,9 +245,9 @@ class Monitor:
                     print(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | {' | '.join(app_metrics)}")
 
                 with open(f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_cur_freq", 'r') as f:
-                    core_freq = f.read().strip()
+                    core_freq_mhz = int(f.read().strip()) / 1000
 
-                self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {core_freq} | {' | '.join(app_metrics)}")
+                self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {core_freq_mhz} | {' | '.join(app_metrics)}")
               
     def __update_app_pid_stats(self):
         """Update per-PID statistics from individual perf output files."""
@@ -313,6 +313,6 @@ class Monitor:
                         core_id = self.__tracked_mapping[app_name]
                             
                         with open(f"/sys/devices/system/cpu/cpu{core_id}/cpufreq/scaling_cur_freq", 'r') as f:
-                            core_freq = f.read().strip()
+                            core_freq_mhz = int(f.read().strip()) / 1000
 
-                        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {core_freq} | {' | '.join(app_metrics)}")
+                        self.__reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Core {core_id}: app = {app_name} | frequency = {core_freq_mhz} | {' | '.join(app_metrics)}")
