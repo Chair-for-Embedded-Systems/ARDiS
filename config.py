@@ -67,6 +67,12 @@ parsec_apps = [
     'parsec-splash2x.water_spatial'
 ]
 
+parsec_network_apps = [
+    'parsec-netdedup', 
+    'parsec-netferret',
+    'parsec-netstreamcluster',
+    'parsec-uptcpip',
+]
 # Number of cores in the system
 system_cores = 24
 # platform specific stuff
@@ -102,6 +108,20 @@ periodic_system_wide_events = [
     "power/energy-pkg/",
     "power/energy-cores/",
     "power/energy-psys/",
+    #"net:net_dev_xmit",
+    #"net:netif_receive_skb",
+    #"irq:softirq_entry",
+    #"irq:softirq_exit",
+    #"tcp:tcp_bad_csum",    
+    #"tcp:tcp_cong_state_set",
+    #"tcp:tcp_destroy_sock",
+    #"tcp:tcp_probe",   
+    #"tcp:tcp_rcv_space_adjust",
+    #"tcp:tcp_receive_reset",
+    #"tcp:tcp_retransmit_skb",
+    #"tcp:tcp_retransmit_synack",
+    #"tcp:tcp_send_reset",
+    #"sock:inet_sock_set_state"
 ]
 
 one_shot_system_wide_events = [
