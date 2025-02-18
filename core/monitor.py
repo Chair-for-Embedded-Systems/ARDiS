@@ -170,7 +170,7 @@ class Monitor:
             parts = line.split()
             
             # Parse the metric value, ensuring to remove any formatting like commas or dots
-            metric_value = float(parts[0])
+            metric_value = float(parts[0].replace(',',''))
             for event in periodic_system_wide_events:
                 if event in line:
                     self.__current_system_values[event] = metric_value
