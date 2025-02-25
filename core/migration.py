@@ -8,7 +8,7 @@ class MigrationPolicy:
     
 
     def __setAffinity(self, pid, core):
-        cmd_str = "taskset -cp " + str(core) + " " + str(pid)
+        cmd_str = "taskset -cpa " + str(core) + " " + str(pid)
         command = cmd_str.split(" ")
         #print ("Executing: ", cmd_str)    
         p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
