@@ -1,4 +1,4 @@
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 
 def plot_app_metric_by_time(output_file: str,
                             data: dict[str, tuple[list[float], list[float]]], # app -> (x, y)
@@ -11,7 +11,7 @@ def plot_app_metric_by_time(output_file: str,
         print(f"Plotting {output_file}") 
     
     fig, axis = plt.subplots(layout='constrained',figsize=(8,4))
-    axis.set_title(f"{title}")    
+    axis.set_title(f"{title}")
     for app, (x,y) in data.items():
         if y_unit_size > 1:
             y = y / y_unit_size

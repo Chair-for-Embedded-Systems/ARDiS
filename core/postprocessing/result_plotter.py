@@ -2,7 +2,7 @@ import os
 from enum import Enum
 from .analysis.experiment_analyser import ExperimentAnalyser
 from .plot.plot_metric_by_time import plot_app_metric_by_time
-from .plot.plot_mapping_by_core import plot_mapping_by_core
+from .plot.plot_mapping_by_time import plot_apps_by_mapped_core
 
 class ResultPlotter():
     def __init__(self, output_folder: str):
@@ -197,7 +197,7 @@ class BasicResultPlotter(ResultPlotter):
             )
         
         if Diagrams.MAPPING in self.__diagrams:
-            plot_mapping_by_core(
+            plot_apps_by_mapped_core(
                 output_file=os.path.join(of, "mapping.png"),
                 data={app : experiment.get_core_mapping_intervalls(app) for app in applications},
                 verbose=verbose
