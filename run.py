@@ -10,6 +10,7 @@ from core.dvfs import *
 from core.monitoringmode import *
 from core.migration import *
 from core.policies.intel_motivational_mapping import *
+from core.postprocessing.result_plotter import ResultPlotter, BasicResultPlotter, Diagrams
 import time
 from timeit import default_timer as timer
 from random import randrange
@@ -44,6 +45,9 @@ class Experiment:
     def executeExperiment(self):
         self.__engine.executeWorkload(self.__applications)
     
+    def getWorkingDirectory(self):
+        return self.__engine.reporter.workdir
+
     def __str__(self):
         return f"Experiment {self.__name} with applications {self.__applications} and engine {self.__engine}"
     
@@ -177,8 +181,29 @@ def run_parsec_characterization_experiments():
                 print(f"Experiment {exp_name} already exists in the results folder.")
 
 
+def run_example_with_result_plotting():
+    
+    exp = Experiment("Experiment with result plotting", 
+                     mapping_policy=ExplicitMapping([3, 6, 19]),
+                     scheduler=ConsecutiveScheduler(0),
+                     dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}),
+                     monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
+    
+    exp.setApplications(['parsec-blackscholes', 'parsec-splash2x.radix', 'parsec-bodytrack'])
+    exp.executeExperiment()
+    
+    # Plots the diagrams
+    result_plt =  BasicResultPlotter(
+        experiment_folder=exp.getWorkingDirectory(),
+        diagrams=[Diagrams.FREQUENCY, Diagrams.INSTRUCTIONS, Diagrams.MAPPING], # Leave undefined for all diagrams
+        #aoi="parsec-blackscholes" # Specify an application of interest, leave undefined for all apps
+        ) 
+    result_plt.plot_results(verbose=True)
+
 if __name__ == "__main__":
-    run_example_with_core_monitoring()
+    #run_example_with_core_monitoring()
     #run_example_with_PID_monitoring()
     #run_parsec_default_linux_governor()
     #run_parsec_characterization_experiments()
+    run_example_with_result_plotting()
+
