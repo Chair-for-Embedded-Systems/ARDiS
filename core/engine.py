@@ -2,7 +2,7 @@ from benchmarks.bench_manager import *
 from config import *
 from core.procworker import *
 from core.mapping import *
-from core.monitor import *
+from core.monitoring.monitor import Monitor, TrackingConfig
 from core.postprocessor import *
 from core.reporter import *
 from core.dvfs import *
@@ -120,7 +120,19 @@ class Engine:
         self.__start()
         # Start the monitoring thread
         if self.__monitoring_mode != MonitoringMode.OFF:
-            self.__monitor = Monitor(pids={}, tracked_mapping = self.mapping, monitoring_mode=self.__monitoring_mode, reporter=self.reporter, engine_start_time=self.startime, core_frequencies=self.__dvfs_policy.getCoreFrequencies())
+            
+            self.__monitor = Monitor(
+                sampling_rate_sec=config.sampling_rate/1000,
+                periodic_app_level_events=config.periodic_app_level_events,
+                periodic_system_level_events=config.periodic_system_wide_events,
+                one_shot_system_level_events=config.one_shot_system_wide_events,
+                reporter=self.reporter,
+                inital_tracking_config=TrackingConfig(
+                    monitor_mode=self.__monitoring_mode,
+                    app_to_core=self.mapping,
+                )
+            )
+
             self.__monitor.start()
         while self.running:
             current_time = self.getElapsedTime()
@@ -147,10 +159,10 @@ class Engine:
                 if self.__monitoring_mode != MonitoringMode.OFF:
                     self.__monitor.stop()
                     # Fetch the energy, time, and instructions from the one_shot.out file
-                    energy, time_elapsed, executed_instructions = self.fetch_perf_data(self.__one_shot_file)
-                    self.reporter.logEvent("Total instructions executed = " + str(executed_instructions))
-                    self.reporter.logEvent("Total energy consumed (perf)= " + str(energy) + " Joules")
-                    self.reporter.logEvent("Total time elapsed (perf)= " + str(time_elapsed) + " seconds")
+                    #energy, time_elapsed, executed_instructions = self.fetch_perf_data(self.__one_shot_file)
+                    #self.reporter.logEvent("Total instructions executed = " + str(executed_instructions))
+                    #self.reporter.logEvent("Total energy consumed (perf)= " + str(energy) + " Joules")
+                    #self.reporter.logEvent("Total time elapsed (perf)= " + str(time_elapsed) + " seconds")
                 # Clear the caches after the experiment is done
                 self.__clearCaches()
                 break
