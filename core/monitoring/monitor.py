@@ -1,7 +1,7 @@
-from dataclasses import dataclass,field
+from dataclasses import dataclass, field
 from multiprocessing.pool import ThreadPool
 from timeit import default_timer as timer
-from queue import Queue
+from queue import Queue,Empty
 
 import os
 import sys
@@ -17,6 +17,7 @@ from core.monitoring.polling.poll_procfs import poll_affinity, poll_frequency
 from core.monitoringmode import MonitoringMode
 from core.reporter import Reporter
 from core.monitoring.report_helper import ReportHelper
+from core.monitoring.reportable_result import PeriodicPIDResult, PeriodicCoreResult, ReportableResult
 
 @dataclass
 class TrackingConfig:
@@ -39,6 +40,7 @@ class TrackingConfig:
         self.pids_to_track = set(list(self.app_to_pid.values()))
         self.cores_to_track = set(list(self.app_to_core.values()))
     
+
 class Monitor:
 
     def __init__(
@@ -55,8 +57,9 @@ class Monitor:
         self.__system_level_poller = PollerSystemLevel(sampling_rate_sec, periodic_system_level_events, one_shot_system_level_events)
         self.__sampling_rate_sec = sampling_rate_sec
         self.__tracking_config = inital_tracking_config
-        self.__tracking_config_update_queue = Queue()
+        self.__tracking_config_update_queue: Queue[TrackingConfig] = Queue()
         self.reporter = reporter
+        self.__reporting_queue: Queue[ReportableResult] = Queue()
         self.__report_helper = ReportHelper(reporter)
         self.__running = False
 
@@ -115,6 +118,14 @@ class Monitor:
 
         self.__tracking_config = update_queue.get()
 
+    def __poll_freq_and_affinity(self, pids: set[int]) -> tuple[dict[int, list[int]], dict[int, float]]:
+        """"
+        Returns the affinity for each pid and the frequency of the used cores
+        """
+        pid_to_affinity = poll_affinity(pids)
+        core_to_freq = poll_frequency(set(core for affinity in pid_to_affinity.values() for core in affinity))
+        return pid_to_affinity, core_to_freq
+
     def __run(self):
         """
         Creates a thread pool to run multiple tasks in parallel:
@@ -125,50 +136,97 @@ class Monitor:
         """
         with ThreadPool(processes=4) as pool:
             # Start perf thread for one-shot system events.
-            result_one_shot = pool.apply_async(self.__system_level_poller.start_one_shot, ())
+            result_one_shot = pool.apply_async(self.__system_level_poller.start_one_shot)
+            reporting_thread = pool.apply_async(self.__run_reporter)
             while self.__running:
-                
+
                 # Update tracking configuration
                 self.__process_update_queue()
                 if not self.__tracking_config:
                     time.sleep(self.__sampling_rate_sec)
                     continue
                 # Start thread that polls the system wide events
-                res_perf_sys = pool.apply_async(
+                sys_level_thread = pool.apply_async(
                     func=self.__system_level_poller.poll,
                     error_callback=(lambda error: print(f"[thread_poll_system_wide] exception: {error}")))
                 
                 if self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_CORE:
                     # Start thread that polls the application level events (via core tracking)
-                    res_perf_apps = pool.apply_async(
+                    app_level_thread = pool.apply_async(
                         func=self.__app_level_poller.poll_by_core,
                         args=([self.__tracking_config.cores_to_track]),
                         error_callback=(lambda error: print(f"[thread_poll_app_level] exception: {error}"))
                     )
-                    # Start report thread
-                    pool.apply_async(
-                        func=self.__report_periodic_events_core, 
-                        args=([res_perf_sys.get(), res_perf_apps.get(), self.__tracking_config]),
-                        error_callback=(lambda error: print(f"[reporter] exception: {error}"))
+                    procfs_thread = pool.apply_async(
+                        func=poll_frequency,
+                        args=([self.__tracking_config.cores_to_track])
                     )
+                    app_events = app_level_thread.get()
+                    sys_events = sys_level_thread.get()
+                    frequency = procfs_thread.get()
+                    
+                    result = PeriodicCoreResult(
+                        elapsed_time_sec=timer() - self.__start_time,
+                        app_events=app_events,
+                        sys_events=sys_events,
+                        core_to_freq=frequency,
+                        core_to_app=self.__tracking_config.core_to_app,
+                    )
+                    # Start report thread
+                    #pool.apply_async(
+                    #    func=self.__report_periodic_events_core, 
+                    #    args=([sys_level_thread.get(), res_perf_apps.get(), self.__tracking_config]),
+                    #    error_callback=(lambda error: print(f"[reporter] exception: {error}"))
+                    #)
+                    self.__reporting_queue.put_nowait(result)
+                    #result.report(DummyReporter())
 
                 elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_PID:
-                    # Start thread that polls the application level events (via core tracking)
-                    res_perf_apps = pool.apply_async(
+                    # Start thread that polls the application level events (via pid tracking)
+                    app_level_thread = pool.apply_async(
                         func=self.__app_level_poller.poll_by_pid,
                         args=([self.__tracking_config.pids_to_track]),
                         error_callback=(lambda error: print(f"[thread_poll_app_level] exception: {error}"))
                     )
-                    # Start report thread
-                    pool.apply_async(
-                        func=self.__report_periodic_events_pid,
-                        args=([res_perf_sys.get(), res_perf_apps.get(), self.__tracking_config]),
-                        error_callback=(lambda error: print(f"[reporter] exception: {error}"))
+                    procfs_thread = pool.apply_async(
+                        func=self.__poll_freq_and_affinity,
+                        args=([self.__tracking_config.pids_to_track])
                     )
+
+                    app_events = app_level_thread.get()
+                    sys_events = sys_level_thread.get()
+                    affinity, frequency = procfs_thread.get()
+
+                    result = PeriodicPIDResult(
+                        elapsed_time_sec=timer() - self.__start_time,
+                        app_events=app_events,
+                        sys_events=sys_events,
+                        pid_to_affinity=affinity,
+                        core_to_freq=frequency,
+                        pid_to_app=self.__tracking_config.pid_to_app
+                    )
+
+                    self.__reporting_queue.put_nowait(result)
+                    #result.report(DummyReporter())
+                    # Start report thread
+                    #pool.apply_async(
+                    #    func=self.__report_periodic_events_pid,
+                    #    args=([sys_level_thread.get(), app_level_thread.get(), self.__tracking_config]),
+                    #    error_callback=(lambda error: print(f"[reporter] exception: {error}"))
+                    #)
 
             # Stop perf thread for system wide events and report the results.
             self.__system_level_poller.stop_one_shot()            
             self.__report_helper.report_one_shot(result_one_shot.get().events, timer() - self.__start_time)
+            reporting_thread.wait(timeout=self.__sampling_rate_sec*5)
+
+    def __run_reporter(self) -> None:
+        while self.__running:
+            try:
+                result = self.__reporting_queue.get(timeout=self.__sampling_rate_sec)
+                result.report(self.reporter)
+            except Empty:
+                continue
 
     def __report_periodic_events_core(
         self,
@@ -201,7 +259,7 @@ class Monitor:
         app_events: ResultPIDPolling,
         tracking_config: TrackingConfig,
         report_mapping: bool = True,
-        report_multiplex: bool = True
+        report_multiplex: bool = False
         ) -> None:
         
         elapsed_time_sec = timer() - self.__start_time
