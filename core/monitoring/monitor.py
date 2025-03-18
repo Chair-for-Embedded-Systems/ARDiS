@@ -16,8 +16,7 @@ from core.monitoring.polling.poll_system_level_events import PollerSystemLevel, 
 from core.monitoring.polling.poll_procfs import poll_affinity, poll_frequency
 from core.monitoringmode import MonitoringMode
 from core.reporter import Reporter
-from core.monitoring.report_helper import ReportHelper
-from core.monitoring.reportable_result import PeriodicPIDResult, PeriodicCoreResult, ReportableResult
+from core.monitoring.reportable_result import ReportableResult, PeriodicPIDResult, PeriodicCoreResult, OneShotSystemResult
 
 @dataclass
 class TrackingConfig:
@@ -60,7 +59,6 @@ class Monitor:
         self.__tracking_config_update_queue: Queue[TrackingConfig] = Queue()
         self.reporter = reporter
         self.__reporting_queue: Queue[ReportableResult] = Queue()
-        self.__report_helper = ReportHelper(reporter)
         self.__running = False
 
     def update_tracking_config(self, next_config: TrackingConfig):
@@ -172,14 +170,7 @@ class Monitor:
                         core_to_freq=frequency,
                         core_to_app=self.__tracking_config.core_to_app,
                     )
-                    # Start report thread
-                    #pool.apply_async(
-                    #    func=self.__report_periodic_events_core, 
-                    #    args=([sys_level_thread.get(), res_perf_apps.get(), self.__tracking_config]),
-                    #    error_callback=(lambda error: print(f"[reporter] exception: {error}"))
-                    #)
                     self.__reporting_queue.put_nowait(result)
-                    #result.report(DummyReporter())
 
                 elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_PID:
                     # Start thread that polls the application level events (via pid tracking)
@@ -207,17 +198,15 @@ class Monitor:
                     )
 
                     self.__reporting_queue.put_nowait(result)
-                    #result.report(DummyReporter())
-                    # Start report thread
-                    #pool.apply_async(
-                    #    func=self.__report_periodic_events_pid,
-                    #    args=([sys_level_thread.get(), app_level_thread.get(), self.__tracking_config]),
-                    #    error_callback=(lambda error: print(f"[reporter] exception: {error}"))
-                    #)
 
             # Stop perf thread for system wide events and report the results.
             self.__system_level_poller.stop_one_shot()            
-            self.__report_helper.report_one_shot(result_one_shot.get().events, timer() - self.__start_time)
+            sys_one_shot = result_one_shot.get()
+            result_one_shot = OneShotSystemResult(
+                sys_events=sys_one_shot,
+                elapsed_time_sec=timer() - self.__start_time
+            )
+            result_one_shot.report(self.reporter)
             reporting_thread.wait(timeout=self.__sampling_rate_sec*5)
 
     def __run_reporter(self) -> None:
@@ -227,62 +216,6 @@ class Monitor:
                 result.report(self.reporter)
             except Empty:
                 continue
-
-    def __report_periodic_events_core(
-        self,
-        sys_events: ResultSystemPolling,
-        app_events: ResultCorePolling,
-        tracking_config: TrackingConfig,
-        report_mapping: bool = True,
-        report_multiplex: bool = False
-        ) -> None:
-        elapsed_time_sec = timer() - self.__start_time
-        
-        if app_events:
-            if report_mapping:
-                self.__report_helper.report_current_mapped_cores(tracking_config.cores_to_track, elapsed_time_sec)
-            if report_multiplex:
-                self.__report_helper.report_mulitplexing("app_level", app_events.event_to_pct_running, elapsed_time_sec)
-
-            self.__report_helper.report_periodic_app_events_core_moitoring(
-                app_events=app_events,
-                elapsed_time_sec=elapsed_time_sec,
-                core_to_freq=poll_frequency(tracking_config.cores_to_track),
-                core_to_app=tracking_config.core_to_app
-            )
-        
-        self.__report_helper.report_periodic_system_events(elapsed_time_sec, sys_events.events)
-
-    def __report_periodic_events_pid(
-        self,
-        sys_events: ResultSystemPolling,
-        app_events: ResultPIDPolling,
-        tracking_config: TrackingConfig,
-        report_mapping: bool = True,
-        report_multiplex: bool = False
-        ) -> None:
-        
-        elapsed_time_sec = timer() - self.__start_time
-        
-        if app_events:
-            pid_to_affinity = poll_affinity(set(app_events._pids))
-            core_to_freq = poll_frequency(set(core for affinity in pid_to_affinity.values() for core in affinity))
-            
-            if report_multiplex:
-                self.__report_helper.report_mulitplexing("app_level",app_events.event_to_pct_running, elapsed_time_sec)
-            
-            if report_mapping:
-                self.__report_helper.report_current_mapped_cores(set(core_to_freq.keys()), elapsed_time_sec)
-            
-            self.__report_helper.report_periodic_app_events_pid_monitoring(
-                app_events=app_events,
-                elapsed_time_sec=elapsed_time_sec,
-                pid_to_affinity=pid_to_affinity,
-                pid_to_app=tracking_config.pid_to_app,
-                core_to_freq=core_to_freq
-            )
-
-        self.__report_helper.report_periodic_system_events(elapsed_time_sec, sys_events.events)
 
     # Legacy
     def updateTrackedMapping(self, mapping: dict[str, int]) -> None:
