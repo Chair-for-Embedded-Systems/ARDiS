@@ -1,4 +1,3 @@
-
 def poll_affinity(pids: set[int]) -> dict[int, list[int]]:
     """
     Returns the affinity as list of allowed logical cores for the given set of pid's.
@@ -32,9 +31,3 @@ def poll_frequency(logic_cores: set[int]) -> dict[int, float]:
             core_freq_mhz = int(f.read().strip()) / 1000
             core_to_freq[core] = core_freq_mhz
     return core_to_freq
-
-if __name__ == '__main__':
-    affinity = poll_affinity(set([1]))
-    frequency = poll_frequency(set([0,2,4,23]))
-    print(affinity)
-    print(frequency)

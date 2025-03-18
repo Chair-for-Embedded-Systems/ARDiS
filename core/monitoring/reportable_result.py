@@ -67,7 +67,7 @@ class PeriodicCoreResult(ReportableResult):
     core_to_freq: dict[int, float]
     core_to_app: dict[int, str]
     log_mapped_cores: bool = field(default=True)
-    log_event_multiplexing: bool = field(default=True)
+    log_event_multiplexing: bool = field(default=False)
 
     def report(self, reporter: Reporter) -> None:
         

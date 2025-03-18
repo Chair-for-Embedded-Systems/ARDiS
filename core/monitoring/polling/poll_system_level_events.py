@@ -1,9 +1,6 @@
-
 import json
-import os
 import signal
 import subprocess
-import sys
 
 from dataclasses import dataclass
 
@@ -69,17 +66,3 @@ class PollerSystemLevel:
             events_pct_running[event] = int(perf_stat_event['pcnt-running'])
         
         return ResultSystemPolling(events, events_pct_running)
-
-
-if __name__ == '__main__':
-    
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
-    from config import periodic_system_wide_events, one_shot_system_wide_events
-    
-    poller = PollerSystemLevel(
-        sampling_rate_sec=1,
-        periodic_events=periodic_system_wide_events,
-        one_shot_events=one_shot_system_wide_events
-    )
-    
-    poller.poll()

@@ -2,7 +2,6 @@ import glob
 import os
 import subprocess
 import json
-import sys
 from timeit import default_timer as timer
 from dataclasses import dataclass
 
@@ -179,23 +178,3 @@ class PollerAppLevel:
                 events_pct_running[event] = int(perf_stat_event['pcnt-running'])
         
         return ResultCorePolling(events, events_pct_running)
-
-
-
-if __name__ == '__main__':
-    
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
-    from config import periodic_app_level_events
-    
-    poller = PollerAppLevel(
-        sampling_rate_sec=1,
-        events=periodic_app_level_events
-    )
-
-    events_by_core = poller.poll_by_core(cores=[0])
-    events_by_pid = poller.poll_by_pid(pids=[1])
-    
-    print(events_by_pid.get_events(False))
-    print("")
-    print(events_by_pid.get_events(True))
-    print(events_by_pid._tid_to_app_name.values())    

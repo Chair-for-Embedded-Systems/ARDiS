@@ -1,22 +1,17 @@
+import threading
+import time
+
 from dataclasses import dataclass, field
 from multiprocessing.pool import ThreadPool
 from timeit import default_timer as timer
 from queue import Queue,Empty
 
-import os
-import sys
-import threading
-import time
-
-# Only required if run from this files main
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
-from core.monitoring.polling.poll_app_level_events import PollerAppLevel, ResultCorePolling, ResultPIDPolling
-from core.monitoring.polling.poll_system_level_events import PollerSystemLevel, ResultSystemPolling
+from core.monitoring.polling.poll_app_level_events import PollerAppLevel
+from core.monitoring.polling.poll_system_level_events import PollerSystemLevel
 from core.monitoring.polling.poll_procfs import poll_affinity, poll_frequency
 from core.monitoringmode import MonitoringMode
-from core.reporter import Reporter
 from core.monitoring.reportable_result import ReportableResult, PeriodicPIDResult, PeriodicCoreResult, OneShotSystemResult
+from core.reporter import Reporter
 
 @dataclass
 class TrackingConfig:
@@ -143,6 +138,7 @@ class Monitor:
                 if not self.__tracking_config:
                     time.sleep(self.__sampling_rate_sec)
                     continue
+
                 # Start thread that polls the system wide events
                 sys_level_thread = pool.apply_async(
                     func=self.__system_level_poller.poll,
@@ -257,48 +253,3 @@ class Monitor:
 
     def recordPeriodicEntry(self, entry: str) -> None:
         raise NotImplementedError
-
-# Debug
-class DummyReporter(Reporter):
-    
-    def __init__(self):
-        pass
-
-    def logPeriodicCounters(self, data):
-        print(data)
-
-    def logEvent(self, event):
-        print(event)
-
-    def logExecutionTime(self, app_name, core, time):
-        print(f"{app_name} {core} {time}")
-
-
-if __name__ == '__main__':
-    
-    import config
-    
-    monitor = Monitor(
-        sampling_rate_sec=config.sampling_rate / 1000,
-        periodic_app_level_events=config.periodic_app_level_events,
-        periodic_system_level_events=config.periodic_system_wide_events,
-        one_shot_system_level_events=config.one_shot_system_wide_events,
-        reporter=DummyReporter(),
-        inital_tracking_config=TrackingConfig(monitor_mode=MonitoringMode.PERIODIC_ON_CORE)
-    )
-
-    tracking_config=TrackingConfig(
-        monitor_mode=MonitoringMode.PERIODIC_ON_CORE,
-        app_to_core={"streamcluster": 4},
-        app_to_pid={"streamcluster" : 3034853}
-    )
-
-    monitor.start()
-
-    try:
-        time.sleep(1)
-        monitor.update_tracking_config(next_config=tracking_config)
-        time.sleep(10)
-    except KeyboardInterrupt as k:
-        pass
-    monitor.stop()
