@@ -249,7 +249,7 @@ class Monitor:
         raise NotImplementedError
 
     def getElapsedTime(self) -> float:
-        raise NotImplementedError
+        return timer() - self.__start_time
 
     def recordPeriodicEntry(self, entry: str) -> None:
-        raise NotImplementedError
+        self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] {entry}")
