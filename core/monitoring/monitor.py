@@ -17,6 +17,9 @@ from core.reporter import Reporter
 class TrackingConfig:
     """
     This class represents a configuration for the monitor.
+    When using `MonitoringMode.PERIODIC_ON_CORE`, an application needs to be present
+    in the `app_to_core` and `app_to_pid` dict. Otherwise it will not be tracked.
+    For `MonitorngMode.PERIODIC_ON_PID`, only the `app_to_pid` dict is necessary.
     """
     monitor_mode: MonitoringMode
     
@@ -31,8 +34,11 @@ class TrackingConfig:
     def __post_init__(self):
         self.pid_to_app = {pid: app for app,pid in self.app_to_pid.items()}
         self.core_to_app = {pid: app for app,pid in self.app_to_core.items()}
-        self.pids_to_track = set(list(self.app_to_pid.values()))
-        self.cores_to_track = set(list(self.app_to_core.values()))
+        
+        self.pids_to_track = set(self.app_to_pid.values())
+        # Only track cores where the corresponding app has started i.e pid != -1
+        self.cores_to_track = {core for app, core in self.app_to_core.items() 
+                               if app in self.app_to_pid and self.app_to_pid[app] != -1}
     
 
 class Monitor:
