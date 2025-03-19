@@ -129,7 +129,7 @@ class Monitor:
         """
         with ThreadPool(processes=4) as pool:
             # Start perf thread for one-shot system events.
-            result_one_shot = pool.apply_async(self.__system_level_poller.start_one_shot)
+            system_one_shot_thread = pool.apply_async(self.__system_level_poller.poll_one_shot)
             reporting_thread = pool.apply_async(self.__run_reporter)
             while self.__running:
 
@@ -197,12 +197,12 @@ class Monitor:
 
             # Stop perf thread for system wide events and report the results.
             self.__system_level_poller.stop_one_shot()            
-            sys_one_shot = result_one_shot.get()
-            result_one_shot = OneShotSystemResult(
+            sys_one_shot = system_one_shot_thread.get()
+            system_one_shot_thread = OneShotSystemResult(
                 sys_events=sys_one_shot,
                 elapsed_time_sec=timer() - self.__start_time
             )
-            result_one_shot.report(self.reporter)
+            system_one_shot_thread.report(self.reporter)
             reporting_thread.wait(timeout=self.__sampling_rate_sec*5)
 
     def __run_reporter(self) -> None:
@@ -238,7 +238,7 @@ class Monitor:
         """@deprecated Monitor measures the frequency on its own"""
         pass
     
-    # TODO 
+    # TODO (Event buffer is not yet implemented)
     def getMetricAtCore(self, core: int, event: str) -> float|int|None:
         raise NotImplementedError
 

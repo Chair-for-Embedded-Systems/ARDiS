@@ -1,14 +1,26 @@
 from dataclasses import dataclass,field
+from abc import ABC, abstractmethod
 
 from core.monitoring.polling.poll_app_level_events import ResultCorePolling, ResultPIDPolling
 from core.monitoring.polling.poll_system_level_events import ResultSystemPolling
 from core.reporter import Reporter
 
-class ReportableResult:
+class ReportableResult(ABC):
+    """
+    This class represents an abstract reportable result.
+    Its primarly used in the monitor to pass data from the main monitoring thread to the reporting thread
+    """
+    @abstractmethod
     def report(self, reporter: Reporter) -> None:
+        """
+        Reports the data provided during initialisation with the given reporter
+        """
         raise NotImplementedError
     
     def get_timestamp(self, elapsed_time_sec) -> str:
+        """
+        Returns the provided elapsed time as formatted string
+        """
         return f"[{elapsed_time_sec:.2f}s]"
 
 @dataclass    

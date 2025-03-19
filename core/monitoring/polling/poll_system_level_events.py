@@ -19,14 +19,22 @@ class PollerSystemLevel:
         self.__process_one_shot = None
 
     def poll(self) -> ResultSystemPolling:
+        """
+        Runs a perf command to collect periodic-system-wide metrics and returns the result.
+        Blocks for `sampling_rate_sec` seconds, which is defined in the constructor.
+        
+        """
         command = f"perf stat -a -j -e {','.join(self.__periodic_events)} sleep {self.__sampling_rate_sec}"
         result = subprocess.run(command.split(' '), capture_output=True, text=True)
         output = result.stderr # perf outputs on stderr
         
         return self.__parse_events(output, self.__periodic_events)
    
-    def start_one_shot(self) -> ResultSystemPolling:
-        
+    def poll_one_shot(self) -> ResultSystemPolling:
+        """
+        Runs and returns the result of the one-shot-system wide perf command. 
+        This call is blocking until `stop_one_shot()` gets called from another thread.
+        """
         if self.__running_one_shot:
             raise Exception("One-shot process is already running, call stop_one_shot first")
 
@@ -42,7 +50,10 @@ class PollerSystemLevel:
         return self.__parse_events(output, self.__one_shot_events)
         
     def stop_one_shot(self):
-        
+        """
+        Stops the one-shot-system-wide collection of data using perf.
+        If a thread was blocked while running `poll_one_shot()`, it gets released
+        """
         if self.__running_one_shot and self.__process_one_shot:
             self.__process_one_shot.send_signal(sig=signal.SIGINT)
             self.__running_one_shot = False

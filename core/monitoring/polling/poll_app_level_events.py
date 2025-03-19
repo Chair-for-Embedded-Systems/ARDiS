@@ -7,6 +7,9 @@ from dataclasses import dataclass
 
 @dataclass
 class ResultPIDPolling:
+    """
+    Class to represent the result of the perf command that collected application metrics by pid.
+    """
     _pids: list[int]
     _tid_to_events: dict[int, dict[str, int | float]]
     _tid_to_app_name: dict[int, str]
@@ -14,7 +17,13 @@ class ResultPIDPolling:
     event_to_pct_running: dict[str, int]
 
     def get_events(self, aggregate_by_pid: bool) -> dict[int, dict[str, int | float]]:
+        """
+        Returns a dict, that maps a given pid/tid and event to the corresponding value.
+        e.g: `events[42]["instructions"] == 100`.
         
+        :param aggregate_by_pid: bool 
+        If set the the returned dictionary contains a mapping from the pid to the aggregated events of its threads. If not set a dictionary which mapps tids to events gets returned.
+        """
         if not self._tid_to_events:
             return {}
         
@@ -36,15 +45,25 @@ class ResultPIDPolling:
         return pid_to_event
     
     def get_app_name(self, thread_id: int) -> str:
+        """
+        Returns the application name for the given process id (pid) or thread id (tid).
+        Returns "unknown" if the pid/tid is unknown
+        """
         return self._tid_to_app_name.get(thread_id, "unknown")
         
     
 @dataclass
 class ResultCorePolling:
+    """
+    Class to represent the result of the perf command that collected metrics by core.
+    """
     _core_to_events: dict[int, dict[str, int|float]]
     event_to_pct_running: dict[str, int]
-
     def get_events(self) -> dict[int, dict[str, int|float]]:
+        """
+        Returns a dict, that maps a given core and an event to the corresponding value.
+        e.g: `events[42]["instructions"] == 100`
+        """
         return self._core_to_events
 
 class PollerAppLevel:
@@ -71,7 +90,10 @@ class PollerAppLevel:
 
 
     def poll_by_pid(self, pids: list[int]) -> ResultPIDPolling:
-
+        """
+        Runs a perf command to collect the periodic applcication metrics of the given pids.
+        This call will block for `sampling_rate_sec` which is defined in the constructor.
+        """
         # Get thread ids (tids) for each passed pid
         pid_to_tids = {}
         for pid in pids:
@@ -135,7 +157,10 @@ class PollerAppLevel:
         return ResultPIDPolling(pids, events, tid_names, tid_to_pid, events_pct_running)
 
     def poll_by_core(self, cores: list[int]) -> ResultCorePolling:
-        
+        """
+        Runs a perf command to collect the periodic metrics of the given core.
+        This call will block for `sampling_rate_sec` which is defined in the constructor.
+        """
         command = f"perf stat -j --per-core -C {','.join([str(core) for core in cores])} -e {','.join(self.__events)} sleep {self.__sampling_rate_sec}"
         #start = timer()
         process = subprocess.Popen(args=command.split(' '), stderr=subprocess.PIPE)
