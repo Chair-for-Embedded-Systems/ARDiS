@@ -31,7 +31,7 @@ def _benchmark_buffer(buffer: EventBuffer, sample_size: int, window_size: int) -
     start = time.perf_counter()
     for app_event, sys_event in zip(app_pid_events, sys_events):
         # Push events to buffer
-        buffer.push_pid_events(
+        buffer.push_pid_and_sys_events(
             app_events=app_event(),
             system_events=sys_event()
         )

@@ -27,7 +27,7 @@ class DataFrameBasedEventBuffer(EventBuffer):
     # core_x
     # core_y
 
-    def push_core_events(
+    def push_core_and_sys_events(
         self,
         app_events: dict[int, dict[str, int | float]],
         system_events: dict[str, int | float]
@@ -41,7 +41,7 @@ class DataFrameBasedEventBuffer(EventBuffer):
 
         self.__push_system_events(system_events)
     
-    def push_pid_events(
+    def push_pid_and_sys_events(
         self, 
         app_events: dict[int, dict[str, int | float]],
         system_events: dict[str, int | float]
@@ -167,7 +167,7 @@ class TestDataFrameBasedEventBuffer(unittest.TestCase):
     
     def test_basic_insertion_core(self):
         buffer = DataFrameBasedEventBuffer()
-        buffer.push_core_events(
+        buffer.push_core_and_sys_events(
             app_events={
                 1 : {"inst": 10, "cycles": 20}, 
                 2 : {"inst": 20, "cycles": 40}
@@ -189,7 +189,7 @@ class TestDataFrameBasedEventBuffer(unittest.TestCase):
 
     def test_basic_insertion_pid(self):
         buffer = DataFrameBasedEventBuffer()
-        buffer.push_pid_events(
+        buffer.push_pid_and_sys_events(
             app_events={
                 1 :  {"inst": 10, "cycles": 20}, 
                 42 : {"inst": 20, "cycles": 40}
@@ -211,14 +211,14 @@ class TestDataFrameBasedEventBuffer(unittest.TestCase):
 
     def test_multi_insertion(self):
         buffer = DataFrameBasedEventBuffer()
-        buffer.push_core_events(
+        buffer.push_core_and_sys_events(
             app_events={
                 0: {"instructions": 0},
                 2: {"instructions": 0}
             },
             system_events={}
         )
-        buffer.push_core_events(
+        buffer.push_core_and_sys_events(
             app_events={
                 0: {"instructions": 10},
                 2: {"instructions": 20}

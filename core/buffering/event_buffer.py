@@ -1,20 +1,22 @@
 from abc import abstractmethod
+from threading import Lock
+
 class EventBuffer:
 
     @abstractmethod
-    def push_core_events(self,
+    def push_core_and_sys_events(self,
                         app_events: dict[int, dict[str, int|float]],
                         system_events: dict[str, int|float]
                         ) -> None:
-        """Adds the given core events to the buffer."""
+        """Adds the given core and system events to the buffer."""
         raise NotImplementedError
 
     @abstractmethod
-    def push_pid_events(self,
+    def push_pid_and_sys_events(self,
                        app_events: dict[int, dict[str, int|float]],
                        system_events: dict[str, int|float]
                        ) -> None:
-        """Adds the given pid events to the buffer."""
+        """Adds the given pid and system events to the buffer."""
         raise NotImplementedError
 
     @abstractmethod
@@ -107,5 +109,13 @@ class EventBuffer:
             424242: { ... }
           }
         ]
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def get_lock(self) -> Lock:
+        """
+        Returns the lock of this buffer. This should primarly be used when multiple reads are performed.
+        E.g. `get_metircs_by_pid(); get_system_metrics()`
         """
         raise NotImplementedError

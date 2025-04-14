@@ -177,7 +177,7 @@ class Monitor:
                     )
                     self.__reporting_queue.put_nowait(result)
                     # Add core events to buffer
-                    self.__event_buffer.push_core_events(
+                    self.__event_buffer.push_core_and_sys_events(
                         app_events=app_events.get_events(),
                         system_events=sys_events.events
                     )
@@ -209,7 +209,7 @@ class Monitor:
 
                     self.__reporting_queue.put_nowait(result)
                     # Add pid events to buffer
-                    self.__event_buffer.push_pid_events(
+                    self.__event_buffer.push_pid_and_sys_events(
                         app_events=app_events.get_events(aggregate_by_pid=True),
                         system_events= sys_events.events
                     )
