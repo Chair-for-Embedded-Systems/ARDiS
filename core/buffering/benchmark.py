@@ -1,6 +1,5 @@
 import random
 from core.buffering.deque_based_event_buffer import DequeBasedEventBuffer
-from core.buffering.df_based_event_buffer import DataFrameBasedEventBuffer
 from core.buffering.event_buffer import EventBuffer
 from config import periodic_app_level_events, periodic_system_wide_events
 import time
@@ -14,11 +13,6 @@ def run():
     buffer = DequeBasedEventBuffer(capacity=window_size)
     elapsed_time_sec = _benchmark_buffer(buffer, sample_size, window_size)
     print(f"Deque based buffer ({sample_size} samples):  {elapsed_time_sec:.3f} sec")
-
-    # Benchmark dataframe based buffer
-    buffer_df = DataFrameBasedEventBuffer()
-    elapsed_time_sec = _benchmark_buffer(buffer_df, sample_size, window_size)
-    print(f"DF based buffer ({sample_size} samples): {elapsed_time_sec:.3f} sec")
     
 
 def _benchmark_buffer(buffer: EventBuffer, sample_size: int, window_size: int) -> float:

@@ -9,7 +9,7 @@ from core.dvfs import *
 from core.scheduler import *
 from core.migration import *
 from core.monitoringmode import *
-from core.buffering.df_based_event_buffer import DataFrameBasedEventBuffer, EventBuffer
+from core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
 import re
 import threading
 from timeit import default_timer as timer
@@ -37,7 +37,8 @@ class Engine:
         self.__monitoring_mode = monitoring_mode
         self.__one_shot_file = os.path.join(ROOTPATH, "one_shot.out")
         self.__benchmark_manager = BenchManager()
-        self.event_buffer: EventBuffer = DataFrameBasedEventBuffer()
+        # The initialisation of the buffer here is temporary, until the state and action buffer is implemented
+        self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10)
             
 
     def __start(self):
@@ -177,7 +178,8 @@ class Engine:
                             self.PIDs[app] = getPIDOfApp(app)
                     self.__monitor.updateTrackedPIDs(self.PIDs)
                     
-                    print(self.event_buffer.get_system_metrics(n=1))
+                    with self.event_buffer.get_lock():
+                        print(self.event_buffer.get_system_metrics(n=1))
                     
                     if self.__epochs % 20 == 0 and self.__migration_policy is not None:
                         #print("######### TRIGGERRING MIGRATION and DVFS #########")
