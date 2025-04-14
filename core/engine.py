@@ -177,10 +177,7 @@ class Engine:
                         for app in self.mapping:
                             self.PIDs[app] = getPIDOfApp(app)
                     self.__monitor.updateTrackedPIDs(self.PIDs)
-                    
-                    with self.event_buffer.get_lock():
-                        print(self.event_buffer.get_system_metrics(n=1))
-                    
+                                        
                     if self.__epochs % 20 == 0 and self.__migration_policy is not None:
                         #print("######### TRIGGERRING MIGRATION and DVFS #########")
                         #print("Current Mapping: ", self.mapping)
