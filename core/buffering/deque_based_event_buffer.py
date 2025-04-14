@@ -33,19 +33,19 @@ class DequeBasedEventBuffer(EventBuffer):
         if self.__capacity and n > self.__capacity:
             raise ValueError(f"n({n}) is larger than the buffer size ({self.__capacity})")
         window = min(n, len(self.__core_event_deque))
-        return copy.deepcopy(list(self.__core_event_deque)[-window:])
+        return list(self.__core_event_deque)[-window:]
     
     def get_metrics_by_pid(self, n) -> list[dict[int, dict[str, float| int]]]:
         if self.__capacity and n > self.__capacity:
             raise ValueError(f"n({n}) is larger than the buffer size ({self.__capacity})")
         window = min(n, len(self.__pid_event_deque))
-        return copy.deepcopy(list(self.__pid_event_deque)[-window:])
+        return list(self.__pid_event_deque)[-window:]
     
     def get_system_metrics(self, n: int) -> list[dict[str, int | float]]:
         if self.__capacity and n > self.__capacity:
             raise ValueError(f"n({n}) is larger than the buffer size ({self.__capacity})")
         window = min(n, len(self.__sys_event_deque))
-        return copy.deepcopy(list(self.__sys_event_deque)[-window:])
+        return list(self.__sys_event_deque)[-window:]
     
     def get_metrics_for_pid(self, pid: int, n: int) -> list[dict[str, int | float]]:
         if n <= 0:
