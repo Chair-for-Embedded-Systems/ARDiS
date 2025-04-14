@@ -51,7 +51,7 @@ class Monitor:
         periodic_system_level_events: list[str],
         one_shot_system_level_events: list[str],
         reporter: Reporter,
-        event_buffer: EventBuffer,
+        event_buffer: EventBuffer|None,
         inital_tracking_config: TrackingConfig 
     ):
         
@@ -176,11 +176,13 @@ class Monitor:
                         core_to_app=self.__tracking_config.core_to_app,
                     )
                     self.__reporting_queue.put_nowait(result)
-                    # Add core events to buffer
-                    self.__event_buffer.push_core_and_sys_events(
-                        app_events=app_events.get_events(),
-                        system_events=sys_events.events
-                    )
+                    
+                    # Add events to buffer
+                    if buffer := self.__event_buffer:
+                        buffer.push_core_and_sys_events(
+                            app_events=app_events.get_events(),
+                            system_events=sys_events.events
+                        )
 
                 elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_PID:
                     # Start thread that polls the application level events (via pid tracking)
@@ -208,11 +210,12 @@ class Monitor:
                     )
 
                     self.__reporting_queue.put_nowait(result)
-                    # Add pid events to buffer
-                    self.__event_buffer.push_pid_and_sys_events(
-                        app_events=app_events.get_events(aggregate_by_pid=True),
-                        system_events= sys_events.events
-                    )
+                    # Add pid and sys events to buffer
+                    if buffer := self.__event_buffer:
+                        buffer.push_pid_and_sys_events(
+                            app_events=app_events.get_events(aggregate_by_pid=True),
+                            system_events= sys_events.events
+                        )
 
             # Stop perf thread for system wide events and report the results.
             self.__system_level_poller.stop_one_shot()            

@@ -1,7 +1,7 @@
 import copy
 import threading
 from threading import Lock
-from event_buffer import EventBuffer
+from core.buffering.event_buffer import EventBuffer
 from collections import deque
 
 class DequeBasedEventBuffer(EventBuffer):
