@@ -12,6 +12,7 @@ from core.monitoring.polling.poll_procfs import poll_affinity, poll_frequency
 from core.monitoringmode import MonitoringMode
 from core.monitoring.reportable_result import ReportableResult, PeriodicPIDResult, PeriodicCoreResult, OneShotSystemResult
 from core.reporter import Reporter
+from core.buffering.event_buffer import EventBuffer
 
 @dataclass
 class TrackingConfig:
@@ -50,6 +51,7 @@ class Monitor:
         periodic_system_level_events: list[str],
         one_shot_system_level_events: list[str],
         reporter: Reporter,
+        event_buffer: EventBuffer|None,
         inital_tracking_config: TrackingConfig 
     ):
         
@@ -61,6 +63,7 @@ class Monitor:
         self.reporter = reporter
         self.__reporting_queue: Queue[ReportableResult] = Queue()
         self.__running = False
+        self.__event_buffer = event_buffer
 
     def update_tracking_config(self, next_config: TrackingConfig):
         """
@@ -173,6 +176,13 @@ class Monitor:
                         core_to_app=self.__tracking_config.core_to_app,
                     )
                     self.__reporting_queue.put_nowait(result)
+                    
+                    # Add events to buffer
+                    if buffer := self.__event_buffer:
+                        buffer.push_core_and_sys_events(
+                            app_events=app_events.get_events(),
+                            system_events=sys_events.events
+                        )
 
                 elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_PID:
                     # Start thread that polls the application level events (via pid tracking)
@@ -200,6 +210,12 @@ class Monitor:
                     )
 
                     self.__reporting_queue.put_nowait(result)
+                    # Add pid and sys events to buffer
+                    if buffer := self.__event_buffer:
+                        buffer.push_pid_and_sys_events(
+                            app_events=app_events.get_events(aggregate_by_pid=True),
+                            system_events= sys_events.events
+                        )
 
             # Stop perf thread for system wide events and report the results.
             self.__system_level_poller.stop_one_shot()            
@@ -220,6 +236,8 @@ class Monitor:
                 continue
 
     # Legacy
+    # This methods are primarly here to ensure backwards compatibility.
+    # They will be removed in the future.
     def updateTrackedMapping(self, mapping: dict[str, int]) -> None:
         """@deprecated Use update_tracking_config"""
         current = self.__tracking_config
@@ -244,15 +262,29 @@ class Monitor:
         """@deprecated Monitor measures the frequency on its own"""
         pass
     
-    # TODO (Event buffer is not yet implemented)
     def getMetricAtCore(self, core: int, event: str) -> float|int|None:
-        raise NotImplementedError
+        """@deprecated Get event buffer directly from the engine"""
+        if buffer := self.__event_buffer:
+            last_events_for_core = buffer.get_metrics_for_core(core, 1)[-1]
+            if event_value := last_events_for_core.get(event):
+                return event_value
+        return None
 
     def getMetricForPID(self, pid: int, event: str) -> float|int|None:
-        raise NotImplementedError
+        """@deprecated Get event buffer directly from the engine"""
+        if buffer := self.__event_buffer:
+            last_events_for_core = buffer.get_metrics_for_pid(pid, 1)[-1]
+            if event_value := last_events_for_core.get(event):
+                return event_value
+        return None
     
     def getSystemWideMetric(self, event: str) -> float|int|None:
-        raise NotImplementedError
+        """@deprecated Get event buffer directly from the engine"""
+        if buffer := self.__event_buffer:
+            last_sys_events = buffer.get_system_metrics(1)[-1]
+            if event_value := last_sys_events.get(event):
+                return event_value
+        return None
 
     def getElapsedTime(self) -> float:
         return timer() - self.__start_time
