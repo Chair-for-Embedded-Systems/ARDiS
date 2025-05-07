@@ -1,3 +1,6 @@
+import os
+
+
 def poll_affinity(pids: set[int]) -> dict[int, list[int]]:
     """
     Returns the affinity as list of allowed logical cores for the given set of pid's.
@@ -18,6 +21,41 @@ def poll_affinity(pids: set[int]) -> dict[int, list[int]]:
         except FileNotFoundError as fe:
             output[pid] = []
             continue
+    
+    return output
+
+def poll_last_sceduled_cpu(pids: set[int]) -> dict[int, int]:
+    """
+    Extracts the `tids` for the given set of pids and fetches the last cpu that was scheduled fot the tid.
+    Note: For each pid there is always one thread with tid==pid.
+
+    Returns a map from `tid` to last executed cpu
+    
+    Example:
+    >>> poll_last_sceduled_cpu(pids={37, 42})
+    {
+        37 : 4,      # PID 37, TID 37, Thread #1
+        38 : 4,      # PID 37, TID 38, Thread #2
+        42 : 6,      # PID 42, TID 42, Thread #1
+    }
+    """
+    output: dict[int, int] = {}
+    for pid in pids:
+        try:
+            tids = [int(tid) for tid in os.listdir(f"/proc/{pid}/task")]
+        except FileNotFoundError:
+            continue
+            
+        for tid in tids:
+            try:
+                with open(f"/proc/{pid}/task/{tid}/stat", 'r') as f:
+                    # CPU number last executed on (39, index starts at 1)
+                    # https://www.man7.org/linux/man-pages//man5/proc_pid_stat.5.html
+                    fields = f.read().split(' ')
+                    cpu = int(fields[38])
+                    output[tid] = cpu
+            except FileExistsError:
+                continue
     
     return output
 

@@ -8,7 +8,7 @@ from queue import Queue,Empty
 
 from core.monitoring.polling.poll_app_level_events import PollerAppLevel
 from core.monitoring.polling.poll_system_level_events import PollerSystemLevel
-from core.monitoring.polling.poll_procfs import poll_affinity, poll_frequency
+from core.monitoring.polling.poll_procfs import poll_affinity, poll_frequency, poll_last_sceduled_cpu
 from core.monitoringmode import MonitoringMode
 from core.monitoring.reportable_result import ReportableResult, PeriodicPIDResult, PeriodicCoreResult, OneShotSystemResult
 from core.reporter import Reporter
@@ -120,13 +120,24 @@ class Monitor:
 
         self.__tracking_config = update_queue.get()
 
-    def __poll_freq_and_affinity(self, pids: set[int]) -> tuple[dict[int, list[int]], dict[int, float]]:
+    def __poll_freq_and_affinity(self, pids: set[int], affinity_per_thread: bool = False) -> tuple[dict[int, list[int]], dict[int, float]]:
         """"
-        Returns the affinity for each pid and the frequency of the used cores
+        Returns the affinity for each pid/tid and the frequency of the used cores
         """
-        pid_to_affinity = poll_affinity(pids)
-        core_to_freq = poll_frequency(set(core for affinity in pid_to_affinity.values() for core in affinity))
-        return pid_to_affinity, core_to_freq
+        if affinity_per_thread:
+            tid_to_affinity = poll_last_sceduled_cpu(pids)
+            active_cores = set(core for core in tid_to_affinity.values())
+            # Convert from dict[int, int] -> dict[int, list[int]]
+            affinity = {k: [v] for k,v in tid_to_affinity.items()} 
+        else:
+            pid_to_affinity = poll_affinity(pids)
+            active_cores = set(core for affinity in pid_to_affinity.values() for core in affinity)
+            affinity = pid_to_affinity
+        
+        core_to_freq = poll_frequency(active_cores)
+
+        return affinity, core_to_freq
+        
 
     def __run(self):
         """
@@ -184,7 +195,9 @@ class Monitor:
                             system_events=sys_events.events
                         )
 
-                elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_PID:
+                elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_PID or MonitoringMode.PERIODIC_ON_TID:
+                    
+                    monitor_per_thread = self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_TID
                     # Start thread that polls the application level events (via pid tracking)
                     app_level_thread = pool.apply_async(
                         func=self.__app_level_poller.poll_by_pid,
@@ -193,7 +206,7 @@ class Monitor:
                     )
                     procfs_thread = pool.apply_async(
                         func=self.__poll_freq_and_affinity,
-                        args=([self.__tracking_config.pids_to_track])
+                        args=([self.__tracking_config.pids_to_track, monitor_per_thread])
                     )
 
                     app_events = app_level_thread.get()
@@ -206,7 +219,8 @@ class Monitor:
                         sys_events=sys_events,
                         pid_to_affinity=affinity,
                         core_to_freq=frequency,
-                        pid_to_app=self.__tracking_config.pid_to_app
+                        pid_to_app=self.__tracking_config.pid_to_app,
+                        log_individual_threads=monitor_per_thread
                     )
 
                     self.__reporting_queue.put_nowait(result)

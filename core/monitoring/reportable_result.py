@@ -34,6 +34,7 @@ class PeriodicPIDResult(ReportableResult):
     use_name_from_perf: bool = field(default=False)
     log_mapped_cores: bool = field(default=True)
     log_event_multiplexing: bool = field(default=False)
+    log_individual_threads: bool = field(default=False)
     
     def report(self, reporter: Reporter) -> None:
         timestamp = self.get_timestamp(self.elapsed_time_sec)
@@ -48,18 +49,36 @@ class PeriodicPIDResult(ReportableResult):
             reporter.logPeriodicCounters(f"{timestamp} MULTIPLEXING (app_level): {flat_multiplexed_events}")
 
         # Log app events
-        for pid, events in self.app_events.get_events(aggregate_by_pid=True).items():
-            flatt_app_events = " | ".join([f"{event_name} = {value}" for event_name, value in events.items()])
-            cores = self.pid_to_affinity.get(pid, [])
-            if not cores:
-                continue
-            app_name = f"app = {self.app_events.get_app_name(pid) if self.use_name_from_perf else self.pid_to_app[pid]}"
-            one_affinity = len(cores) == 1
-            core_label = f"Core {cores[0]}" if one_affinity else f"Cores {cores}"
-            frequency_label = f"frequency = {self.core_to_freq[cores[0]]}" if one_affinity else f"frequency = not-available"
+        if self.log_individual_threads:
+            for tid, events in self.app_events.get_events(aggregate_by_pid=False).items():
+                ppid = self.app_events._tid_to_pid[tid]
+                flatt_app_events = " | ".join([f"{event_name} = {value}" for event_name, value in events.items()])
+                cores = self.pid_to_affinity.get(tid, [])
+                if not cores:
+                    continue
+                app_name = f"app = {self.app_events.get_app_name(ppid) if self.use_name_from_perf else self.pid_to_app[ppid]}"
+                one_affinity = len(cores) == 1
+                core_label = f"Core {cores[0]}" if one_affinity else f"Cores {cores}"
+                pid_label = f"pid = {ppid}"
+                tid_label = f"tid = {tid}"
+                frequency_label = f"frequency = {self.core_to_freq[cores[0]]}" if one_affinity else f"frequency = not-available"
+                #frequency_label = "frequency = not available"
 
-            periodic_app_event = f"{timestamp} {core_label}: {app_name} | {frequency_label} | {flatt_app_events}"
-            reporter.logPeriodicCounters(periodic_app_event)
+                periodic_app_event = f"{timestamp} {core_label}: {app_name} | {pid_label} | {tid_label} | {frequency_label} | {flatt_app_events}"
+                reporter.logPeriodicCounters(periodic_app_event)
+        else:
+            for pid, events in self.app_events.get_events(aggregate_by_pid=True).items():
+                flatt_app_events = " | ".join([f"{event_name} = {value}" for event_name, value in events.items()])
+                cores = self.pid_to_affinity.get(pid, [])
+                if not cores:
+                    continue
+                app_name = f"app = {self.app_events.get_app_name(pid) if self.use_name_from_perf else self.pid_to_app[pid]}"
+                one_affinity = len(cores) == 1
+                core_label = f"Core {cores[0]}" if one_affinity else f"Cores {cores}"
+                frequency_label = f"frequency = {self.core_to_freq[cores[0]]}" if one_affinity else f"frequency = not-available"
+
+                periodic_app_event = f"{timestamp} {core_label}: {app_name} | {frequency_label} | {flatt_app_events}"
+                reporter.logPeriodicCounters(periodic_app_event)
         
         # Log system event multiplexing (optional)
         if self.log_event_multiplexing:
