@@ -132,6 +132,14 @@ class ExperimentAnalyser():
         core_range = (current_core, current_start_time, data.iloc[-1]["timestamp"])
         output.append(core_range)
         return output
+    
+    def get_execution_range(self, aoi: str) -> tuple[float, float]:
+        """Returns the execution range (start_timestamp, end_timestamp) for the given `aoi`"""
+        aoi_data = self.__application_events[self.__application_events["app_name"] == aoi]
+        timestamps_aoi = aoi_data["timestamp"]
+        if timestamps_aoi.empty:
+            raise ValueError(f"{aoi} not in dataset")
+        return timestamps_aoi.min(), timestamps_aoi.max()
 
 if __name__ == "__main__":
     pass

@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
+from pandas import Series
 
 def plot_app_metric_by_time(output_file: str,
-                            data: dict[str, tuple[list[float], list[float]]], # app -> (x, y)
+                            data: dict[str, tuple[Series, Series]], # app -> (x, y)
                             title: str,
                             x_label: str,
                             y_label: str,
@@ -10,7 +11,7 @@ def plot_app_metric_by_time(output_file: str,
     if verbose:
         print(f"Plotting {output_file}") 
     
-    fig, axis = plt.subplots(layout='constrained',figsize=(8,4))
+    fig, axis = plt.subplots(figsize=(8,4))
     axis.set_title(f"{title}")
     for app, (x,y) in data.items():
         if y_unit_size > 1:

@@ -200,10 +200,27 @@ def run_example_with_result_plotting():
         ) 
     result_plt.plot_results(verbose=True)
 
+def run_example_with_TID_monitoring():
+    exp = Experiment(
+        name="Experiment_with_tid_monitoring",
+        applications=["parsec-dedup", "parsec-splash2x.radix"],
+        mapping_policy=ExplicitMapping([16, 4]),
+        scheduler=ConsecutiveScheduler(0),
+        dvfs_policy=DVFSPolicy({core: 3500 for core in range(system_cores)}),
+        monitoring_mode=MonitoringMode.PERIODIC_ON_TID
+    )
+    exp.executeExperiment()
+    rp = BasicResultPlotter(
+        experiment_folder=exp.getWorkingDirectory(),
+        diagrams=[Diagrams.EXECUTION_OVERVIEW, Diagrams.INSTRUCTIONS, Diagrams.MAPPING, Diagrams.FREQUENCY]
+    )
+    rp.plot_results(verbose=True)
+
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
     #run_example_with_PID_monitoring()
     #run_parsec_default_linux_governor()
     #run_parsec_characterization_experiments()
-    run_example_with_result_plotting()
+    #run_example_with_result_plotting()
+    run_example_with_TID_monitoring()
 

@@ -3,6 +3,7 @@ from enum import Enum
 from .analysis.experiment_analyser import ExperimentAnalyser
 from .plot.plot_metric_by_time import plot_app_metric_by_time
 from .plot.plot_mapping_by_time import plot_apps_by_mapped_core
+from .plot.plot_execution_overview import plot_execution_overview
 
 class ResultPlotter():
     def __init__(self, output_folder: str):
@@ -33,6 +34,7 @@ class Diagrams(Enum):
     BRANCH_MISSES = 8
     ENERGY_USAGE = 9
     MAPPING = 10
+    EXECUTION_OVERVIEW = 11
 
 class BasicResultPlotter(ResultPlotter):
     def __init__(self, 
@@ -200,6 +202,13 @@ class BasicResultPlotter(ResultPlotter):
             plot_apps_by_mapped_core(
                 output_file=os.path.join(of, "mapping.png"),
                 data={app : experiment.get_core_mapping_intervalls(app) for app in applications},
+                verbose=verbose
+            )
+
+        if Diagrams.EXECUTION_OVERVIEW in self.__diagrams:
+            plot_execution_overview(
+                output_file=os.path.join(of, "execution_overview.png"),
+                data=[(app, *experiment.get_execution_range(app)) for app in applications],
                 verbose=verbose
             )
   
