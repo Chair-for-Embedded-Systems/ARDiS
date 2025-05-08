@@ -15,7 +15,7 @@ def plot_apps_by_mapped_core(output_file: str,
     used_cores.sort(reverse=True) # Lowest core should be placed on top of the y axis
     core_to_y = {core: index for index, core in enumerate(used_cores)}
 
-    fig, axis = plt.subplots(layout='constrained',figsize=(8,len(used_cores) * 0.2 + 1))
+    fig, axis = plt.subplots(figsize=(8,len(used_cores) * 0.2 + 1))
     axis.set_title("Application to core mapping for multiple apps")    
     for app, core_ranges in data.items():
         core, start, end = zip(*core_ranges)
