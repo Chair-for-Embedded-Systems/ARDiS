@@ -128,8 +128,4 @@ def __test_parser():
     print("Mapping event parse test: OK")
 
 if __name__ == "__main__":
-    #__test_parser()
-    PeriodicCounterLog(
-        file_path="/home/uhqql/ARDIS/results/2025-05-09_12-42-40_Experiment_with_tid_monitoring/periodic_counters.log"
-    )
-    
+    __test_parser()

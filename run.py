@@ -184,10 +184,10 @@ def run_parsec_characterization_experiments():
 def run_example_with_result_plotting():
     
     exp = Experiment("Experiment with result plotting", 
-                     mapping_policy=ExplicitMapping([{3}, {6}, {19, 20, 21, 22}]),
+                     mapping_policy=ExplicitMapping.from_list([3, 6, 19]),
                      scheduler=ConsecutiveScheduler(0),
                      dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}),
-                     monitoring_mode=MonitoringMode.PERIODIC_ON_CORE)
+                     monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
     
     exp.setApplications(['parsec-blackscholes', 'parsec-splash2x.radix', 'parsec-bodytrack'])
     exp.executeExperiment()
