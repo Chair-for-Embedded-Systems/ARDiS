@@ -43,7 +43,7 @@ class BenchManager:
         # run parsec app on core with nice value 0 if a core is assigned; otherwise, that means we are using the default governor
         if cores is not None:
             affinity = ",".join([str(c) for c in cores])
-            command = f"taskset -c {affinity} nice -n 0 parsecmgmt -a run -i {input_size} -n 4 -p {app} > {app}.log"
+            command = f"taskset -c {affinity} nice -n 0 parsecmgmt -a run -i {input_size} -n 1 -p {app} > {app}.log"
         else:
             command = f"parsecmgmt -a run -i {input_size} -n 1 -p {app}"
             

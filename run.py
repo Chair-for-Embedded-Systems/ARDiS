@@ -204,7 +204,7 @@ def run_example_with_TID_monitoring():
     exp = Experiment(
         name="Experiment_with_tid_monitoring",
         applications=["parsec-dedup", "parsec-splash2x.radix"],
-        mapping_policy=ExplicitMapping([16, 4]),
+        mapping_policy=ExplicitMapping([{2, 4, 6, 8}, {16}]),
         scheduler=ConsecutiveScheduler(0),
         dvfs_policy=DVFSPolicy({core: 3500 for core in range(system_cores)}),
         monitoring_mode=MonitoringMode.PERIODIC_ON_TID
