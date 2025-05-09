@@ -23,7 +23,7 @@ class MigrationForTraining(MigrationPolicy):
         app_to_migrate = random.choice(list(mapping.keys()))
 
         # Get the current core where the app is mapped
-        current_core = mapping[app_to_migrate]
+        current_core = mapping[app_to_migrate].pop()
 
         # Determine if the current core is a P-core or E-core
         is_p_core = current_core in intel_p_core_ids
@@ -64,7 +64,7 @@ class MigrationForTraining(MigrationPolicy):
         # Create the new mapping with the selected application migrated to the new core
         new_mapping = mapping.copy()
         if new_core is not None:
-            new_mapping[app_to_migrate] = new_core
+            new_mapping[app_to_migrate] = {new_core}
 
         #print(f"Migrating {app_to_migrate} from core {current_core} to core {new_core}")
         return new_mapping, app_to_migrate, current_core, new_core
