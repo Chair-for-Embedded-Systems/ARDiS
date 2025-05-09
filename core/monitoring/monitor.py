@@ -24,7 +24,7 @@ class TrackingConfig:
     """
     monitor_mode: MonitoringMode
     
-    app_to_core: dict[str, int] = field(default_factory=dict)
+    app_to_cores: dict[str, set[int]] = field(default_factory=dict)
     app_to_pid: dict[str, int] = field(default_factory=dict)
     
     core_to_app: dict[int, str] = field(init=False)
@@ -34,11 +34,11 @@ class TrackingConfig:
     
     def __post_init__(self):
         self.pid_to_app = {pid: app for app,pid in self.app_to_pid.items()}
-        self.core_to_app = {pid: app for app,pid in self.app_to_core.items()}
+        self.core_to_app = {core: app for app, cores in self.app_to_cores.items() for core in cores}
         
         self.pids_to_track = set(self.app_to_pid.values())
         # Only track cores where the corresponding app has started i.e pid != -1
-        self.cores_to_track = {core for app, core in self.app_to_core.items() 
+        self.cores_to_track = {core for core, app in self.core_to_app.items() 
                                if app in self.app_to_pid and self.app_to_pid[app] != -1}
     
 
@@ -267,12 +267,12 @@ class Monitor:
     # Legacy
     # This methods are primarly here to ensure backwards compatibility.
     # They will be removed in the future.
-    def updateTrackedMapping(self, mapping: dict[str, int]) -> None:
+    def updateTrackedMapping(self, mapping: dict[str, set[int]]) -> None:
         """@deprecated Use update_tracking_config"""
         current = self.__tracking_config
         update_config = TrackingConfig(
             monitor_mode=current.monitor_mode,
-            app_to_core=mapping,
+            app_to_cores=mapping,
             app_to_pid=current.app_to_pid
         )
         self.update_tracking_config(update_config)
@@ -282,7 +282,7 @@ class Monitor:
         current = self.__tracking_config
         update_config = TrackingConfig(
             monitor_mode=current.monitor_mode,
-            app_to_core=current.app_to_core,
+            app_to_cores=current.app_to_cores,
             app_to_pid=pids
         )
         self.update_tracking_config(update_config)    

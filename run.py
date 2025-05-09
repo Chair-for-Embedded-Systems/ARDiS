@@ -20,7 +20,7 @@ import os
 
 
 class Experiment:
-    def __init__(self, name="", applications=[], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy=DVFSPolicy(), migration_policy=None, monitoring_mode=MonitoringMode.PERIODIC_ON_CORE, results_folder=RESULTS_FOLDER):   
+    def __init__(self, name="", applications: list[str] = [], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy=DVFSPolicy(), migration_policy=None, monitoring_mode=MonitoringMode.PERIODIC_ON_CORE, results_folder=RESULTS_FOLDER):   
         self.__name = name
         self.__applications = applications
         self.__engine = Engine(self.__name, 
@@ -84,7 +84,7 @@ class DefaultLinuxExperiment:
 def run_example_with_core_monitoring():
    # Create an experiment object
     exp = Experiment("Simple Experiment with Specific Applications", 
-                     mapping_policy=ExplicitMapping([3, 6,19]),
+                     mapping_policy=ExplicitMapping.from_list([3, 6, 19]),
                      scheduler=ConsecutiveScheduler(0),
                      dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_CORE)
@@ -96,7 +96,7 @@ def run_example_with_core_monitoring():
 def run_example_with_PID_monitoring():
    # Create an experiment object
     exp = Experiment("Simple Experiment with Specific Applications", 
-                     mapping_policy=ExplicitMapping([6,19]),
+                     mapping_policy=ExplicitMapping.from_list([6, 19]),
                      scheduler=ConsecutiveScheduler(0),
                      dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
@@ -114,7 +114,7 @@ def run_parsec_default_linux_governor_simple():
     exp_name = f"{app}_{governor}"
     exp = DefaultLinuxExperiment(exp_name, 
                     scheduler=scheduler,
-                    mapping_policy=ExplicitMapping([6,19]),
+                    mapping_policy=ExplicitMapping.from_list([6, 19]),
                     governor=governor,
                     min_frequency=1500,
                     max_frequency=3500,
@@ -156,7 +156,7 @@ def run_parsec_characterization_experiments():
             exp_name = f"{app}_{frequency}MHz_Pcore"
             if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
                 exp = Experiment(exp_name, 
-                                mapping_policy=ExplicitMapping([intel_p_core_ids[3]]), 
+                                mapping_policy=ExplicitMapping.from_list([intel_p_core_ids[3]]), 
                                 scheduler=scheduler, 
                                 dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}),
                                 monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
@@ -170,7 +170,7 @@ def run_parsec_characterization_experiments():
             exp_name = f"{app}_{frequency}MHz_Ecore"
             if not any(exp_name in folder for folder in os.listdir(RESULTS_FOLDER)):
                 exp = Experiment(exp_name, 
-                                mapping_policy=ExplicitMapping([intel_e_core_ids[0]]), 
+                                mapping_policy=ExplicitMapping.from_list([intel_e_core_ids[0]]), 
                                 scheduler=scheduler, 
                                 dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}),
                                 monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
@@ -184,10 +184,10 @@ def run_parsec_characterization_experiments():
 def run_example_with_result_plotting():
     
     exp = Experiment("Experiment with result plotting", 
-                     mapping_policy=ExplicitMapping([3, 6, 19]),
+                     mapping_policy=ExplicitMapping([{3}, {6}, {19, 20, 21, 22}]),
                      scheduler=ConsecutiveScheduler(0),
                      dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}),
-                     monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
+                     monitoring_mode=MonitoringMode.PERIODIC_ON_CORE)
     
     exp.setApplications(['parsec-blackscholes', 'parsec-splash2x.radix', 'parsec-bodytrack'])
     exp.executeExperiment()

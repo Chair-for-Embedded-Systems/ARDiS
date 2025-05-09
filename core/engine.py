@@ -45,30 +45,36 @@ class Engine:
         self.running = True
         self.startime = timer()
 
-    def __launchApp(self, app, core):
+    def __launchApp(self, app: str, cores: set[int]):
         self.PIDs[app] = -1
         # Build the full application execution command from the corresponding script
         start = timer()
         
-        self.__benchmark_manager.runApplicationOnCore(app, None if self.__mapping_policy is None else core)
+        self.__benchmark_manager.runApplicationOnCore(app, None if self.__mapping_policy is None else cores)
         end = timer()
         # keeping the lock until properly evaluated
         with lock:
-            core = self.mapping[app]
+            cores = self.mapping[app]
             self.mapping.pop(app)
             self.PIDs.pop(app)
             if self.__monitoring_mode != MonitoringMode.OFF:
                 self.__monitor.updateTrackedMapping(self.mapping)
                 self.__monitor.updateTrackedPIDs(self.PIDs)
             self.__active_threads.remove(app)
-        if config.DEBUG:
-            print("[Core " + str(core) +"]: " + app + " finished execution!" )
-        self.reporter.logEvent("[Core " + str(core) +"]: " + app + " finished execution!" )
         
+        core_str = ','.join([str(c) for c in cores])
+
+        event = f"[Core(s) {core_str}]: {app} finished execution!"
         if config.DEBUG:
-            print("[Core " + str(core) +"]: " + app + "'s execution time = " + str(round(end - start,2)) + "s" )
-        self.reporter.logEvent("[Core " + str(core) +"]: " + app + "'s execution time = " + str(round(end - start,2)) + "s" )
-        self.reporter.logExecutionTime(app, core, end - start)
+            print(event)
+        self.reporter.logEvent(event)
+        
+        event = f"[Core(s) {core_str}]: {app}'s execution time = {end - start:.2f} s"
+        if config.DEBUG:
+            print(event)
+        self.reporter.logEvent(event)
+        
+        self.reporter.logExecutionTime(app, core_str, end - start)
         
     # Create a thread for each application in the mapping 
     def __makeThreads(self):
@@ -110,7 +116,7 @@ class Engine:
         if self.__mapping_policy is not None:
             self.mapping = self.__mapping_policy.executeMapping(applications)
         else:
-            self.mapping = {app: -1 for app in applications}
+            self.mapping = {app: {-1} for app in applications}
             self.PIDs = {app: -1 for app in applications}
 
         if config.DEBUG:
@@ -133,7 +139,7 @@ class Engine:
                 event_buffer=self.event_buffer,
                 inital_tracking_config=TrackingConfig(
                     monitor_mode=self.__monitoring_mode,
-                    app_to_core=self.mapping,
+                    app_to_cores=self.mapping,
                 )
             )
 
