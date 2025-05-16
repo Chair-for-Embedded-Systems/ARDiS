@@ -12,7 +12,7 @@ class Reporter():
         os.makedirs(self.workdir, exist_ok=True)
         # Create the execution log file
         with open(self.workdir + "summary.log", "a") as f:
-            f.write("Core \t Application \t Execution time (s)\n")
+            f.write("Core(s) \t Application \t Execution time (s)\n")
     
     def logEvent(self, event):
         with open(self.workdir + "execution.log", "a") as f:

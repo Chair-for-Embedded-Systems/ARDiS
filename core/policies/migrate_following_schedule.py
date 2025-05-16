@@ -30,7 +30,7 @@ class StaticScheduleMigration(MigrationPolicy):
     def getNewMapping(self, instructions, mapping):
         tmp_mapping = mapping.copy()
         for app in tmp_mapping:
-            selected_core = tmp_mapping[list(tmp_mapping.keys())[0]]  # Default to current core
+            selected_core = tmp_mapping[list(tmp_mapping.keys())[0]].pop()  # Default to current core
             current_phase = None
             for entry in self.static_schedule:
                 if instructions >= entry["trigger_instruction"]:
@@ -40,7 +40,7 @@ class StaticScheduleMigration(MigrationPolicy):
                     break  # Stop once the correct phase is determined
 
             if tmp_mapping[app] != selected_core:
-                tmp_mapping[app] = selected_core
+                tmp_mapping[app] = {selected_core}
                 if config.DEBUG:
                     print("[Migration Policy] Now entering Phase: ", current_phase, "Core: ", selected_core)
         

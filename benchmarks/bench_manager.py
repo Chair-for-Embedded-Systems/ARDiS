@@ -12,7 +12,7 @@ class BenchManager:
     def __init__(self, benchmarks = ["spec", "parsec"]):
         self.__supported_benchmarks = benchmarks
 
-    def runApplicationOnCore(self, app_string, core):
+    def runApplicationOnCore(self, app_string: str, core: set[int]|None):
         benchmark, app = app_string.split("-")[:2]
         #print("benchmark: ", benchmark, " app: ", app)
         #size = app_string.split("-")[2]
@@ -23,10 +23,10 @@ class BenchManager:
             if benchmark == "spec":
                 self.__run_spec_app(app, core)#, size)
             elif benchmark == "parsec":
-                self.__run_parsec_app(app=app, core=core)#, size)
+                self.__run_parsec_app(app=app, cores=core)#, size)
 
 
-    def __run_parsec_app(self, app, core, input_size = "native"):
+    def __run_parsec_app(self, app: str, cores: set[int]|None, input_size = "native"):
         # set parsec environment if it hasn't been done yet
         if "xxPARSECDIRxx" not in os.environ:
             os.chdir(PARSECBASE)
@@ -41,8 +41,9 @@ class BenchManager:
                 os.environ[key] = value
 
         # run parsec app on core with nice value 0 if a core is assigned; otherwise, that means we are using the default governor
-        if core is not None:
-            command = f"taskset -c {core} nice -n 0 parsecmgmt -a run -i {input_size} -n 1 -p {app} > {app}.log"
+        if cores is not None:
+            affinity = ",".join([str(c) for c in cores])
+            command = f"taskset -c {affinity} nice -n 0 parsecmgmt -a run -i {input_size} -n 1 -p {app} > {app}.log"
         else:
             command = f"parsecmgmt -a run -i {input_size} -n 1 -p {app}"
             
@@ -50,7 +51,7 @@ class BenchManager:
         subprocess.run(command, shell=True, executable="/bin/bash")
         os.chdir(ROOTPATH)
 
-    def __run_spec_app(self, app, core, input_size = "ref"):      
+    def __run_spec_app(self, app: str, cores: set[int]|None, input_size = "ref"):      
         # set spec environment if it hasn't been done yet
         if "SPECBIN" not in os.environ:
             # Change to SPECPBASE directory
@@ -68,8 +69,9 @@ class BenchManager:
 
         # run app $1 on core $2
         
-        if core is not None:
-            command = f"taskset -c {core} nice -n 0 runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {app}.log"
+        if cores is not None:
+            affinity = ",".join([str(c) for c in cores])
+            command = f"taskset -c {affinity} nice -n 0 runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {app}.log"
         else:
             command = f"runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {app}.log"
         #print("command: ", command)	

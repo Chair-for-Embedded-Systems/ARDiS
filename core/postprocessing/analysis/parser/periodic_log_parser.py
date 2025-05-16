@@ -18,10 +18,21 @@ class SystemEvent():
 class ApplicationEvent():
     def __init__(self, event_line: str):
         try:        
-            self.timestamp = float(re.search(r"\[(\d+\.\d+)s\] Core \d+:", event_line).group(1))
-            self.core_id = int(re.search(r"Core (\d+):", event_line).group(1))
+            self.timestamp = float(re.search(r"\[(\d+\.\d+)s\] Core[s]?", event_line).group(1))
+            
+            if core := re.search(r"Core (\d+):", event_line):
+                self.core_id = int(core.group(1))
+            if cores := re.search(r"Cores (.*):", event_line):
+                cores = cores.group(1).replace('[','').replace(']','').split(',')
+                self.core_id = int(cores[0]) # Todo
+            
             self.app_name = str(re.search(r"app = (\S+)", event_line).group(1))
-            self.frequency = int(re.search(r"frequency = (\d+)", event_line).group(1))
+            
+            if "frequency = not-available" in event_line:
+                self.frequency = -1
+            if frequency := re.search(r"frequency = (\d+)", event_line):
+                self.frequency = int(frequency.group(1))
+            
             self.instructions = int(re.search(r"instructions = (\d+)", event_line).group(1))
             self.llc_loads = int(re.search(r"LLC-loads = (\d+)", event_line).group(1))
             self.llc_load_misses = int(re.search(r"LLC-load-misses = (\d+)", event_line).group(1))
@@ -118,4 +129,3 @@ def __test_parser():
 
 if __name__ == "__main__":
     __test_parser()
-    

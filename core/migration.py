@@ -7,8 +7,9 @@ class MigrationPolicy:
         pass
     
 
-    def __setAffinity(self, pid, core):
-        cmd_str = "taskset -cpa " + str(core) + " " + str(pid)
+    def __setAffinity(self, pid: int, cores: set[int]) -> bool:
+        affinity = ",".join([str(c) for c in cores])
+        cmd_str = f"taskset -cpa {affinity} {pid}"
         command = cmd_str.split(" ")
         #print ("Executing: ", cmd_str)    
         p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -18,7 +19,7 @@ class MigrationPolicy:
             p.wait()
             return True
         
-    def executeMigration(self, currmap , newmap , pids):
+    def executeMigration(self, currmap: dict[str, set[int]], newmap: dict[str, set[int]] , pids: dict[str, int]):
         tmp_pids = pids.copy()
         current_mapping = currmap.copy()
         #Only apply migration if the new map is different than current map
@@ -34,7 +35,7 @@ class MigrationPolicy:
                     print("Migration failed. Maybe the application has not started yet.")
 
     # this is a no-op for the base class
-    def getNewMapping(self, instructions, mapping):
+    def getNewMapping(self, instructions: int, mapping: dict[str, set[int]]) -> dict[str, set[int]]:
         return mapping
     
     ##def getShuffledMapping(self, mapping):
