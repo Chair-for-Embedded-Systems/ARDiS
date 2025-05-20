@@ -2,7 +2,7 @@ from utils.inteldvfs import *
 from config import *
 
 from dataclasses import dataclass
-from core.engine import SystemState
+from core.system_state import SystemState
 
 @dataclass
 class DVFSAction:

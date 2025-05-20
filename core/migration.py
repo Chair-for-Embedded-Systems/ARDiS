@@ -2,7 +2,7 @@ import random
 import subprocess
 import config
 from dataclasses import dataclass
-from core.engine import SystemState
+from core.system_state import SystemState
 
 @dataclass
 class MigrationAction:

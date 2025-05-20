@@ -10,22 +10,13 @@ from core.scheduler import *
 from core.migration import *
 from core.monitoringmode import *
 from core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
+from core.system_state import SystemState
 import re
 import threading
 from timeit import default_timer as timer
-from dataclasses import dataclass, field
 
 engine_lock = threading.Lock()
 system_state_lock = threading.Lock()
-
-@dataclass
-class SystemState:
-    start_time: float
-    end_time: float
-    app_to_cores: dict[str, set[int]]
-    app_to_pid: dict[str, int]
-    epoch: int = 0
-    lock: threading.Lock = field(default_factory=threading.Lock)
 
 class Engine:
     def __init__(self, experiment_name, mapping_policy = MappingPolicy(), scheduler = Scheduler(), dvfs_policy = DVFSPolicy(), migration_policy = None, monitoring_mode = MonitoringMode.PERIODIC_ON_CORE, results_folder = RESULTS_FOLDER):
@@ -46,16 +37,10 @@ class Engine:
         self.__total_instructions: dict[str, int] = {}
     
         self.__benchmark_manager = BenchManager()
-        self.reporter: Reporter = Reporter(experiment_name, results_folder)
         
+        self.reporter: Reporter = Reporter(experiment_name, results_folder)
         self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10)
-        self.system_state: SystemState = SystemState(
-            start_time=0.0,
-            end_time=0.0,
-            app_to_cores={},
-            app_to_pid={},
-            epoch=0
-        )
+        self.system_state: SystemState = SystemState()
 
     def __start(self) -> None:
         self.running = True
@@ -71,7 +56,7 @@ class Engine:
         end = timer()
         
         # keeping the lock until properly evaluated
-        with self.system_state.lock:
+        with system_state_lock:
             cores = self.system_state.app_to_cores.pop(app)
             self.system_state.app_to_pid.pop(app)
 
@@ -229,7 +214,7 @@ class Engine:
            
             # Increment the epoch counter and sleep for the action interval
             #print("Epoch: ", self.__epochs)
-            self.__epochs += 1
+            self.system_state.epoch += 1
             time.sleep(action_interval)
     
     def fetch_perf_data(self, perf_file_path):
