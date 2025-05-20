@@ -273,30 +273,6 @@ class Monitor:
     # Legacy
     # This methods are primarly here to ensure backwards compatibility.
     # They will be removed in the future.
-    def updateTrackedMapping(self, mapping: dict[str, set[int]]) -> None:
-        """@deprecated Use update_tracking_config"""
-        current = self.__tracking_config
-        update_config = TrackingConfig(
-            monitor_mode=current.monitor_mode,
-            app_to_cores=mapping,
-            app_to_pid=current.app_to_pid
-        )
-        self.update_tracking_config(update_config)
-    
-    def updateTrackedPIDs(self, pids: dict[str, int]) -> None:
-        """@deprecated Use update_tracking_config"""
-        current = self.__tracking_config
-        update_config = TrackingConfig(
-            monitor_mode=current.monitor_mode,
-            app_to_cores=current.app_to_cores,
-            app_to_pid=pids
-        )
-        self.update_tracking_config(update_config)    
-
-    def updateCoreFrequencies(self, core_frequencies: dict[int, float]):
-        """@deprecated Monitor measures the frequency on its own"""
-        pass
-    
     def getMetricAtCore(self, core: int, event: str) -> float|int|None:
         """@deprecated Get event buffer directly from the engine"""
         if buffer := self.__event_buffer:
