@@ -1,7 +1,7 @@
 from collections import deque
 
-from core.migration import MigrationAction
-from core.dvfs import DVFSAction
+from core.actions import MigrationAction
+from core.actions import DVFSAction
 
 class ActionBuffer:
     """

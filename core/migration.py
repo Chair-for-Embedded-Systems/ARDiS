@@ -3,14 +3,8 @@ import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from core.actions import MigrationAction
 from core.system_state import SystemState
-
-@dataclass
-class MigrationAction:
-    app: str
-    pid: int
-    destination: set[int]
-    source: set[int] | None
 
 class MigrationPolicy(ABC):
 
