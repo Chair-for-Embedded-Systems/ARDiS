@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
+from core.buffering.event_buffer import EventBuffer
 
 @dataclass
 class SystemState:
-    start_time: float = 0.0
-    end_time: float = 0.0
-    app_to_cores: dict[str, set[int]] = field(default_factory=dict)
-    app_to_pid: dict[str, int] = field(default_factory=dict)
-    epoch: int = 0
+    start_time: float
+    app_to_cores: dict[str, set[int]]
+    app_to_pid: dict[str, int]
+    epoch: int
+    event_buffer: EventBuffer | None = None

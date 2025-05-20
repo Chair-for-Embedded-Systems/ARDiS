@@ -19,7 +19,7 @@ class Reporter():
             f.write(event + "\n")
         
         if echo:
-            print(echo)
+            print(event)
 
     def logExecutionTime(self, app_name: str, core: str, time: float) -> None:
         with open(self.workdir + "summary.log", "a") as f:
