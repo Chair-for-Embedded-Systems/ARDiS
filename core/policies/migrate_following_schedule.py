@@ -20,7 +20,7 @@ class StaticScheduleMigration(MigrationPolicy):
             #if setting the affinity fails, it means the app finished
             if pids[app] != -1:
                 try:
-                    self.__setAffinity(pids[app], newmap[app])
+                    self._setAffinity(pids[app], newmap[app])
                     tmp_pids[app] = pids[app]
                 #if the app finished, then set the pid to undefined (-1)
                 except:

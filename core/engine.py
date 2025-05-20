@@ -1,5 +1,4 @@
 from benchmarks.bench_manager import *
-from config import *
 from core.procworker import *
 from core.mapping import *
 from core.monitoring.monitor import Monitor, TrackingConfig
@@ -11,6 +10,7 @@ from core.migration import *
 from core.monitoringmode import *
 from core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
 from core.system_state import SystemState
+import config
 import re
 import threading
 from timeit import default_timer as timer
