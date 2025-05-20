@@ -1,6 +1,14 @@
 import random
 import subprocess
 import config
+from dataclasses import dataclass
+from core.engine import SystemState
+
+@dataclass
+class MigrationAction:
+    pid: int
+    destination: set[int]
+    source: set[int] | None
 
 class MigrationPolicy:
     def __init__(self):
@@ -37,6 +45,15 @@ class MigrationPolicy:
     # this is a no-op for the base class
     def getNewMapping(self, instructions: int, mapping: dict[str, set[int]]) -> dict[str, set[int]]:
         return mapping
+    
+    def get_migration_actions(self, system_state: SystemState) -> list[MigrationAction]:
+        """Returns a list of migarion actions, based on the provided system state"""
+        return []
+    
+    def apply_migration_actions(self, actions: list[MigrationAction]) -> None:
+        """Applys the given list of migration actions"""
+        for action in actions:
+            self.__setAffinity(action.pid, action.destination)
     
     ##def getShuffledMapping(self, mapping):
     ##    tmp_mapping = mapping.copy()

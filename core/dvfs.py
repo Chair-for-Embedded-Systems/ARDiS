@@ -1,6 +1,14 @@
 from utils.inteldvfs import *
 from config import *
 
+from dataclasses import dataclass
+from core.engine import SystemState
+
+@dataclass
+class DVFSAction:
+    core_id: int
+    frequency_mhz: float
+
 class DVFSPolicy():
     def __init__(self, core_frequencies = {core: 2000 for core in range(system_cores)}, min_frequency=1500, max_frequency=3500, governor="userspace"):
         self.manager = CPUFrequencyManager(min_frequency, max_frequency, governor)
@@ -20,3 +28,9 @@ class DVFSPolicy():
     def executeDVFSPolicy(self, new_core_frequencies):
         pass
 
+    def get_dvfs_actions(self, system_state: SystemState) -> list[DVFSAction]:
+        return []
+    
+    def apply_dvfs_actions(self, actions: list[DVFSAction]) -> None:
+        for action in actions:
+            self.manager.setFrequency(action.core_id, action.frequency_mhz)
