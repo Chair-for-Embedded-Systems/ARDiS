@@ -9,6 +9,7 @@ from core.scheduler import *
 from core.migration import *
 from core.monitoringmode import *
 from core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
+from core.buffering.action_buffer import ActionBuffer
 from core.system_state import SystemState
 import config
 import re
@@ -40,6 +41,7 @@ class Engine:
         
         self.reporter: Reporter = Reporter(experiment_name, results_folder)
         self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10)
+        self.action_buffer: ActionBuffer = ActionBuffer(capacity=10)
         
         self.__start_time: float = 0.0
         self.__app_to_pid: dict[str, int] = {}
@@ -194,13 +196,14 @@ class Engine:
                     for app in self.__active_threads:
                         self.__app_to_pid[app] = getPIDOfApp(app)
                             
-                    # Construct system state object, which gets passed to the policys
+                    # Construct system state object, which gets passed to the individual policies
                     system_state: SystemState = SystemState(
                         start_time=self.__start_time,
                         app_to_cores=self.__app_to_cores,
                         app_to_pid=self.__app_to_pid,
                         epoch=self.__epoch,
-                        event_buffer=self.event_buffer
+                        event_buffer=self.event_buffer,
+                        action_buffer=self.action_buffer
                     )
 
                     # Migration policy (if present)
@@ -214,11 +217,19 @@ class Engine:
                             if config.DEBUG:
                                 msg_app_migrated = f"[{self.getElapsedTime():.2f}s] Migrated {action.app} from core {action.source} to core {action.destination}"
                                 self.reporter.logEvent(msg_app_migrated, echo=True)
+                        
+                        # Write to action buffer
+                        if mig_actions:
+                            self.action_buffer.push_migration_actions(self.__epoch, mig_actions)
 
                     # DVFS policy (if present)
                     if dvfs_policy := self.__dvfs_policy:
                         dvfs_actions = dvfs_policy.get_dvfs_actions(system_state)
                         dvfs_policy.apply_dvfs_actions(dvfs_actions)
+
+                        # Write to action buffer
+                        if dvfs_actions:
+                            self.action_buffer.push_dvfs_actions(self.__epoch, dvfs_actions)
                     
                     # Update tracking config
                     if self.__monitoring_mode != MonitoringMode.OFF and self.__monitor:

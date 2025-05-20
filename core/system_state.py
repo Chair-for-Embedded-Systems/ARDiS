@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from core.buffering.event_buffer import EventBuffer
+from core.buffering.action_buffer import ActionBuffer
 
 @dataclass
 class SystemState:
@@ -8,3 +9,4 @@ class SystemState:
     app_to_pid: dict[str, int]
     epoch: int
     event_buffer: EventBuffer | None = None
+    action_buffer: ActionBuffer | None = None
