@@ -13,20 +13,28 @@ from core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, Event
 import re
 import threading
 from timeit import default_timer as timer
-
+from dataclasses import dataclass
 lock = threading.Lock()
+
+@dataclass
+class SystemState:
+    start_time: float
+    end_time: float
+    app_to_cores: dict[str, set[int]]
+    app_to_pid: dict[str, int]
+    epoch: int = 0
 
 class Engine:
     def __init__(self, experiment_name, mapping_policy = MappingPolicy(), scheduler = Scheduler(), dvfs_policy = DVFSPolicy(), migration_policy = None, monitoring_mode = MonitoringMode.PERIODIC_ON_CORE, results_folder = RESULTS_FOLDER):
         self.running = False
-        self.startime = 0
-        self.endtime = 0
-        self.__epochs = 0
-        self.mapping = {}
-        self.__threads = {}
-        self.__active_threads = []
-        self.__waiting_threads = []
-        self.PIDs = {}  
+        #self.startime = 0
+        #self.endtime = 0
+        #self.__epochs = 0
+        #self.mapping = {}
+        self.__threads: dict[str, threading.Thread] = {}
+        self.__active_threads: list[str] = []
+        self.__waiting_threads: list[str] = []
+        #self.PIDs = {}  
         self.__mapping_policy = mapping_policy
         self.__scheduler = scheduler 
         self.__monitor = None
@@ -35,18 +43,26 @@ class Engine:
         self.__migration_policy = migration_policy
         self.__total_instructions = None
         self.__monitoring_mode = monitoring_mode
-        self.__one_shot_file = os.path.join(ROOTPATH, "one_shot.out")
+        #self.__one_shot_file = os.path.join(ROOTPATH, "one_shot.out")
         self.__benchmark_manager = BenchManager()
         # The initialisation of the buffer here is temporary, until the state and action buffer is implemented
         self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10)
-            
+        
+        self.system_state: SystemState = SystemState(
+            start_time=0.0,
+            end_time=0.0,
+            app_to_cores={},
+            app_to_pid={},
+            epoch=0
+        )
 
     def __start(self):
         self.running = True
         self.startime = timer()
 
     def __launchApp(self, app: str, cores: set[int]):
-        self.PIDs[app] = -1
+        #self.PIDs[app] = -1
+        self.system_state.app_to_pid[app] = -1
         # Build the full application execution command from the corresponding script
         start = timer()
         
@@ -54,12 +70,21 @@ class Engine:
         end = timer()
         # keeping the lock until properly evaluated
         with lock:
-            cores = self.mapping[app]
-            self.mapping.pop(app)
-            self.PIDs.pop(app)
-            if self.__monitoring_mode != MonitoringMode.OFF:
-                self.__monitor.updateTrackedMapping(self.mapping)
-                self.__monitor.updateTrackedPIDs(self.PIDs)
+            cores = self.system_state.app_to_cores.pop(app, {-1})
+            #self.mapping.pop(app)
+            #self.PIDs.pop(app)
+            self.system_state.app_to_pid.pop(app)
+
+            if self.__monitoring_mode != MonitoringMode.OFF and self.__monitor:
+                #self.__monitor.updateTrackedMapping(self.mapping)
+                #self.__monitor.updateTrackedPIDs(self.PIDs)
+                self.__monitor.update_tracking_config(
+                    TrackingConfig(
+                        monitor_mode=self.__monitoring_mode,
+                        app_to_cores=self.system_state.app_to_cores,
+                        app_to_pid=self.system_state.app_to_pid
+                    )
+                )
             self.__active_threads.remove(app)
         
         core_str = ','.join([str(c) for c in cores])
@@ -78,17 +103,18 @@ class Engine:
         
     # Create a thread for each application in the mapping 
     def __makeThreads(self):
-        tmp_mapping = self.mapping.copy()
-        for app, core in tmp_mapping.items():
-            self.__threads[app] = threading.Thread(target=self.__launchApp, args=(app, core))
+        tmp_mapping = self.system_state.app_to_cores.copy()
+        for app, cores in tmp_mapping.items():
+            self.__threads[app] = threading.Thread(target=self.__launchApp, args=(app, cores))
             if config.DEBUG:
                 print("Thread for " + app + " created!")
                 self.reporter.logEvent("Thread for " + app + " created!")
     
-    def getProcessID(self, app):
+    def getProcessID(self, app: str):
         PID = getPIDOfApp(app)
         # writing to the dictionary should be thread safe, no need for lock here
-        self.PIDs[app] = PID
+        #self.PIDs[app] = PID
+        self.system_state.app_to_pid[app] = PID
     
         if config.DEBUG:
             print("[" + str(round(self.getElapsedTime(), 2)) + "s]: PID of " + app + " is " + str(PID))
@@ -97,7 +123,7 @@ class Engine:
     def getElapsedTime(self):
         return timer() - self.startime
     
-    def __startThread(self,  app):
+    def __startThread(self, app: str):
         print("Starting thread for ", app)
         self.__threads[app].start()
         with lock:
@@ -114,10 +140,10 @@ class Engine:
         self.__waiting_threads = list(applications)
         # Execute the mapping policy 
         if self.__mapping_policy is not None:
-            self.mapping = self.__mapping_policy.executeMapping(applications)
+            self.system_state.app_to_cores = self.__mapping_policy.executeMapping(applications)
         else:
-            self.mapping = {app: {-1} for app in applications}
-            self.PIDs = {app: -1 for app in applications}
+            self.system_state.app_to_cores = {app: {-1} for app in applications}
+            self.system_state.app_to_pid = {app: -1 for app in applications}
 
         if config.DEBUG:
             self.reporter.logEvent("Mapping: " + str(self.mapping))
@@ -165,14 +191,11 @@ class Engine:
                 print("Total execution time of experiment = ", str(round(self.endtime - self.startime, 2)) + "s")
                 self.reporter.logEvent("[" + str(round(self.getElapsedTime(), 2)) + "s]: Experiment Finished!")
                 self.reporter.logEvent("Total execution time of experiment = " + str(round(self.endtime - self.startime, 2)) + "s")
+                
                 # Stop the monitoring thread
-                if self.__monitoring_mode != MonitoringMode.OFF:
+                if self.__monitor:
                     self.__monitor.stop()
-                    # Fetch the energy, time, and instructions from the one_shot.out file
-                    #energy, time_elapsed, executed_instructions = self.fetch_perf_data(self.__one_shot_file)
-                    #self.reporter.logEvent("Total instructions executed = " + str(executed_instructions))
-                    #self.reporter.logEvent("Total energy consumed (perf)= " + str(energy) + " Joules")
-                    #self.reporter.logEvent("Total time elapsed (perf)= " + str(time_elapsed) + " seconds")
+                
                 # Clear the caches after the experiment is done
                 self.__clearCaches()
                 break
@@ -181,15 +204,16 @@ class Engine:
                 if self.__epochs > 0:
                     with lock:
                         for app in self.mapping:
-                            self.PIDs[app] = getPIDOfApp(app)
-                    self.__monitor.updateTrackedPIDs(self.PIDs)
+                            self.system_state.app_to_pid[app] = getPIDOfApp(app)
+                    
+                    if self.__monitor:
+                        self.__monitor.updateTrackedPIDs(self.system_state.app_to_pid)
                                         
-                    if self.__epochs % 20 == 0 and self.__migration_policy is not None:
-                        #print("######### TRIGGERRING MIGRATION and DVFS #########")
-                        #print("Current Mapping: ", self.mapping)
-                        # setting the p cores to a random frequency from 1800 to 3200 with steps of 200MHz
-                            
-                        new_mapping, app_to_migrate, current_core, new_core = self.__migration_policy.getNewMapping(self.__total_instructions, self.mapping)
+                    if self.__epochs % 20 == 0 and self.__migration_policy is not None:    
+                        new_mapping, app_to_migrate, current_core, new_core = self.__migration_policy.getNewMapping(
+                            self.__total_instructions,
+                            self.mapping
+                        )
                         
                         
                         is_p_core = new_core in intel_p_core_ids
@@ -204,22 +228,29 @@ class Engine:
 
                         with lock:
                             # Executing the migration
-                            self.__migration_policy.executeMigration(self.mapping, new_mapping, self.PIDs)
+                            self.__migration_policy.executeMigration(self.system_state.app_to_cores, new_mapping, self.system_state.app_to_pid)
                             self.mapping = new_mapping
                             # Executing the DVFS policy
                             if self.__dvfs_policy is not None:
                                 self.__dvfs_policy.executeDVFSPolicy(new_current_frequencies)
-                                self.__monitor.updateCoreFrequencies(new_current_frequencies)
+                                #self.__monitor.updateCoreFrequencies(new_current_frequencies)
 
-                            if self.__monitoring_mode != MonitoringMode.OFF:
-                                self.__monitor.updateTrackedMapping(self.mapping)
+                            #if self.__monitoring_mode != MonitoringMode.OFF:
+                            #    self.__monitor.updateTrackedMapping(self.mapping)
                                 
                         if config.DEBUG:
                             #self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] Migrated {app_to_migrate} from core {current_core} to core {new_core}")
                             print(f"[{str(round(self.getElapsedTime(), 2))}s] Migrated {app_to_migrate} from core {current_core} to core {new_core}")
 
-                        if self.__monitoring_mode == MonitoringMode.PERIODIC_ON_PID:
-                            self.__monitor.updateTrackedPIDs(self.PIDs)
+                        if self.__monitoring_mode != MonitoringMode.OFF and self.__monitor:
+                            #self.__monitor.updateTrackedPIDs(self.PIDs)
+                            self.__monitor.update_tracking_config(
+                                TrackingConfig(
+                                    monitor_mode=self.__monitoring_mode,
+                                    app_to_cores=self.system_state.app_to_cores,
+                                    app_to_pid=self.system_state.app_to_pid
+                                )
+                            )
 
                 # any other periodic action here
            
