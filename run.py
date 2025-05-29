@@ -6,6 +6,7 @@ from core.policies.dvfs_for_training import *
 from core.policies.migrate_for_training import *
 from core.policies.consecutive_schedule import *
 from core.policies.intel_static_dvfs import *
+from core.policies.static_dvfs import StaticDVFS
 from core.dvfs import *
 from core.monitoringmode import *
 from core.migration import *
@@ -20,7 +21,7 @@ import os
 
 
 class Experiment:
-    def __init__(self, name="", applications: list[str] = [], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy=DVFSPolicy(), migration_policy=None, monitoring_mode=MonitoringMode.PERIODIC_ON_CORE, results_folder=RESULTS_FOLDER):   
+    def __init__(self, name="", applications: list[str] = [], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy: DVFSPolicy=StaticDVFS(), migration_policy=None, monitoring_mode=MonitoringMode.PERIODIC_ON_CORE, results_folder=RESULTS_FOLDER):   
         self.__name = name
         self.__applications = applications
         self.__engine = Engine(self.__name, 
@@ -63,7 +64,7 @@ class DefaultLinuxExperiment:
         self.__engine = Engine(self.__name, 
                        mapping_policy=mapping_policy, 
                        scheduler=scheduler, 
-                       dvfs_policy=DVFSPolicy(min_frequency=min_frequency, max_frequency=max_frequency, governor = governor), 
+                       dvfs_policy=StaticDVFS(min_frequency=min_frequency, max_frequency=max_frequency, governor = governor), 
                        migration_policy=None, 
                        monitoring_mode=monitoring_mode)
     
@@ -86,7 +87,7 @@ def run_example_with_core_monitoring():
     exp = Experiment("Simple Experiment with Specific Applications", 
                      mapping_policy=ExplicitMapping.from_list([3, 6, 19]),
                      scheduler=ConsecutiveScheduler(0),
-                     dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}),
+                     dvfs_policy=StaticDVFS({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_CORE)
     # Manually set the applications to execute
     exp.setApplications(['parsec-blackscholes', 'parsec-splash2x.radix', 'parsec-bodytrack'])
@@ -98,7 +99,7 @@ def run_example_with_PID_monitoring():
     exp = Experiment("Simple Experiment with Specific Applications", 
                      mapping_policy=ExplicitMapping.from_list([6, 19]),
                      scheduler=ConsecutiveScheduler(0),
-                     dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}),
+                     dvfs_policy=StaticDVFS({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
     # Manually set the applications to execute
     exp.setApplications(['parsec-blackscholes'])
@@ -158,7 +159,7 @@ def run_parsec_characterization_experiments():
                 exp = Experiment(exp_name, 
                                 mapping_policy=ExplicitMapping.from_list([intel_p_core_ids[3]]), 
                                 scheduler=scheduler, 
-                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}),
+                                dvfs_policy=StaticDVFS({core: frequency for core in range(system_cores)}),
                                 monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
                                 results_folder=config.RESULTS_FOLDER)
                 exp.setApplications([app])
@@ -172,7 +173,7 @@ def run_parsec_characterization_experiments():
                 exp = Experiment(exp_name, 
                                 mapping_policy=ExplicitMapping.from_list([intel_e_core_ids[0]]), 
                                 scheduler=scheduler, 
-                                dvfs_policy=DVFSPolicy({core: frequency for core in range(system_cores)}),
+                                dvfs_policy=StaticDVFS({core: frequency for core in range(system_cores)}),
                                 monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
                                 results_folder=config.RESULTS_FOLDER)
                 exp.setApplications([app])
@@ -186,7 +187,7 @@ def run_example_with_result_plotting():
     exp = Experiment("Experiment with result plotting", 
                      mapping_policy=ExplicitMapping.from_list([3, 6, 19]),
                      scheduler=ConsecutiveScheduler(0),
-                     dvfs_policy=DVFSPolicy({core: 3000 for core in range(system_cores)}),
+                     dvfs_policy=StaticDVFS({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
     
     exp.setApplications(['parsec-blackscholes', 'parsec-splash2x.radix', 'parsec-bodytrack'])
@@ -206,7 +207,7 @@ def run_example_with_TID_monitoring():
         applications=["parsec-dedup", "parsec-splash2x.radix"],
         mapping_policy=ExplicitMapping([{2, 4, 6, 8}, {16}]),
         scheduler=ConsecutiveScheduler(0),
-        dvfs_policy=DVFSPolicy({core: 3500 for core in range(system_cores)}),
+        dvfs_policy=StaticDVFS({core: 3500 for core in range(system_cores)}),
         monitoring_mode=MonitoringMode.PERIODIC_ON_TID
     )
     exp.executeExperiment()
@@ -215,6 +216,7 @@ def run_example_with_TID_monitoring():
         diagrams=[Diagrams.EXECUTION_OVERVIEW, Diagrams.INSTRUCTIONS, Diagrams.MAPPING, Diagrams.FREQUENCY]
     )
     rp.plot_results(verbose=True)
+
 
 if __name__ == "__main__":
     #run_example_with_core_monitoring()

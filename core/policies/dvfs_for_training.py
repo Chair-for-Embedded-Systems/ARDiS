@@ -17,7 +17,7 @@ class DVFSForTraining(DVFSPolicy):
     """
     def __init__(
         self,
-        core_frequencies = {core: 2000 for core in range(config.system_cores)},
+        core_frequencies: dict[int , int] = {core: 2000 for core in range(config.system_cores)},
         p_core_range: list[int] = list(range(1800, 3201, 200)),
         e_core_range: list[int] = list(range(1800, 3201, 200)),
         p_cores: set[int] = set(config.intel_p_core_ids),
