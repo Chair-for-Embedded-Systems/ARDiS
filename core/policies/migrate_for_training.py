@@ -44,7 +44,7 @@ class MigrationForTraining(MigrationPolicy):
         new_core = None
 
         # Collect all currently occupied cores
-        occupied_cores: set[int] = set().union(*system_state.app_to_cores.values())
+        occupied_cores: set[int] = system_state.occupied_cores
 
         # If migrate_within_cluster is True, we migrate within the same core type or cluster
         if self._migrate_within_cluster:
@@ -76,7 +76,6 @@ class MigrationForTraining(MigrationPolicy):
 
         action = MigrationAction(
             app=app_to_migrate,
-            pid=system_state.app_to_pid[app_to_migrate],
             source=system_state.app_to_cores[app_to_migrate],
             destination={new_core}
         )
