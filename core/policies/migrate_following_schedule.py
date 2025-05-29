@@ -1,6 +1,9 @@
 import os
+from core.actions import MigrationAction
 from core.migration import *
 import sys
+
+from core.system_state import SystemState
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
@@ -10,7 +13,11 @@ class StaticScheduleMigration(MigrationPolicy):
     def __init__(self, static_schedule):
         super().__init__()
         self.static_schedule = static_schedule
+        raise NotImplementedError("StaticScheduleMigration policy is currently broken")
     
+    def get_migration_actions(self, system_state: SystemState) -> list[MigrationAction]:
+        raise NotImplementedError
+
     def executeMigration(self, currmap , newmap , pids):
         tmp_pids = pids.copy()
         #Only apply migration if the new map is different than current map
