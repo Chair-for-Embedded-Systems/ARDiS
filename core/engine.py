@@ -20,17 +20,25 @@ thread_queue_lock = threading.Lock()
 system_state_lock = threading.Lock()
 
 class Engine:
-    def __init__(self, experiment_name, mapping_policy = MappingPolicy(), scheduler = Scheduler(), dvfs_policy = DVFSPolicy(), migration_policy = None, monitoring_mode = MonitoringMode.PERIODIC_ON_CORE, results_folder = RESULTS_FOLDER):
+    def __init__(self, 
+                experiment_name: str,
+                mapping_policy: MappingPolicy = MappingPolicy(),
+                scheduler: Scheduler = Scheduler(),
+                dvfs_policy: DVFSPolicy | None = None,
+                migration_policy: MigrationPolicy | None = None,
+                monitoring_mode: MonitoringMode = MonitoringMode.PERIODIC_ON_CORE,
+                results_folder: str = RESULTS_FOLDER
+    ) -> None:
         self.running: bool = False
 
         self.__threads: dict[str, threading.Thread] = {}
         self.__active_threads: list[str] = []
         self.__waiting_threads: list[str] = []
     
-        self.__mapping_policy: MappingPolicy = mapping_policy
-        self.__scheduler: Scheduler = scheduler 
-        self.__dvfs_policy: DVFSPolicy = dvfs_policy
-        self.__migration_policy: MigrationPolicy | None = migration_policy
+        self.__mapping_policy = mapping_policy
+        self.__scheduler = scheduler 
+        self.__dvfs_policy = dvfs_policy
+        self.__migration_policy = migration_policy
     
         self.__monitor: Monitor | None = None
         self.__monitoring_mode: MonitoringMode = monitoring_mode
@@ -199,6 +207,8 @@ class Engine:
                     for app in self.__active_threads:
                         # This call is very expensive, since it invokes a subprocess that runs pgrep in a loop until the PID is found or max_tries is exceeded. 
                         # Each failed try introduces an addtional delay of 5ms.
+                        # if self.__app_to_pid[app] != -1:
+                        #     continue
                         self.__app_to_pid[app] = getPIDOfApp(app, max_tries=1)
                             
                     # Construct system state object, which gets passed to the individual policies
@@ -245,7 +255,7 @@ class Engine:
                     # Update tracking config
                     if self.__monitoring_mode != MonitoringMode.OFF and self.__monitor:
                         self.__monitor.update_tracking_config(
-                            TrackingConfig(self.__monitoring_mode, self.__app_to_cores, self.__app_to_pid)
+                            TrackingConfig(self.__monitoring_mode, self.__app_to_cores.copy(), self.__app_to_pid.copy())
                         )
 
                     # any other periodic action here
