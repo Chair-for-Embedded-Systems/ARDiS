@@ -14,3 +14,28 @@ class MappingPolicy():
                     self.mapping[app] = {core}
                     break
         return self.mapping
+
+
+    ##def getShuffledMapping(self, mapping):
+    ##    tmp_mapping = mapping.copy()
+    ##    available_cores = list(mapping.values())
+    ##    random.shuffle(available_cores)
+    ##    for app in mapping:
+    ##        tmp_mapping[app] = available_cores.pop()
+    ##    return tmp_mapping
+    ##
+    ##def getFixedMapping(self, mapping):
+    ##    tmp_mapping = mapping.copy()
+    ##    ctr = 2
+    ##    for app in mapping:
+    ##        tmp_mapping[app] = ctr
+    ##        ctr += 2
+    ##    return tmp_mapping
+    ##
+    ##def getRandomMapping(self, mapping):
+    ##    tmp_mapping = mapping.copy()
+    ##    available_cores = list(range(2, config.system_cores))
+    ##    random.shuffle(available_cores)
+    ##    for app in mapping:
+    ##        tmp_mapping[app] = available_cores.pop()
+    ##    return tmp_mapping

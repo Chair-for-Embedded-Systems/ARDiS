@@ -1,63 +1,51 @@
-import random
 import subprocess
-import config
 
-class MigrationPolicy:
-    def __init__(self):
-        pass
+from abc import ABC, abstractmethod
+
+from core.actions import MigrationAction
+from core.system_state import SystemState
+
+class MigrationPolicy(ABC):
+
+    @abstractmethod
+    def get_migration_actions(self, system_state: SystemState) -> list[MigrationAction]:
+        """
+        Returns a list of migration actions, based on the provided system state.
+        """
+        raise NotImplementedError
     
-
-    def __setAffinity(self, pid: int, cores: set[int]) -> bool:
+    @staticmethod
+    def apply_migration_actions(
+        actions: list[MigrationAction],
+        app_to_pid: dict[str, int],
+        app_to_cores: dict[str, set[int]],
+    ) -> None:
+        """
+        Applys the given list of migration actions. The passed in dict `app_to_cores` will be modified.
+        """
+        for action in actions:
+            pid = app_to_pid[action.app]
+            if MigrationPolicy._setAffinity(pid, action.destination):
+                app_to_cores[action.app] = action.destination
+            else:
+                print("[Migration Policy] Migration failed. Maybe the application has not started yet.")
+    
+    @staticmethod
+    def _setAffinity(pid: int, cores: set[int]) -> bool:
+        """
+        Applies the given affinity to the given pid.
+        Returns true if successfull otherwise false
+        """
         affinity = ",".join([str(c) for c in cores])
         cmd_str = f"taskset -cpa {affinity} {pid}"
         command = cmd_str.split(" ")
         #print ("Executing: ", cmd_str)    
-        p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        if p.stderr.readlines():
+        try:
+            p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            if p.stderr and p.stderr.readlines():
+                return False
+            else:
+                p.wait()
+                return True
+        except:
             return False
-        else:
-            p.wait()
-            return True
-        
-    def executeMigration(self, currmap: dict[str, set[int]], newmap: dict[str, set[int]] , pids: dict[str, int]):
-        tmp_pids = pids.copy()
-        current_mapping = currmap.copy()
-        #Only apply migration if the new map is different than current map
-        #check each app for its new core
-        for app in current_mapping:
-            #if the app is still running, then move it to the new core
-            #if setting the affinity fails, it means the app finished
-            if pids[app] != -1:
-                try:
-                    self.__setAffinity(tmp_pids[app], newmap[app])
-                #if the app finished, then set the pid to undefined (-1)
-                except:
-                    print("Migration failed. Maybe the application has not started yet.")
-
-    # this is a no-op for the base class
-    def getNewMapping(self, instructions: int, mapping: dict[str, set[int]]) -> dict[str, set[int]]:
-        return mapping
-    
-    ##def getShuffledMapping(self, mapping):
-    ##    tmp_mapping = mapping.copy()
-    ##    available_cores = list(mapping.values())
-    ##    random.shuffle(available_cores)
-    ##    for app in mapping:
-    ##        tmp_mapping[app] = available_cores.pop()
-    ##    return tmp_mapping
-    ##
-    ##def getFixedMapping(self, mapping):
-    ##    tmp_mapping = mapping.copy()
-    ##    ctr = 2
-    ##    for app in mapping:
-    ##        tmp_mapping[app] = ctr
-    ##        ctr += 2
-    ##    return tmp_mapping
-    ##
-    ##def getRandomMapping(self, mapping):
-    ##    tmp_mapping = mapping.copy()
-    ##    available_cores = list(range(2, config.system_cores))
-    ##    random.shuffle(available_cores)
-    ##    for app in mapping:
-    ##        tmp_mapping[app] = available_cores.pop()
-    ##    return tmp_mapping

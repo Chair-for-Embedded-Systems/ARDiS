@@ -1,16 +1,19 @@
-from core.migration import *
-import sys, os
+import random
 
-# Import the configuration
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 import config
+from core.migration import MigrationPolicy, MigrationAction, SystemState
 
 class MigrationForTraining(MigrationPolicy):
-    def __init__(self, migrate_within_cluster=True):
+    def __init__(self, migrate_within_cluster=True, epoch_trigger_intervall: int = 10):
         super().__init__()
         self._migrate_within_cluster = migrate_within_cluster
+        self._epoch_trigger_intervall = epoch_trigger_intervall
     
-    def getNewMapping(self, instructions, mapping):
+    def get_migration_actions(self, system_state: SystemState) -> list[MigrationAction]:
+        
+        if system_state.epoch % self._epoch_trigger_intervall != 0:
+            return []
+
         # List of P-core and E-core IDs from the config
         intel_p_core_ids = config.intel_p_core_ids
         intel_e_core_ids_cluster_1 = config.intel_e_core_ids_cluster_1
@@ -20,10 +23,18 @@ class MigrationForTraining(MigrationPolicy):
         all_e_core_ids = intel_e_core_ids_cluster_1 + intel_e_core_ids_cluster_2
 
         # Randomly choose one application to migrate
-        app_to_migrate = random.choice(list(mapping.keys()))
+        active_apps = [app for app, pid in system_state.app_to_pid.items() if pid != -1]
+        if not active_apps:
+            return []
+        
+        app_to_migrate = random.choice(active_apps)
 
         # Get the current core where the app is mapped
-        current_core = mapping[app_to_migrate].pop()
+        current_cores = system_state.app_to_cores[app_to_migrate].copy()
+        if len(current_cores) != 1:
+            raise ValueError("Policy does not support multi-core mappings")
+        
+        current_core = current_cores.pop()
 
         # Determine if the current core is a P-core or E-core
         is_p_core = current_core in intel_p_core_ids
@@ -33,7 +44,7 @@ class MigrationForTraining(MigrationPolicy):
         new_core = None
 
         # Collect all currently occupied cores
-        occupied_cores = set(mapping.values())
+        occupied_cores: set[int] = system_state.occupied_cores
 
         # If migrate_within_cluster is True, we migrate within the same core type or cluster
         if self._migrate_within_cluster:
@@ -60,11 +71,13 @@ class MigrationForTraining(MigrationPolicy):
         # Randomly select a new core from the available options
         if available_cores:
             new_core = random.choice(available_cores)
+        else:
+            return []
 
-        # Create the new mapping with the selected application migrated to the new core
-        new_mapping = mapping.copy()
-        if new_core is not None:
-            new_mapping[app_to_migrate] = {new_core}
+        action = MigrationAction(
+            app=app_to_migrate,
+            source=system_state.app_to_cores[app_to_migrate],
+            destination={new_core}
+        )
 
-        #print(f"Migrating {app_to_migrate} from core {current_core} to core {new_core}")
-        return new_mapping, app_to_migrate, current_core, new_core
+        return [action]

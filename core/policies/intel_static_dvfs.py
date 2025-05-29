@@ -1,6 +1,7 @@
+from core.actions import DVFSAction
 from core.dvfs import *
-import json
 from config import *
+from core.system_state import SystemState
 
 class IntelStaticDVFSPolicy(DVFSPolicy):
     def __init__(self, static_schedule, core_frequencies=None):
@@ -11,7 +12,11 @@ class IntelStaticDVFSPolicy(DVFSPolicy):
         # Pass the core_frequencies to the parent class's __init__ method
         super().__init__(core_frequencies)
         self.static_schedule = static_schedule
-         
+        raise NotImplementedError("IntelStaticDVFS policy is currently broken")
+
+    def get_dvfs_actions(self, system_state: SystemState) -> list[DVFSAction]:
+        raise NotImplementedError
+    
     def executeDVFSPolicy(self, instructions, mapping):
         tmp_mapping = mapping.copy()
         
