@@ -25,8 +25,10 @@ class MigrationPolicy(ABC):
         """
         for action in actions:
             pid = app_to_pid[action.app]
-            MigrationPolicy._setAffinity(pid, action.destination)
-            app_to_cores[action.app] = action.destination
+            if MigrationPolicy._setAffinity(pid, action.destination):
+                app_to_cores[action.app] = action.destination
+            else:
+                print("[Migration Policy] Migration failed. Maybe the application has not started yet.")
     
     @staticmethod
     def _setAffinity(pid: int, cores: set[int]) -> bool:
@@ -38,9 +40,12 @@ class MigrationPolicy(ABC):
         cmd_str = f"taskset -cpa {affinity} {pid}"
         command = cmd_str.split(" ")
         #print ("Executing: ", cmd_str)    
-        p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        if p.stderr and p.stderr.readlines():
+        try:
+            p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            if p.stderr and p.stderr.readlines():
+                return False
+            else:
+                p.wait()
+                return True
+        except:
             return False
-        else:
-            p.wait()
-            return True
