@@ -217,6 +217,27 @@ def run_example_with_TID_monitoring():
     )
     rp.plot_results(verbose=True)
 
+def run_example_with_random_migration_and_random_dvfs():
+    # Create an experiment object
+    exp = Experiment(
+        name="Simple Experiment with random dvfs and app migration", 
+        mapping_policy=ExplicitMapping.from_list([6, 16]),
+        scheduler=ConsecutiveScheduler(delay=0),
+        migration_policy=MigrationForTraining(
+            migrate_within_cluster=True,
+            epoch_trigger_intervall=5,
+        ),
+        dvfs_policy=DVFSForTraining(
+            p_core_range=list(range(3500, 4501, 100)),
+            e_core_range=list(range(2000, 3001, 100))
+        ),
+        applications=['parsec-blackscholes', 'parsec-dedup'],
+        monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+    )
+    exp.executeExperiment()
+    rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.MAPPING, Diagrams.FREQUENCY])
+    rp.plot_results(verbose=True)
+
 
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
@@ -224,5 +245,5 @@ if __name__ == "__main__":
     #run_parsec_default_linux_governor()
     #run_parsec_characterization_experiments()
     #run_example_with_result_plotting()
-    run_example_with_TID_monitoring()
-
+    #run_example_with_TID_monitoring()
+    run_example_with_random_migration_and_random_dvfs()
