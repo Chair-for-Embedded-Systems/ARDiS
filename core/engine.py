@@ -78,8 +78,8 @@ class Engine:
                 self.__monitor.update_tracking_config(
                     TrackingConfig(
                         monitor_mode=self.__monitoring_mode,
-                        app_to_cores=self.__app_to_cores,
-                        app_to_pid=self.__app_to_pid
+                        app_to_cores=self.__app_to_cores.copy(),
+                        app_to_pid=self.__app_to_pid.copy()
                     )
                 )
         
