@@ -192,9 +192,14 @@ class Engine:
             else:  
                 with system_state_lock:
                 
-                    # Update pid of (active) apps
+                    # Update pid of (active) apps.
+                    # Once the PID of an parsec-app has been detected (app_to_pid[app] != -1), it does not change.
+                    # However apparently there where some cases (maybe with other benchmarks), where a change of the PID was observed.
+                    # Therefore this optimization is not applied.
                     for app in self.__active_threads:
-                        self.__app_to_pid[app] = getPIDOfApp(app)
+                        # This call is very expensive, since it invokes a subprocess that runs pgrep in a loop until the PID is found or max_tries is exceeded. 
+                        # Each failed try introduces an addtional delay of 5ms.
+                        self.__app_to_pid[app] = getPIDOfApp(app, max_tries=1)
                             
                     # Construct system state object, which gets passed to the individual policies
                     system_state: SystemState = SystemState(
@@ -206,28 +211,34 @@ class Engine:
                         action_buffer=self.action_buffer
                     )
 
-                    # Migration policy (if present)
+                    # Execute Migration-Policy (if present)
                     if mig_policy := self.__migration_policy:
                         mig_actions = mig_policy.get_migration_actions(system_state)
-                        mig_policy.apply_migration_actions(mig_actions)
+                        mig_policy.apply_migration_actions(mig_actions, self.__app_to_pid, self.__app_to_cores)
                         
-                        # Update system state
-                        for action in mig_actions:
-                            self.__app_to_cores[action.app] = action.destination
-                            if config.DEBUG:
+                        # Log migration actions if desired
+                        if config.DEBUG:
+                            for action in mig_actions:
                                 msg_app_migrated = f"[{self.getElapsedTime():.2f}s] Migrated {action.app} from core {action.source} to core {action.destination}"
                                 self.reporter.logEvent(msg_app_migrated, echo=True)
                         
-                        # Write to action buffer
+                        # Writes the migration action to the action buffer. 
+                        # Since this is done here, the dvfs poilcy will have access to this information.
                         if mig_actions:
                             self.action_buffer.push_migration_actions(self.__epoch, mig_actions)
 
-                    # DVFS policy (if present)
+                    # Execute DVFS-Policy (if present)
                     if dvfs_policy := self.__dvfs_policy:
                         dvfs_actions = dvfs_policy.get_dvfs_actions(system_state)
                         dvfs_policy.apply_dvfs_actions(dvfs_actions)
+                        
+                        # Log dvfs actions if desired
+                        if config.DEBUG:
+                            for action in dvfs_actions:
+                                msg_app_migrated = f"[{self.getElapsedTime():.2f}s] Changed frequency of core {action.core_id} to {action.frequency_mhz} Mhz"
+                                self.reporter.logEvent(msg_app_migrated, echo=True)
 
-                        # Write to action buffer
+                        # Write dvfs action to action buffer
                         if dvfs_actions:
                             self.action_buffer.push_dvfs_actions(self.__epoch, dvfs_actions)
                     
@@ -237,7 +248,7 @@ class Engine:
                             TrackingConfig(self.__monitoring_mode, self.__app_to_cores, self.__app_to_pid)
                         )
 
-                # any other periodic action here
+                    # any other periodic action here
            
             # Increment the epoch counter and sleep for the action interval
             #print("Epoch: ", self.__epochs)

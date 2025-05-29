@@ -1,7 +1,6 @@
 import subprocess
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 
 from core.actions import MigrationAction
 from core.system_state import SystemState
@@ -16,12 +15,18 @@ class MigrationPolicy(ABC):
         raise NotImplementedError
     
     @staticmethod
-    def apply_migration_actions(actions: list[MigrationAction]) -> None:
+    def apply_migration_actions(
+        actions: list[MigrationAction],
+        app_to_pid: dict[str, int],
+        app_to_cores: dict[str, set[int]],
+    ) -> None:
         """
-        Applys the given list of migration actions
+        Applys the given list of migration actions. The passed in dict `app_to_cores` will be modified.
         """
         for action in actions:
-            MigrationPolicy._setAffinity(action.pid, action.destination)
+            pid = app_to_pid[action.app]
+            MigrationPolicy._setAffinity(pid, action.destination)
+            app_to_cores[action.app] = action.destination
     
     @staticmethod
     def _setAffinity(pid: int, cores: set[int]) -> bool:

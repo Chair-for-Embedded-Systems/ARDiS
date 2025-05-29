@@ -2,9 +2,8 @@ from dataclasses import dataclass
 @dataclass
 class MigrationAction:
     app: str
-    pid: int
-    destination: set[int]
     source: set[int] | None
+    destination: set[int]
 
 @dataclass
 class DVFSAction:
