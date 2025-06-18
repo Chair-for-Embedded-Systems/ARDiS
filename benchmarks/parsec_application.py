@@ -95,23 +95,3 @@ class ParsecApplication(Application):
     def get_display_name(self) -> str:
         return self._display_name
    
-
-if __name__ == "__main__":
-    import threading
-    import time
-    
-
-    blackscholes_a = ParsecApplication("parsec.blackscholes", 2, ParsecApplication.InputSize.NATIVE)
-    blackscholes_b = ParsecApplication("parsec.blackscholes", 2, ParsecApplication.InputSize.NATIVE)
-    
-    t_1 = threading.Thread(target=blackscholes_a.execute, args=([{2, 4}]))
-    t_2 = threading.Thread(target=blackscholes_b.execute, args=([{6, 8}])).start()
-    t_1.start()
-    
-    app_to_pid = {blackscholes_a: None, blackscholes_b: None}
-
-    while blackscholes_a.get_pid() is None and t_1.is_alive():
-        time.sleep(0.5)
-        print("PID not detected")
-    
-    print(blackscholes_a.get_pid())

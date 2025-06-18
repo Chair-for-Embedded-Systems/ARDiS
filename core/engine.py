@@ -1,4 +1,3 @@
-from benchmarks.bench_manager import *
 from core.procworker import *
 from core.mapping import *
 from core.monitoring.monitor import Monitor, TrackingConfig
@@ -45,8 +44,6 @@ class Engine:
         self.__monitoring_mode: MonitoringMode = monitoring_mode
         
         self.__total_instructions: dict[Application, int] = {}
-    
-        self.__benchmark_manager = BenchManager()
         
         self.reporter: Reporter = Reporter(experiment_name, results_folder)
         self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10)
