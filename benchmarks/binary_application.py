@@ -11,7 +11,7 @@ class BinaryApplication(Application):
         parts = start_command.split()
         binary_path = parts[0]
         arguments = parts[1:]
-        
+
         # Check if binary exists
         if not os.path.exists(binary_path):
             raise FileNotFoundError
@@ -26,9 +26,12 @@ class BinaryApplication(Application):
         cs_cores = ",".join([str(c) for c in cores]) if cores else f"0-{system_cores}"
         arguments = " ".join(self._arguments)
         command = f"taskset -c {cs_cores} {self._binary_path} {arguments}"
+        
         # Start and get pid
         process = subprocess.Popen(args=command.split(" "), stderr=subprocess.PIPE, stdout=subprocess.DEVNULL)
+        self._start_affinity = cores
         self._pid = process.pid
+        
         # Block until executed
         process.wait()
     
@@ -37,7 +40,3 @@ class BinaryApplication(Application):
     
     def get_display_name(self) -> str:
         return self._binary_name
-    
-if __name__ == "__main__":
-    app = BinaryApplication("/home/uhqql/ARDIS/binaries/wait_n", ["5"])
-    app.execute({4})

@@ -106,7 +106,7 @@ def run_example_with_PID_monitoring():
     exp = Experiment("Simple Experiment with Specific Applications", 
                      applications=[
                          ParsecApplication("parsec.blackscholes"),
-                         ParsecApplication("parsec.blackscholes"),
+                         ParsecApplication("parsec.dedup"),
                      ],
                      mapping_policy=ExplicitMapping.from_list([6, 19]),
                      scheduler=ConsecutiveScheduler(0),

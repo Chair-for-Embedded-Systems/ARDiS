@@ -31,8 +31,8 @@ class ParsecApplication(Application):
         
         # Validate parameters (Todo)
         benchmark, application_binary = application_package.split('.')[:2]
-        #if not application_package in parsec_apps:
-        #    raise ValueError(f"{application_package} is not found on this system")
+        if not application_package in parsec_apps:
+            raise ValueError(f"{application_package} is not found on this system")
 
         self._package = application_package
         self._benchmark = benchmark
@@ -40,9 +40,6 @@ class ParsecApplication(Application):
         self._display_name = f"{application_package}-{threads}"
         self._threads = threads
         self._input_size = input_size
-        
-        self._start_affinity: set[int] | None = None
-        self._pid: int | None = None
 
     @staticmethod
     def _set_environment():
@@ -77,7 +74,6 @@ class ParsecApplication(Application):
         log_file = "/dev/null" # f"{self._application}.log"
         
         command = f"taskset -c {cs_cores} nice -n 0 parsecmgmt -a run -i {self._input_size.value} -d {run_dir} -n {self._threads} -p {self._package} > {log_file}"
-        #command = f"parsecmgmt -a run -i {input_size} -n 1 -p {app}"
         
         subprocess.run(command, shell=True, executable="/bin/bash")
     

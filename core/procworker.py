@@ -1,3 +1,4 @@
+import os
 import subprocess
 import time
 from core.retthreading import *
@@ -35,28 +36,18 @@ def getPIDThread(proc : str, max_tries: int) -> int:
                 time.sleep(0.005)
     return pid
 
-def poll_affinity(pids: set[int]) -> dict[int, set[int]]:
-        """
-        Returns the affinity as list of allowed logical cores for the given set of pid's.
-        """
-        output: dict[int, set[int]] = {}
-        for pid in pids:
-            try:
-                with open(f"/proc/{pid}/status", 'r') as f:
-                    for line in f:
-                        if "Cpus_allowed:" in line:
-                            hex_mask = line.split(':')[1]
-                            bin_mask = bin(int(hex_mask, 16))[2:]
-                            bin_mask = bin_mask.zfill(len(hex_mask)*4)
-                            bin_mask = bin_mask[::-1]
-                            affinity = [core for core,bit in enumerate(bin_mask) if bit == '1']
-                            output[pid] = set(affinity)
-                            break
-            except FileNotFoundError as fe:
-                output[pid] = set()
-                continue
-    
-        return output
+def get_affinity(pids: set[int]) -> dict[int, set[int]]:
+    """
+    Returns the affinity as list of allowed logical cores for the given set of pid's.
+    """
+    output: dict[int, set[int]] = {}
+    for pid in pids:
+        try:
+            affinity = os.sched_getaffinity(pid)
+            output[pid] = affinity
+        except Exception:
+            output[pid] = affinity
+    return output
 
 def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
     # Find all pids with this application name
@@ -70,7 +61,7 @@ def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
         
     # Check affinity of each pid to find correct app in multi-instance scenarios
     pids = [int(p) for p in pid_string.split("\n") if p]
-    pid_to_affinity = poll_affinity(set(pids))
+    pid_to_affinity = get_affinity(set(pids))
         
     if affinity is None:
         pid_matches = pids
