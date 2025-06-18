@@ -17,7 +17,7 @@ class ParsecApplication(Application):
         NATIVE = 'native'
         TEST = 'test'
 
-    def __init__(self, application_package: str, threads: int = 1, input_size: InputSize = InputSize.NATIVE) -> None:
+    def __init__(self, application_package: str, threads: int = 1, input_size: InputSize = InputSize.NATIVE, labels: list[str] = []) -> None:
         """
         Parameters
         ----------
@@ -28,7 +28,7 @@ class ParsecApplication(Application):
             - input_size: InputSize
                 
         """
-        super().__init__()
+        super().__init__(labels)
         
         # Validate parameters (Todo)
         benchmark, application_binary = application_package.split('.')[:2]
@@ -74,7 +74,7 @@ class ParsecApplication(Application):
             
             os.chdir(working_directory)
 
-    def execute(self, cores: set[int] | None) -> None:
+    def _execute(self, cores: set[int] | None) -> None:
         
         self._set_environment()
         self._start_cores = cores
@@ -110,12 +110,20 @@ class ParsecApplication(Application):
         # Check affinity of each pid to find correct app in multi-instance scenarios
         pids = [int(p) for p in pid_string.split("\n") if p]
         pid_to_affinity = self.poll_affinity(set(pids))
+        
+        pid_matches = []
         for pid, affinity in pid_to_affinity.items():
             if affinity == self._start_cores:
-                self._pid = pid
-                return pid
+                pid_matches.append(pid)
+                
+        if len(pid_matches) == 0:
+            print(f"{self._binary_name} has probably not started!")
         
-        print(f"{self._binary_name} has probably not started!")
+        if len(pid_matches) > 1:
+            raise RuntimeError(f"Found multiple instances of {self.get_display_name()} with the same affinity")
+        
+        self._pid = pid
+        return pid_matches[0]
         
     def get_display_name(self) -> str:
         return self._display_name
