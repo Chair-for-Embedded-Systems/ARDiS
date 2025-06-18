@@ -3,10 +3,8 @@ import os
 import subprocess
 import tempfile
 from benchmarks.application import Application
-from config import parsec_apps, system_cores
+from config import parsec_apps, system_cores, PARSECBASE
 from core.procworker import get_pid_of_app
-
-PARSECBASE = "/home/uhqql/parsec-3.0/"
 
 class ParsecApplication(Application):
     

@@ -3,9 +3,7 @@ import os
 import subprocess
 from benchmarks.application import Application
 from core.procworker import get_pid_of_app
-
-SPECPBASE = "/home/kg3813/Subjects/RealHardware/cpu2006/"
-CONFIGFILE = "mytest.cfg"
+from config import SPECPBASE, SPEC_CONFIGFILE
 
 class SpecApplication(Application):
     
@@ -48,9 +46,9 @@ class SpecApplication(Application):
 
         if cores is not None:
             affinity = ",".join([str(c) for c in cores])
-            command = f"taskset -c {affinity} nice -n 0 runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {log_file}"
+            command = f"taskset -c {affinity} nice -n 0 runspec --iterations 1 --size {input_size} --action onlyrun --config {SPEC_CONFIGFILE} --noreportable {app} > {log_file}"
         else:
-            command = f"runspec --iterations 1 --size {input_size} --action onlyrun --config {CONFIGFILE} --noreportable {app} > {log_file}"
+            command = f"runspec --iterations 1 --size {input_size} --action onlyrun --config {SPEC_CONFIGFILE} --noreportable {app} > {log_file}"
         
 
         subprocess.run(command, shell=True, env=os.environ)

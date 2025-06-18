@@ -9,6 +9,10 @@ SINGLE_RESULTS_FOLDER="./results/singles"
 UTILS_DIR="./utils"
 PLOTS_FOLDER="./plots"
 
+PARSECBASE = "/home/kg3813/Subjects/RealHardware/parsec-3.0/"
+SPECPBASE = "/home/kg3813/Subjects/RealHardware/cpu2006/"
+SPEC_CONFIGFILE = "mytest.cfg"
+
 ROOTPATH=os.getcwd()
 DEBUG = False
 #DEBUG = True
