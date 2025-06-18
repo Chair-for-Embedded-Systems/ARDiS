@@ -46,7 +46,7 @@ def get_affinity(pids: set[int]) -> dict[int, set[int]]:
             affinity = os.sched_getaffinity(pid)
             output[pid] = affinity
         except Exception:
-            output[pid] = affinity
+            output[pid] = set()
     return output
 
 def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
