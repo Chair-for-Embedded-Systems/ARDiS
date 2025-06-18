@@ -40,7 +40,7 @@ class ExperimentAnalyser():
         for event in periodic_counter_log.application_events:
             data_point = {
                 "timestamp": event.timestamp,
-                "app_name": event.app_name,
+                "app_name": f"{event.app_name}_{event.pid}",
                 "core": event.core_id,
                 "frequency": event.frequency,
                 "instructions": event.instructions,

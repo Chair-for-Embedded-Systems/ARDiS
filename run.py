@@ -258,12 +258,38 @@ def run_example_with_random_migration_and_random_dvfs():
     rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.MAPPING, Diagrams.FREQUENCY])
     rp.plot_results(verbose=True)
 
+def run_example_with_multiple_instances():
+    
+    configs: list[tuple[int, Application, int]] = [
+        (2, ParsecApplication('parsec.blackscholes'), 4800),
+        (4, ParsecApplication('parsec.blackscholes'), 3500),
+        (6, ParsecApplication('parsec.blackscholes'), 1500),
+        (8, ParsecApplication('parsec.blackscholes'), 800),
+    ]
+    cores, apps, freq = zip(*configs)
+    core_to_freq = { core: 2000 for core in range(system_cores) }
+    core_to_freq.update(dict(zip(cores, freq)))
+    
+    exp = Experiment(
+        name="Experiment with multiple instances",
+        scheduler=ConsecutiveScheduler(0),
+        applications=list(apps),
+        mapping_policy=ExplicitMapping.from_list(list(cores)),
+        dvfs_policy=StaticDVFS(core_to_freq),
+        monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+    )
+    exp.executeExperiment()
+
+    rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.MAPPING, Diagrams.FREQUENCY])
+    rp.plot_results(verbose=True)
+
 
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
     #run_example_with_PID_monitoring()
-    run_parsec_default_linux_governor()
+    #run_parsec_default_linux_governor()
     #run_parsec_characterization_experiments()
     #run_example_with_result_plotting()
     #run_example_with_TID_monitoring()
     #run_example_with_random_migration_and_random_dvfs()
+    run_example_with_multiple_instances()

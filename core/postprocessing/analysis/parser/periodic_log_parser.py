@@ -26,6 +26,11 @@ class ApplicationEvent():
                 cores = cores.group(1).replace('[','').replace(']','').split(',')
                 self.core_id = int(cores[0]) # Todo
             
+            if pid := re.search(r"PID = (\d+)", event_line):
+                self.pid = int(pid.group(1))
+            else:
+                self.pid = -1
+
             self.app_name = str(re.search(r"app = (\S+)", event_line).group(1))
             
             if "frequency = not-available" in event_line:
