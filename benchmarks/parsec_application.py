@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 from benchmarks.application import Application
 from config import parsec_apps, system_cores
+from core.procworker import get_pid_of_app
 
 PARSECBASE = "/home/uhqql/parsec-3.0/"
 
@@ -42,17 +43,8 @@ class ParsecApplication(Application):
         self._threads = threads
         self._input_size = input_size
         
-        self._start_cores: set[int] | None = None
+        self._start_affinity: set[int] | None = None
         self._pid: int | None = None
-
-
-    @classmethod
-    def from_app_string(cls, app_string: str):
-        app = ""
-        threads = 1
-        input_size = cls.InputSize.NATIVE
-        return ParsecApplication(app, threads, input_size)
-
 
     @staticmethod
     def _set_environment():
@@ -77,18 +69,16 @@ class ParsecApplication(Application):
     def _execute(self, cores: set[int] | None) -> None:
         
         self._set_environment()
-        self._start_cores = cores
+        self._start_affinity = cores
 
         # If no cors are provided, default to all
-        affinity = ",".join([str(c) for c in cores]) if cores else f"0-{system_cores}"
+        cs_cores = ",".join([str(c) for c in cores]) if cores else f"0-{system_cores}"
         
-        # Each application gets her own runtime directory
-        # This is important when having multiple instances
+        # Each application gets her own runtime directory, this is important when running multiple instances
         run_dir = tempfile.mkdtemp()
         log_file = "/dev/null" # f"{self._application}.log"
-
         
-        command = f"taskset -c {affinity} nice -n 0 parsecmgmt -a run -i {self._input_size.value} -d {run_dir} -n {self._threads} -p {self._package} > {log_file}"
+        command = f"taskset -c {cs_cores} nice -n 0 parsecmgmt -a run -i {self._input_size.value} -d {run_dir} -n {self._threads} -p {self._package} > {log_file}"
         #command = f"parsecmgmt -a run -i {input_size} -n 1 -p {app}"
         
         subprocess.run(command, shell=True, executable="/bin/bash")
@@ -98,59 +88,13 @@ class ParsecApplication(Application):
         if self._pid:
             return self._pid
         
-        # Find all pids with this application name
-        command = f"pgrep {self._binary_name}"
-        p = subprocess.run(command.split(" "), capture_output=True)
-        pid_string = str(p.stdout.decode())
-        
-        # No pids found
-        if len(pid_string) == 0:
-            return None
-        
-        # Check affinity of each pid to find correct app in multi-instance scenarios
-        pids = [int(p) for p in pid_string.split("\n") if p]
-        pid_to_affinity = self.poll_affinity(set(pids))
-        
-        pid_matches = []
-        for pid, affinity in pid_to_affinity.items():
-            if affinity == self._start_cores:
-                pid_matches.append(pid)
-                
-        if len(pid_matches) == 0:
-            print(f"{self._binary_name} has probably not started!")
-        
-        if len(pid_matches) > 1:
-            raise RuntimeError(f"Found multiple instances of {self.get_display_name()} with the same affinity")
-        
-        self._pid = pid
-        return pid_matches[0]
+        if pid := get_pid_of_app(self._binary_name, self._start_affinity):
+            self._pid = pid
+            return pid
         
     def get_display_name(self) -> str:
         return self._display_name
-
-    @staticmethod
-    def poll_affinity(pids: set[int]) -> dict[int, set[int]]:
-        """
-        Returns the affinity as list of allowed logical cores for the given set of pid's.
-        """
-        output: dict[int, set[int]] = {}
-        for pid in pids:
-            try:
-                with open(f"/proc/{pid}/status", 'r') as f:
-                    for line in f:
-                        if "Cpus_allowed:" in line:
-                            hex_mask = line.split(':')[1]
-                            bin_mask = bin(int(hex_mask, 16))[2:]
-                            bin_mask = bin_mask.zfill(len(hex_mask)*4)
-                            bin_mask = bin_mask[::-1]
-                            affinity = [core for core,bit in enumerate(bin_mask) if bit == '1']
-                            output[pid] = set(affinity)
-                            break
-            except FileNotFoundError as fe:
-                output[pid] = set()
-                continue
-    
-        return output
+   
 
 if __name__ == "__main__":
     import threading
