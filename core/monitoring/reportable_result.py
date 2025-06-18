@@ -77,12 +77,13 @@ class PeriodicPIDResult(ReportableResult):
             app_name = f"app = {self.app_events.get_app_name(pid) if self.use_name_from_perf else self.pid_to_app[pid].get_display_name()}"
             one_affinity = len(cores) == 1
             core_label = f"Core {cores[0]}" if one_affinity else f"Cores {cores}"
+            pid_label = f"PID = {pid}"
             frequency_label = f"frequency = {self.core_to_freq[cores[0]]}" if one_affinity else f"frequency = not-available"
 
-            periodic_app_event = f"{timestamp} {core_label}: {app_name} | {frequency_label} | {flatt_app_events}"
+            periodic_app_event = f"{timestamp} {core_label}: {app_name} | {pid_label} | {frequency_label} | {flatt_app_events}"
             reporter.logPeriodicCounters(periodic_app_event)
     
-    def __log_tid_events(self, reporter: Reporter, timestamp: str, append_tid_to_name: bool = True) -> None:
+    def __log_tid_events(self, reporter: Reporter, timestamp: str, append_tid_to_name: bool = False) -> None:
         for tid, events in self.app_events.get_events(aggregate_by_pid=False).items():
             flatt_app_events = " | ".join([f"{event_name} = {value}" for event_name, value in events.items()])
             
@@ -103,7 +104,7 @@ class PeriodicPIDResult(ReportableResult):
             core_field = f"Core {core}"
             freq_field = f"frequency = {self.core_to_freq[core]}"
             
-            periodic_app_event = f"{timestamp} {core_field}: {app_field} | {tid_field} | {freq_field} | {flatt_app_events}"
+            periodic_app_event = f"{timestamp} {core_field}: {app_field} | {pid_field} | {tid_field} | {freq_field} | {flatt_app_events}"
             reporter.logPeriodicCounters(periodic_app_event)
 
 @dataclass
