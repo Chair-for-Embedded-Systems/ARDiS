@@ -1,18 +1,19 @@
 from dataclasses import dataclass
 from core.buffering.event_buffer import EventBuffer
 from core.buffering.action_buffer import ActionBuffer
+from benchmarks.application import Application
 
 @dataclass
 class SystemState:
     start_time: float
-    app_to_cores: dict[str, set[int]]
-    app_to_pid: dict[str, int]
+    app_to_cores: dict[Application, set[int]]
+    app_to_pid: dict[Application, int]
     epoch: int
     event_buffer: EventBuffer
     action_buffer: ActionBuffer
 
     @property
-    def active_apps(self) -> set[str]:
+    def active_apps(self) -> set[Application]:
         """
         Returns a set of currently active applications. Active means that a valid pid exist.
         """

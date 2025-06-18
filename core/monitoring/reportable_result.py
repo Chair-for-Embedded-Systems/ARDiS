@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from core.monitoring.polling.poll_app_level_events import ResultCorePolling, ResultPIDPolling
 from core.monitoring.polling.poll_system_level_events import ResultSystemPolling
 from core.reporter import Reporter
+from benchmarks.application import Application
 
 class ReportableResult(ABC):
     """
@@ -30,7 +31,7 @@ class PeriodicPIDResult(ReportableResult):
     sys_events: ResultSystemPolling
     pid_to_affinity: dict[int, list[int]]
     core_to_freq: dict[int, float]
-    pid_to_app: dict[int, str]
+    pid_to_app: dict[int, Application]
     use_name_from_perf: bool = field(default=False)
     log_mapped_cores: bool = field(default=True)
     log_event_multiplexing: bool = field(default=False)
@@ -73,7 +74,7 @@ class PeriodicPIDResult(ReportableResult):
             if not cores:
                 continue
 
-            app_name = f"app = {self.app_events.get_app_name(pid) if self.use_name_from_perf else self.pid_to_app[pid]}"
+            app_name = f"app = {self.app_events.get_app_name(pid) if self.use_name_from_perf else self.pid_to_app[pid].get_display_name()}"
             one_affinity = len(cores) == 1
             core_label = f"Core {cores[0]}" if one_affinity else f"Cores {cores}"
             frequency_label = f"frequency = {self.core_to_freq[cores[0]]}" if one_affinity else f"frequency = not-available"
@@ -92,7 +93,7 @@ class PeriodicPIDResult(ReportableResult):
                 continue
             
             pid = self.app_events._tid_to_pid[tid]
-            app_name = self.app_events.get_app_name(pid) if self.use_name_from_perf else self.pid_to_app[pid]
+            app_name = self.app_events.get_app_name(pid) if self.use_name_from_perf else self.pid_to_app[pid].get_display_name()
             if append_tid_to_name:
                 app_name+=f"_{tid}"
 
@@ -111,7 +112,7 @@ class PeriodicCoreResult(ReportableResult):
     app_events: ResultCorePolling
     sys_events: ResultSystemPolling
     core_to_freq: dict[int, float]
-    core_to_app: dict[int, str]
+    core_to_app: dict[int, Application]
     log_mapped_cores: bool = field(default=True)
     log_event_multiplexing: bool = field(default=False)
 
@@ -131,7 +132,7 @@ class PeriodicCoreResult(ReportableResult):
         # Log app events
         for core, events in self.app_events.get_events().items():
             flatt_app_events = " | ".join([f"{event_name} = {value}" for event_name, value in events.items()])
-            app_name_label = f"app = {self.core_to_app[core]}"
+            app_name_label = f"app = {self.core_to_app[core].get_display_name()}"
             core_label = f"Core {core}"
             frequency_label = f"frequency = {self.core_to_freq[core]}"
 

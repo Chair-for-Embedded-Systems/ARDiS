@@ -26,3 +26,6 @@ class Application(ABC):
         This is the name that will be used in the log files
         """
         raise NotImplementedError
+    
+    def __str__(self) -> str:
+        return self.get_display_name()

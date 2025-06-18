@@ -36,7 +36,7 @@ def getPIDThread(proc : str, max_tries: int) -> int:
     return pid
 
 
-def getPIDOfApp(app, max_tries: int = 100):
+def getPIDOfApp(app: str, max_tries: int = 100):
     proc = app.split("-")[1]
     if "splash2x" in proc:
         proc = proc.replace("splash2x.", "")

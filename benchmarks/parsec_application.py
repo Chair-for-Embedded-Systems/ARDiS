@@ -17,7 +17,7 @@ class ParsecApplication(Application):
         NATIVE = 'native'
         TEST = 'test'
 
-    def __init__(self, application_package: str, threads: int, input_size: InputSize) -> None:
+    def __init__(self, application_package: str, threads: int = 1, input_size: InputSize = InputSize.NATIVE) -> None:
         """
         Parameters
         ----------
@@ -90,9 +90,8 @@ class ParsecApplication(Application):
         
         command = f"taskset -c {affinity} nice -n 0 parsecmgmt -a run -i {self._input_size.value} -d {run_dir} -n {self._threads} -p {self._package} > {log_file}"
         #command = f"parsecmgmt -a run -i {input_size} -n 1 -p {app}"
-        print("Starting")
+        
         subprocess.run(command, shell=True, executable="/bin/bash")
-        print("Finishing")
     
     def get_pid(self) -> int | None:
         # Return cached pid if available

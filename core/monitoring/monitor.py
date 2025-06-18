@@ -13,6 +13,7 @@ from core.monitoringmode import MonitoringMode
 from core.monitoring.reportable_result import ReportableResult, PeriodicPIDResult, PeriodicCoreResult, OneShotSystemResult
 from core.reporter import Reporter
 from core.buffering.event_buffer import EventBuffer
+from benchmarks.application import Application
 
 @dataclass
 class TrackingConfig:
@@ -24,12 +25,12 @@ class TrackingConfig:
     """
     monitor_mode: MonitoringMode
     
-    app_to_cores: dict[str, set[int]] = field(default_factory=dict)
-    app_to_pid: dict[str, int] = field(default_factory=dict)
+    app_to_cores: dict[Application, set[int]] = field(default_factory=dict)
+    app_to_pid: dict[Application, int] = field(default_factory=dict)
     
-    core_to_app: dict[int, str] = field(init=False)
+    core_to_app: dict[int, Application] = field(init=False)
     cores_to_track: set[int] = field(init=False)
-    pid_to_app: dict[int, str] = field(init=False)
+    pid_to_app: dict[int, Application] = field(init=False)
     pids_to_track: set[int] = field(init=False)
     
     def __post_init__(self):

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 from core.actions import MigrationAction
 from core.system_state import SystemState
+from benchmarks.application import Application
 
 class MigrationPolicy(ABC):
 
@@ -17,8 +18,8 @@ class MigrationPolicy(ABC):
     @staticmethod
     def apply_migration_actions(
         actions: list[MigrationAction],
-        app_to_pid: dict[str, int],
-        app_to_cores: dict[str, set[int]],
+        app_to_pid: dict[Application, int],
+        app_to_cores: dict[Application, set[int]],
     ) -> None:
         """
         Applys the given list of migration actions. The passed in dict `app_to_cores` will be modified.

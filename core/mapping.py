@@ -1,11 +1,12 @@
 from config import *
+from benchmarks.application import Application
 
 class MappingPolicy():
     def __init__(self):
         self.__used_cores: set[int] = set()
-        self.mapping: dict[str, set[int]] = {}
+        self.mapping: dict[Application, set[int]] = {}
     
-    def executeMapping(self, applications: list[str]) -> dict[str, set[int]]:
+    def executeMapping(self, applications: list[Application]) -> dict[Application, set[int]]:
         # default mapping: next available core
         for app in applications:
             for core in range(system_cores):
