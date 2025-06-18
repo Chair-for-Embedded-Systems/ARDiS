@@ -14,6 +14,7 @@ from core.policies.intel_motivational_mapping import *
 from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
 from benchmarks.application import Application
 from benchmarks.parsec_application import ParsecApplication
+from benchmarks.binary_application import BinaryApplication
 from timeit import default_timer as timer
 from random import randrange
 import os
@@ -283,6 +284,19 @@ def run_example_with_multiple_instances():
     rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.MAPPING, Diagrams.FREQUENCY])
     rp.plot_results(verbose=True)
 
+def run_example_with_custom_binary():
+    exp = Experiment(
+        name="Experiment with custom binary",
+        scheduler=ConsecutiveScheduler(0),
+        applications=[
+            BinaryApplication(start_command="/bin/sleep 10"),
+            BinaryApplication(start_command="/bin/openssl speed sha256")
+        ],
+        mapping_policy=ExplicitMapping.from_list([2, 4]),
+        dvfs_policy=StaticDVFS(),
+        monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+    )
+    exp.executeExperiment()
 
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
@@ -293,3 +307,4 @@ if __name__ == "__main__":
     #run_example_with_TID_monitoring()
     #run_example_with_random_migration_and_random_dvfs()
     run_example_with_multiple_instances()
+    run_example_with_custom_binary()

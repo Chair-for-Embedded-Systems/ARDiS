@@ -58,7 +58,7 @@ def poll_affinity(pids: set[int]) -> dict[int, set[int]]:
     
         return output
 
-def get_pid_of_app(binary_name: str, affinity: set[int] | None):
+def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
     # Find all pids with this application name
     command = f"pgrep {binary_name}"
     p = subprocess.run(command.split(" "), capture_output=True)
@@ -82,6 +82,7 @@ def get_pid_of_app(binary_name: str, affinity: set[int] | None):
                 
     if len(pid_matches) == 0:
         print(f"{binary_name} has probably not started!")
+        return None
         
     if len(pid_matches) > 1:
         raise RuntimeError(f"Found multiple instances of {binary_name} with the same affinity")
