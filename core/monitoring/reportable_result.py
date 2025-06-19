@@ -99,8 +99,8 @@ class PeriodicPIDResult(ReportableResult):
                 app_name+=f"_{tid}"
 
             app_field = f"app = {app_name}"
-            pid_field = f"pid = {pid}"
-            tid_field = f"tid = {tid}"
+            pid_field = f"PID = {pid}"
+            tid_field = f"TID = {tid}"
             core_field = f"Core {core}"
             freq_field = f"frequency = {self.core_to_freq[core]}"
             

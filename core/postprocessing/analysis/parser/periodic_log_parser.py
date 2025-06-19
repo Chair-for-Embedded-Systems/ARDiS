@@ -31,6 +31,11 @@ class ApplicationEvent():
             else:
                 self.pid = -1
 
+            if tid := re.search(r"TID = (\d+)", event_line):
+                self.tid = int(tid.group(1))
+            else:
+                self.tid = self.pid
+
             self.app_name = str(re.search(r"app = (\S+)", event_line).group(1))
             
             if "frequency = not-available" in event_line:
