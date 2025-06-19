@@ -38,9 +38,10 @@ class ExperimentAnalyser():
         
         application_events = []
         for event in periodic_counter_log.application_events:
+            app_name = f"{event.app_name}_{event.pid}" if event.pid == event.tid else f"{event.app_name}_{event.pid}_{event.tid}"
             data_point = {
                 "timestamp": event.timestamp,
-                "app_name": event.app_name,
+                "app_name": app_name,
                 "core": event.core_id,
                 "frequency": event.frequency,
                 "instructions": event.instructions,

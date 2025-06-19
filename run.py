@@ -11,8 +11,10 @@ from core.dvfs import *
 from core.monitoringmode import *
 from core.migration import *
 from core.policies.intel_motivational_mapping import *
-from core.postprocessing.result_plotter import ResultPlotter, BasicResultPlotter, Diagrams
-import time
+from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
+from benchmarks.application import Application
+from benchmarks.parsec_application import ParsecApplication
+from benchmarks.binary_application import BinaryApplication
 from timeit import default_timer as timer
 from random import randrange
 import os
@@ -21,7 +23,7 @@ import os
 
 
 class Experiment:
-    def __init__(self, name="", applications: list[str] = [], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy: DVFSPolicy=StaticDVFS(), migration_policy=None, monitoring_mode=MonitoringMode.PERIODIC_ON_CORE, results_folder=RESULTS_FOLDER):   
+    def __init__(self, name="", applications: list[Application] = [], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy: DVFSPolicy=StaticDVFS(), migration_policy=None, monitoring_mode=MonitoringMode.PERIODIC_ON_CORE, results_folder=RESULTS_FOLDER):   
         self.__name = name
         self.__applications = applications
         self.__engine = Engine(self.__name, 
@@ -34,12 +36,13 @@ class Experiment:
 
     # Generate a random list of N unique applications to execute
     def generateRandomApps(self, N_apps):
+        
         while len(self.__applications) < N_apps:
             candidate = parsec_apps[randrange(len(parsec_apps))]
             if candidate not in self.__applications:
-                self.__applications.append(candidate)
+                self.__applications.append(ParsecApplication(candidate))
     
-    def setApplications(self, applications):
+    def setApplications(self, applications: list[Application]):
         self.__applications = applications
    
     # Execute the experiment and wait for it to finish
@@ -68,7 +71,7 @@ class DefaultLinuxExperiment:
                        migration_policy=None, 
                        monitoring_mode=monitoring_mode)
     
-    def setApplications(self, applications):
+    def setApplications(self, applications: list[Application]):
         self.__applications = applications
    
     # Execute the experiment and wait for it to finish
@@ -90,19 +93,27 @@ def run_example_with_core_monitoring():
                      dvfs_policy=StaticDVFS({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_CORE)
     # Manually set the applications to execute
-    exp.setApplications(['parsec-blackscholes', 'parsec-splash2x.radix', 'parsec-bodytrack'])
+    exp.setApplications([
+        ParsecApplication("parsec.blackscholes"),
+        ParsecApplication("parsec.bodytrack"),
+        ParsecApplication("splash2x.radix")
+    ])
     # Run the experiment
     exp.executeExperiment()
 
 def run_example_with_PID_monitoring():
    # Create an experiment object
     exp = Experiment("Simple Experiment with Specific Applications", 
+                     applications=[
+                         ParsecApplication("parsec.blackscholes"),
+                         ParsecApplication("parsec.dedup"),
+                     ],
                      mapping_policy=ExplicitMapping.from_list([6, 19]),
                      scheduler=ConsecutiveScheduler(0),
                      dvfs_policy=StaticDVFS({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
     # Manually set the applications to execute
-    exp.setApplications(['parsec-blackscholes'])
+    #exp.setApplications(['parsec-blackscholes'])
     # Run the experiment
     exp.executeExperiment()
 
@@ -111,7 +122,7 @@ def run_parsec_default_linux_governor_simple():
 
     scheduler=ConsecutiveScheduler(0)      
     governor = "performance"
-    app = "parsec-splash2x.radix"
+    app = ParsecApplication("splash2x.radix")
     exp_name = f"{app}_{governor}"
     exp = DefaultLinuxExperiment(exp_name, 
                     scheduler=scheduler,
@@ -142,7 +153,7 @@ def run_parsec_default_linux_governor():
                                 max_frequency=3500,
                                 monitoring_mode=MonitoringMode.PERIODIC_ON_CORE)
                                 
-                exp.setApplications([app])
+                exp.setApplications([ParsecApplication(app)])
                 exp.executeExperiment()
             else:
                 print(f"Experiment {exp_name} already exists in the results folder.")
@@ -162,7 +173,7 @@ def run_parsec_characterization_experiments():
                                 dvfs_policy=StaticDVFS({core: frequency for core in range(system_cores)}),
                                 monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
                                 results_folder=config.RESULTS_FOLDER)
-                exp.setApplications([app])
+                exp.setApplications([ParsecApplication(app)])
                 exp.executeExperiment()
             else:
                 print(f"Experiment {exp_name} already exists in the results folder.")
@@ -176,7 +187,7 @@ def run_parsec_characterization_experiments():
                                 dvfs_policy=StaticDVFS({core: frequency for core in range(system_cores)}),
                                 monitoring_mode=MonitoringMode.PERIODIC_ON_CORE,
                                 results_folder=config.RESULTS_FOLDER)
-                exp.setApplications([app])
+                exp.setApplications([ParsecApplication(app)])
                 exp.executeExperiment()
             else:
                 print(f"Experiment {exp_name} already exists in the results folder.")
@@ -190,7 +201,11 @@ def run_example_with_result_plotting():
                      dvfs_policy=StaticDVFS({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
     
-    exp.setApplications(['parsec-blackscholes', 'parsec-splash2x.radix', 'parsec-bodytrack'])
+    exp.setApplications([
+        ParsecApplication('parsec.blackscholes'),
+        ParsecApplication('splash2x.radix'),
+        ParsecApplication('parsec.bodytrack')
+    ])
     exp.executeExperiment()
     
     # Plots the diagrams
@@ -204,7 +219,10 @@ def run_example_with_result_plotting():
 def run_example_with_TID_monitoring():
     exp = Experiment(
         name="Experiment_with_tid_monitoring",
-        applications=["parsec-dedup", "parsec-splash2x.radix"],
+        applications=[
+            ParsecApplication("parsec.dedup", 4),
+            ParsecApplication("splash2x.radix", 1),
+        ],
         mapping_policy=ExplicitMapping([{2, 4, 6, 8}, {16}]),
         scheduler=ConsecutiveScheduler(0),
         dvfs_policy=StaticDVFS({core: 3500 for core in range(system_cores)}),
@@ -231,13 +249,54 @@ def run_example_with_random_migration_and_random_dvfs():
             p_core_range=list(range(3500, 4501, 100)),
             e_core_range=list(range(2000, 3001, 100))
         ),
-        applications=['parsec-blackscholes', 'parsec-dedup'],
+        applications=[
+            ParsecApplication('parsec.blackscholes'),
+            ParsecApplication('parsec.dedup')
+        ],
         monitoring_mode=MonitoringMode.PERIODIC_ON_PID
     )
     exp.executeExperiment()
     rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.MAPPING, Diagrams.FREQUENCY])
     rp.plot_results(verbose=True)
 
+def run_example_with_multiple_instances():
+    
+    configs: list[tuple[int, Application, int]] = [
+        (2, ParsecApplication('parsec.blackscholes'), 4800),
+        (4, ParsecApplication('parsec.blackscholes'), 3500),
+        (6, ParsecApplication('parsec.blackscholes'), 1500),
+        (8, ParsecApplication('parsec.blackscholes'), 800),
+    ]
+    cores, apps, freq = zip(*configs)
+    core_to_freq = { core: 2000 for core in range(system_cores) }
+    core_to_freq.update(dict(zip(cores, freq)))
+    
+    exp = Experiment(
+        name="Experiment with multiple instances",
+        scheduler=ConsecutiveScheduler(0),
+        applications=list(apps),
+        mapping_policy=ExplicitMapping.from_list(list(cores)),
+        dvfs_policy=StaticDVFS(core_to_freq),
+        monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+    )
+    exp.executeExperiment()
+
+    rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.MAPPING, Diagrams.FREQUENCY])
+    rp.plot_results(verbose=True)
+
+def run_example_with_custom_binary():
+    exp = Experiment(
+        name="Experiment with custom binary",
+        scheduler=ConsecutiveScheduler(0),
+        applications=[
+            BinaryApplication(start_command="/bin/sleep 10"),
+            BinaryApplication(start_command="/bin/openssl speed sha256")
+        ],
+        mapping_policy=ExplicitMapping.from_list([2, 4]),
+        dvfs_policy=StaticDVFS(),
+        monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+    )
+    exp.executeExperiment()
 
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
@@ -246,4 +305,6 @@ if __name__ == "__main__":
     #run_parsec_characterization_experiments()
     #run_example_with_result_plotting()
     #run_example_with_TID_monitoring()
-    run_example_with_random_migration_and_random_dvfs()
+    #run_example_with_random_migration_and_random_dvfs()
+    run_example_with_multiple_instances()
+    run_example_with_custom_binary()

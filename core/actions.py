@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+from benchmarks.application import Application
 @dataclass
 class MigrationAction:
-    app: str
+    app: Application
     source: set[int] | None
     destination: set[int]
 

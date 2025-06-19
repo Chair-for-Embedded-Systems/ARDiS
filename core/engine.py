@@ -1,4 +1,3 @@
-from benchmarks.bench_manager import *
 from core.procworker import *
 from core.mapping import *
 from core.monitoring.monitor import Monitor, TrackingConfig
@@ -11,6 +10,7 @@ from core.monitoringmode import *
 from core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
 from core.buffering.action_buffer import ActionBuffer
 from core.system_state import SystemState
+from benchmarks.application import Application
 import config
 import re
 import threading
@@ -31,9 +31,9 @@ class Engine:
     ) -> None:
         self.running: bool = False
 
-        self.__threads: dict[str, threading.Thread] = {}
-        self.__active_threads: list[str] = []
-        self.__waiting_threads: list[str] = []
+        self.__threads: dict[Application, threading.Thread] = {}
+        self.__active_threads: list[Application] = []
+        self.__waiting_threads: list[Application] = []
     
         self.__mapping_policy = mapping_policy
         self.__scheduler = scheduler 
@@ -43,30 +43,29 @@ class Engine:
         self.__monitor: Monitor | None = None
         self.__monitoring_mode: MonitoringMode = monitoring_mode
         
-        self.__total_instructions: dict[str, int] = {}
-    
-        self.__benchmark_manager = BenchManager()
+        self.__total_instructions: dict[Application, int] = {}
         
         self.reporter: Reporter = Reporter(experiment_name, results_folder)
         self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10)
         self.action_buffer: ActionBuffer = ActionBuffer(capacity=10)
         
         self.__start_time: float = 0.0
-        self.__app_to_pid: dict[str, int] = {}
-        self.__app_to_cores: dict[str, set[int]] = {}
+        self.__app_to_pid: dict[Application, int] = {}
+        self.__app_to_cores: dict[Application, set[int]] = {}
         self.__epoch: int = 0
 
     def __start(self) -> None:
         self.running = True
         self.__start_time = timer()
 
-    def __launchApp(self, app: str, cores: set[int]) -> None:
+    def __launchApp(self, app: Application, cores: set[int]) -> None:
         
         self.__app_to_pid[app] = -1
         # Build the full application execution command from the corresponding script
         
         start = timer()
-        self.__benchmark_manager.runApplicationOnCore(app, None if self.__mapping_policy is None else cores)
+        app.execute(None if self.__mapping_policy is None else cores)
+        #self.__benchmark_manager.runApplicationOnCore(app, None if self.__mapping_policy is None else cores)
         end = timer()
         
         # keeping the lock until properly evaluated
@@ -90,7 +89,7 @@ class Engine:
 
         self.reporter.logEvent(event=f"[Core(s) {core_str}]: {app} finished execution!", echo=config.DEBUG)
         self.reporter.logEvent(event=f"[Core(s) {core_str}]: {app}'s execution time = {end - start:.2f} s", echo=config.DEBUG)
-        self.reporter.logExecutionTime(app, core_str, end - start)
+        self.reporter.logExecutionTime(app.get_display_name(), core_str, end - start)
         
     # Create a thread for each application in the mapping 
     def __makeThreads(self) -> None:
@@ -101,9 +100,9 @@ class Engine:
             if config.DEBUG:
                 self.reporter.logEvent(f"Thread for {app} created!", echo=True)
     
-    def getProcessID(self, app: str) -> None:
-        PID = getPIDOfApp(app)
-        self.__app_to_pid[app] = PID
+    def getProcessID(self, app: Application) -> None:
+        PID = app.get_pid()
+        self.__app_to_pid[app] = PID if PID else -1
     
         if config.DEBUG:
             msg_pid_of_app = f"[{self.getElapsedTime():.2f}s]: PID of {app} is {PID}"
@@ -113,8 +112,8 @@ class Engine:
         """Returns the elapsed time in seconds since the workload was started."""
         return timer() - self.__start_time
     
-    def __startThread(self, app: str) -> None:
-        print(f"Starting thread for {app}")
+    def __startThread(self, app: Application) -> None:
+        print(f"Starting thread for {app.get_display_name()}")
         self.__threads[app].start()
         
         with thread_queue_lock:
@@ -125,7 +124,7 @@ class Engine:
             msg_thread_started = f"[{self.getElapsedTime():.2f}s]: Thread for {app} started!"
             self.reporter.logEvent(msg_thread_started, echo=True)
 
-    def executeWorkload(self, applications: list[str]) -> None:
+    def executeWorkload(self, applications: list[Application]) -> None:
         # First set a schedule for the applications
         self.__total_instructions = {app: 0 for app in applications}
         self.__scheduler.createSchedule(applications)
@@ -209,7 +208,8 @@ class Engine:
                         # Each failed try introduces an addtional delay of 5ms.
                         # if self.__app_to_pid[app] != -1:
                         #     continue
-                        self.__app_to_pid[app] = getPIDOfApp(app, max_tries=1)
+                        PID = app.get_pid()
+                        self.__app_to_pid[app] = PID if PID else -1 #getPIDOfApp(app, max_tries=1)
                             
                     # Construct system state object, which gets passed to the individual policies
                     system_state: SystemState = SystemState(

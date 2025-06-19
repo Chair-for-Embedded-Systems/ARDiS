@@ -9,6 +9,10 @@ SINGLE_RESULTS_FOLDER="./results/singles"
 UTILS_DIR="./utils"
 PLOTS_FOLDER="./plots"
 
+PARSECBASE = "/home/kg3813/Subjects/RealHardware/parsec-3.0/"
+SPECPBASE = "/home/kg3813/Subjects/RealHardware/cpu2006/"
+SPEC_CONFIGFILE = "mytest.cfg"
+
 ROOTPATH=os.getcwd()
 DEBUG = False
 #DEBUG = True
@@ -38,33 +42,33 @@ spec_apps = [
 ]
 
 parsec_apps = [
-    'parsec-blackscholes', 
-    'parsec-bodytrack',
-    'parsec-canneal',
+    'parsec.blackscholes', 
+    'parsec.bodytrack',
+    'parsec.canneal',
     #'parsec-facesim',
     #'parsec-ferret',
     #'parsec-netferret',
-    'parsec-fluidanimate',
+    'parsec.fluidanimate',
     #'parsec-freqmine',
-    'parsec-dedup',
-    'parsec-streamcluster',
+    'parsec.dedup',
+    'parsec.streamcluster',
     #'parsec-netstreamcluster',
     #'parsec-swaptions',
     #'parsec-vips',
     #'parsec-x264',
-    'parsec-splash2x.barnes',
+    'splash2x.barnes',
     #'parsec-netdedup',
     #'parsec-splash2x.cholesky',
-    'parsec-splash2x.fft',
+    'splash2x.fft',
     #'parsec-splash2x.fmm',
-    'parsec-splash2x.lu_cb',
-    'parsec-splash2x.lu_ncb',
-    'parsec-splash2x.ocean_cp',
-    'parsec-splash2x.ocean_ncp',
-    'parsec-splash2x.radiosity',
-    'parsec-splash2x.radix',
-    'parsec-splash2x.water_nsquared',
-    'parsec-splash2x.water_spatial'
+    'splash2x.lu_cb',
+    'splash2x.lu_ncb',
+    'splash2x.ocean_cp',
+    'splash2x.ocean_ncp',
+    'splash2x.radiosity',
+    'splash2x.radix',
+    'splash2x.water_nsquared',
+    'splash2x.water_spatial'
 ]
 
 parsec_network_apps = [

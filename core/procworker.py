@@ -1,3 +1,4 @@
+import os
 import subprocess
 import time
 from core.retthreading import *
@@ -35,8 +36,51 @@ def getPIDThread(proc : str, max_tries: int) -> int:
                 time.sleep(0.005)
     return pid
 
+def get_affinity(pids: set[int]) -> dict[int, set[int]]:
+    """
+    Returns the affinity as list of allowed logical cores for the given set of pid's.
+    """
+    output: dict[int, set[int]] = {}
+    for pid in pids:
+        try:
+            affinity = os.sched_getaffinity(pid)
+            output[pid] = affinity
+        except Exception:
+            output[pid] = set()
+    return output
 
-def getPIDOfApp(app, max_tries: int = 100):
+def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
+    # Find all pids with this application name
+    command = f"pgrep {binary_name}"
+    p = subprocess.run(command.split(" "), capture_output=True)
+    pid_string = str(p.stdout.decode())
+        
+    # No pids found
+    if len(pid_string) == 0:
+        return None
+        
+    # Check affinity of each pid to find correct app in multi-instance scenarios
+    pids = [int(p) for p in pid_string.split("\n") if p]
+    pid_to_affinity = get_affinity(set(pids))
+        
+    if affinity is None:
+        pid_matches = pids
+    else:
+        pid_matches = []
+        for pid, a in pid_to_affinity.items():
+            if a == affinity:
+                pid_matches.append(pid)
+                
+    if len(pid_matches) == 0:
+        print(f"{binary_name} has probably not started!")
+        return None
+        
+    if len(pid_matches) > 1:
+        raise RuntimeError(f"Found multiple instances of {binary_name} with the same affinity")
+    
+    return pid_matches[0]
+
+def getPIDOfApp(app: str, max_tries: int = 100):
     proc = app.split("-")[1]
     if "splash2x" in proc:
         proc = proc.replace("splash2x.", "")
