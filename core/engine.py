@@ -14,6 +14,7 @@ from benchmarks.application import Application
 import config
 import re
 import threading
+import shutil
 from timeit import default_timer as timer
 
 thread_queue_lock = threading.Lock()
@@ -53,6 +54,8 @@ class Engine:
         self.__app_to_pid: dict[Application, int] = {}
         self.__app_to_cores: dict[Application, set[int]] = {}
         self.__epoch: int = 0
+
+        self.__clear_runtime_data()
 
     def __start(self) -> None:
         self.running = True
@@ -308,6 +311,12 @@ class Engine:
     def __clearCaches(self):
         runProc("sudo sync")
         runProc("sudo echo 3 > /proc/sys/vm/drop_caches")
+
+    def __clear_runtime_data(self):
+        if os.path.exists(config.RUNTIME_TEMP):
+            shutil.rmtree(config.RUNTIME_TEMP, ignore_errors=True)
+        
+        os.makedirs(config.RUNTIME_TEMP, exist_ok=True)
 
     def __str__(self):
             return f"Engine with mapping {self.__mapping_policy} and DVFS policy {self.__dvfs_policy}"

@@ -3,7 +3,7 @@ import os
 import subprocess
 import tempfile
 from benchmarks.application import Application
-from config import parsec_apps, system_cores, PARSECBASE
+from config import parsec_apps, system_cores, PARSECBASE, RUNTIME_TEMP
 from core.procworker import get_pid_of_app
 
 class ParsecApplication(Application):
@@ -70,7 +70,7 @@ class ParsecApplication(Application):
         cs_cores = ",".join([str(c) for c in cores]) if cores else f"0-{system_cores}"
         
         # Each application gets her own runtime directory, this is important when running multiple instances
-        run_dir = tempfile.mkdtemp()
+        run_dir = tempfile.mkdtemp(dir=RUNTIME_TEMP)
         log_file = "/dev/null" # f"{self._application}.log"
         
         command = f"taskset -c {cs_cores} nice -n 0 parsecmgmt -a run -i {self._input_size.value} -d {run_dir} -n {self._threads} -p {self._package} > {log_file}"
