@@ -14,6 +14,7 @@ SPECPBASE = "/home/kg3813/Subjects/RealHardware/cpu2006/"
 SPEC_CONFIGFILE = "mytest.cfg"
 
 ROOTPATH=os.getcwd()
+RUNTIME_TEMP = "/tmp/ardis_runtime_data"
 DEBUG = False
 #DEBUG = True
 # List of available applications on the system
