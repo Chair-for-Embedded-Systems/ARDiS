@@ -223,7 +223,8 @@ class Monitor:
         if buffer := self.__event_buffer:
             buffer.push_core_and_sys_events(
                 app_events=app_events.get_events(),
-                system_events=sys_events.events
+                system_events=sys_events.events,
+                frequencies=frequency
             )
 
     def __monitor_pid(self, pool: ThreadPool, sys_level_thread: AsyncResult[ResultSystemPolling], per_thread_results: bool) -> None:
@@ -259,7 +260,8 @@ class Monitor:
         if buffer := self.__event_buffer:
             buffer.push_pid_and_sys_events(
                 app_events=app_events.get_events(aggregate_by_pid=True),
-                system_events= sys_events.events
+                system_events= sys_events.events,
+                frequencies=frequency
             )
         
 

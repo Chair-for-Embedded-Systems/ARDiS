@@ -10,24 +10,29 @@ class DequeBasedEventBuffer(EventBuffer):
         self.__pid_event_deque: deque[dict[int, dict[str, int | float]]] = deque(maxlen=capacity)
         self.__core_event_deque: deque[dict[int, dict[str, int | float]]] = deque(maxlen=capacity)
         self.__sys_event_deque: deque[dict[str, int | float]] = deque(maxlen=capacity)
+        self.__core_frequency_deque: deque[dict[int, float]] = deque(maxlen=capacity)
         self.__lock = threading.Lock()
 
     def push_core_and_sys_events(
         self, app_events: dict[int, dict[str, int | float]],
-        system_events: dict[str, int | float]
+        system_events: dict[str, int | float],
+        frequencies: dict[int, float]
     ) -> None:
         with self.__lock:
             self.__core_event_deque.append(app_events)
             self.__sys_event_deque.append(system_events)
+            self.__core_frequency_deque.append(frequencies)
     
     def push_pid_and_sys_events(
         self, 
         app_events: dict[int, dict[str, int | float]],
-        system_events: dict[str, int | float]
+        system_events: dict[str, int | float],
+        frequencies: dict[int, float]
     ) -> None:
         with self.__lock:
             self.__pid_event_deque.append(app_events)
             self.__sys_event_deque.append(system_events)
+            self.__core_frequency_deque.append(frequencies)
 
     def get_metrics_by_core(self, n: int) -> list[dict[int, dict[str, float | int]]]:
         if self.__capacity and n > self.__capacity:
@@ -75,6 +80,14 @@ class DequeBasedEventBuffer(EventBuffer):
                     output.append(events)
         return output
     
+    def get_core_freqs(self, n: int) -> list[dict[int, float]]:
+        if n <= 0:
+            return []
+        if self.__capacity and n > self.__capacity:
+            raise ValueError(f"n({n}) is larger than the buffer size ({self.__capacity})")
+        window = min(n, len(self.__core_event_deque))
+        return list(self.__core_frequency_deque)[-window:]
+
     def get_lock(self) -> Lock:
         return self.__lock
     
@@ -88,7 +101,8 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
                 1 : {"inst": 10, "cycles": 20}, 
                 2 : {"inst": 20, "cycles": 40}
             },
-            system_events={ "power_system" : 100, "power_core": 10, "power_package": 20}
+            system_events={ "power_system" : 100, "power_core": 10, "power_package": 20},
+            frequencies={}
         )
         # Check if basic insertion works (app events)
         self.assertEqual(buffer.get_metrics_for_core(core_id=1,n=1)[-1]["inst"], 10)
@@ -112,7 +126,8 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
                 1 :  {"inst": 10, "cycles": 20}, 
                 42 : {"inst": 20, "cycles": 40}
             },
-            system_events={ "power_system" : 100, "power_core": 10, "power_package": 20}
+            system_events={ "power_system" : 100, "power_core": 10, "power_package": 20},
+            frequencies={}
         )
         # Check basic insertion (application events)
         self.assertEqual(buffer.get_metrics_for_pid(pid=1,n=1)[-1]["inst"], 10)
@@ -136,14 +151,16 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
                 0: {"instructions": 0},
                 2: {"instructions": 0}
             },
-            system_events={}
+            system_events={},
+            frequencies={}
         )
         buffer.push_core_and_sys_events(
             app_events={
                 0: {"instructions": 42},
                 2: {"instructions": 20}
             },
-            system_events={}
+            system_events={},
+            frequencies={}
         )
         core_event_trace = buffer.get_metrics_for_core(core_id=0, n=2)
         instructions = [events["instructions"] for events in core_event_trace]

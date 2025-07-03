@@ -6,7 +6,8 @@ class EventBuffer:
     @abstractmethod
     def push_core_and_sys_events(self,
                         app_events: dict[int, dict[str, int|float]],
-                        system_events: dict[str, int|float]
+                        system_events: dict[str, int|float],
+                        frequencies: dict[int, float]
                         ) -> None:
         """Adds the given core and system events to the buffer."""
         raise NotImplementedError
@@ -14,7 +15,8 @@ class EventBuffer:
     @abstractmethod
     def push_pid_and_sys_events(self,
                        app_events: dict[int, dict[str, int|float]],
-                       system_events: dict[str, int|float]
+                       system_events: dict[str, int|float],
+                       frequencies: dict[int, float]
                        ) -> None:
         """Adds the given pid and system events to the buffer."""
         raise NotImplementedError
@@ -109,6 +111,13 @@ class EventBuffer:
             424242: { ... }
           }
         ]
+        """
+        raise NotImplementedError
+    
+    def get_core_freqs(self, n: int) -> list[dict[int, float]]:
+        """
+        Returns the last `n` frequency measurements as list of dict,
+        where the **first** element in the list is the **oldest**.
         """
         raise NotImplementedError
     
