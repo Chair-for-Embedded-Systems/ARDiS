@@ -1,4 +1,3 @@
-import copy
 import threading
 from threading import Lock
 from core.buffering.event_buffer import EventBuffer
@@ -80,7 +79,7 @@ class DequeBasedEventBuffer(EventBuffer):
                     output.append(events)
         return output
     
-    def get_core_freqs(self, n: int) -> list[dict[int, float]]:
+    def get_core_frequencies(self, n: int) -> list[dict[int, float]]:
         if n <= 0:
             return []
         if self.__capacity and n > self.__capacity:

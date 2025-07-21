@@ -114,10 +114,19 @@ class EventBuffer:
         """
         raise NotImplementedError
     
-    def get_core_freqs(self, n: int) -> list[dict[int, float]]:
+    def get_core_frequencies(self, n: int) -> list[dict[int, float]]:
         """
-        Returns the last `n` frequency measurements as list of dict,
-        where the **first** element in the list is the **oldest**.
+        Returns the last `n` frequency measurements as a list of dict, 
+        where the **first** element in the list is the **oldest** measurement.
+        Each dict only contains the frequencies of those cores that were used by the monitored applications.
+
+        Example:
+        >>> get_core_frequencies(n=3)
+        [
+          { 2 : 3500, 16: 1500 },
+          { 2 : 3300, 16: 1600 },
+          { 2 : 3300           }, # Application on core 16 finished
+        ]
         """
         raise NotImplementedError
     
