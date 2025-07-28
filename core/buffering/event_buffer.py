@@ -138,6 +138,14 @@ class EventBuffer:
         """
         Returns the total event counts for a given application.
         Note: The total counts are based on extrapolatd samples. This is done to counteract sampling induced blind spots
+
+        Example:
+        >>> get_total_events(application = app)
+        {
+          "instructions" : 20_000_000_000
+          "cycles" : 8_000_000_000
+          ...
+        }
         """
         raise NotImplementedError
 

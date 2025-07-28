@@ -54,8 +54,6 @@ class DequeBasedEventBuffer(EventBuffer):
                     event_dict = self.__total_metrics[application]
                     for event, value in events.items():
                         event_dict[event] = event_dict.get(event, 0) + int(relative_sample_time * value)
-                        if "instruction" in event:
-                            print(f"{application.get_display_name()}: {event_dict[event]}")
 
 
     def get_metrics_by_core(self, n: int) -> list[dict[int, dict[str, float | int]]]:
