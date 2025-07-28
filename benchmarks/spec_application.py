@@ -19,11 +19,8 @@ class SpecApplication(Application):
 
     def _set_environment(self):
         if "SPECBIN" not in os.environ:
-            # Change to SPECPBASE directory
-            working_directory = os.getcwd()
-            os.chdir(SPECPBASE)
             # Source shrc and capture environment variables
-            command = f"source {SPECPBASE}/shrc && env"
+            command = f"cd {SPECPBASE} && source ./shrc && env"
             proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, executable="/bin/bash")
             output, error = proc.communicate()
 
@@ -32,8 +29,6 @@ class SpecApplication(Application):
                 if "=" in line:  # Check if line contains '='
                     key, value = line.split("=", 1)
                     os.environ[key] = value
-            
-            os.chdir(working_directory)
 
     def _execute(self, cores: set[int] | None) -> None:
     

@@ -45,12 +45,8 @@ class ParsecApplication(Application):
     def _set_environment():
         """Set parsec environment if it hasn't been done yet"""
         if "xxPARSECDIRxx" not in os.environ:
-            
-            working_directory = os.getcwd()
-            os.chdir(PARSECBASE)
-            
-            env_script_path = os.path.join(PARSECBASE, "env.sh")
-            command = f"source {env_script_path} && env"
+
+            command = f"cd {PARSECBASE} && source env.sh && env"
             process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, executable="/bin/bash")
             output, error = process.communicate()
 
@@ -58,8 +54,6 @@ class ParsecApplication(Application):
             for line in output.decode().splitlines():
                 key, value = line.split("=", 1)
                 os.environ[key] = value
-            
-            os.chdir(working_directory)
 
     def _execute(self, cores: set[int] | None) -> None:
         
