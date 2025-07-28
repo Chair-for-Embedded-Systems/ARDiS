@@ -210,7 +210,9 @@ class Monitor:
         app_events = app_level_thread.get()
         sys_events = sys_level_thread.get()
         frequency = procfs_thread.get()
-                    
+
+        relative_sample_duration = self.__get_relative_sample_duration()
+
         result = PeriodicCoreResult(
             elapsed_time_sec=timer() - self.__start_time,
             app_events=app_events,
@@ -225,7 +227,9 @@ class Monitor:
             buffer.push_core_and_sys_events(
                 app_events=app_events.get_events(),
                 system_events=sys_events.events,
-                frequencies=frequency
+                frequencies=frequency,
+                relative_sample_duration=relative_sample_duration,
+                core_to_application=self.__tracking_config.core_to_app,
             )
 
     def __monitor_pid(self, pool: ThreadPool, sys_level_thread: AsyncResult[ResultSystemPolling], per_thread_results: bool) -> None:
@@ -245,15 +249,7 @@ class Monitor:
         sys_events = sys_level_thread.get()
         affinity, frequency = procfs_thread.get()
         
-        # Calculate relative sample time (sample_time + overhead / sample_time).
-        # Assuuming a sampling rate of 100 ms:
-        #   A value of 1 represents no overehad
-        #   A value of 1.2 implies an sampling overhead of 20%, (i.e. 20 ms overhead)
-        if self.__last_sample_timestamp == None:
-            relative_sample_time = 1.0
-        else:
-            relative_sample_time = (timer() - self.__last_sample_timestamp) / self.__sampling_rate_sec
-        self.__last_sample_timestamp = timer()
+        relative_sample_duration = self.__get_relative_sample_duration()
 
         result = PeriodicPIDResult(
             elapsed_time_sec=timer() - self.__start_time,
@@ -264,7 +260,7 @@ class Monitor:
             pid_to_app=self.__tracking_config.pid_to_app,
             log_individual_threads=per_thread_results
         )
-        #print(result.get_timestamp, result.pid_to_app)
+
         self.__reporting_queue.put_nowait(result)
 
         # Add pid and sys events to buffer
@@ -273,10 +269,25 @@ class Monitor:
                 app_events=app_events.get_events(aggregate_by_pid=True),
                 system_events= sys_events.events,
                 frequencies=frequency,
-                relative_sample_time=relative_sample_time,
+                relative_sample_duration=relative_sample_duration,
                 pid_to_application=self.__tracking_config.pid_to_app
             )
         
+    def __get_relative_sample_duration(self) -> float:
+        """
+        Calculate relative sample duration (sample_duration + overhead / sample_duration).
+        Assuming a sample duration of 100 ms:
+            A value of 1 represents no overehad
+            A value of 1.2 implies an sampling overhead of 20%, (i.e. 20 ms overhead)
+        """
+        if self.__last_sample_timestamp == None:
+            # Estimation of overhead is not possible for first sample
+            rel_sample_duration = 1.0
+        else:
+            rel_sample_duration = (timer() - self.__last_sample_timestamp) / self.__sampling_rate_sec
+        
+        self.__last_sample_timestamp = timer()
+        return rel_sample_duration
 
     def __run_reporter(self) -> None:
         while self.__running:

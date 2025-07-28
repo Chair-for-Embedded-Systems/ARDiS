@@ -5,11 +5,14 @@ from benchmarks.application import Application
 class EventBuffer:
 
     @abstractmethod
-    def push_core_and_sys_events(self,
-                        app_events: dict[int, dict[str, int|float]],
-                        system_events: dict[str, int|float],
-                        frequencies: dict[int, float]
-                        ) -> None:
+    def push_core_and_sys_events(
+        self,
+        app_events: dict[int, dict[str, int|float]],
+        system_events: dict[str, int|float],
+        frequencies: dict[int, float],
+        relative_sample_duration: float,
+        core_to_application: dict[int, Application]
+      ) -> None:
         """Adds the given core and system events to the buffer."""
         raise NotImplementedError
 
@@ -19,7 +22,7 @@ class EventBuffer:
         app_events: dict[int, dict[str, int|float]],
         system_events: dict[str, int|float],
         frequencies: dict[int, float],
-        relative_sample_time: float,
+        relative_sample_duration: float,
         pid_to_application: dict[int, Application]
     ) -> None:
         """Adds the given pid and system events to the buffer."""

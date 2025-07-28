@@ -47,7 +47,7 @@ class Engine:
         self.__total_instructions: dict[Application, int] = {}
         
         self.reporter: Reporter = Reporter(experiment_name, results_folder)
-        self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10)
+        self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10, collect_total_metrics=True)
         self.action_buffer: ActionBuffer = ActionBuffer(capacity=10)
         
         self.__start_time: float = 0.0

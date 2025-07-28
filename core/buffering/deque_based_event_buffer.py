@@ -15,21 +15,32 @@ class DequeBasedEventBuffer(EventBuffer):
         self.__total_metrics: dict[Application, dict[str, int]] = {}
 
     def push_core_and_sys_events(
-        self, app_events: dict[int, dict[str, int | float]],
+        self, 
+        app_events: dict[int, dict[str, int | float]],
         system_events: dict[str, int | float],
-        frequencies: dict[int, float]
+        frequencies: dict[int, float],
+        relative_sample_duration: float,
+        core_to_application: dict[int, Application]
     ) -> None:
         with self.__lock:
             self.__core_event_deque.append(app_events)
             self.__sys_event_deque.append(system_events)
             self.__core_frequency_deque.append(frequencies)
 
+            if self.__collect_total_metrics:
+                for core, events in app_events.items():
+                    if application := core_to_application.get(core, None):
+                        self.__add_to_total_metrics(application, events, relative_sample_duration)
+                    else:
+                        # Results contain metrics for an unknown application (This should never be the case)
+                        print("Fixme! [DequeBasedEventBuffer, push_core_and_sys_events]")
+
     def push_pid_and_sys_events(
         self, 
         app_events: dict[int, dict[str, int | float]],
         system_events: dict[str, int | float],
         frequencies: dict[int, float],
-        relative_sample_time: float,
+        relative_sample_duration: float,
         pid_to_application: dict[int, Application]
     ) -> None:
         with self.__lock:
@@ -39,22 +50,29 @@ class DequeBasedEventBuffer(EventBuffer):
 
             if self.__collect_total_metrics:
                 for pid, events in app_events.items():
-                    application = pid_to_application.get(pid, None)
-                
-                    # Results contain metrics for an unknown application (This should never be the case)
-                    if application is None:
-                        print("Fixme! [DequeBasedEventBuffer]")
-                        continue
-                
-                    # Create empty dict for the total metrics of an application on first occurence
-                    if not application in self.__total_metrics.keys():
-                        self.__total_metrics[application] = {}
-                
-                    # Add event values to total sum
-                    event_dict = self.__total_metrics[application]
-                    for event, value in events.items():
-                        event_dict[event] = event_dict.get(event, 0) + int(relative_sample_time * value)
+                    if application := pid_to_application.get(pid, None):
+                        self.__add_to_total_metrics(application, events, relative_sample_duration)
+                    else:
+                        # Results contain metrics for an unknown application (This should never be the case)
+                        print("Fixme! [DequeBasedEventBuffer, push_pid_and_sys_events]")
 
+    def __add_to_total_metrics(
+        self, 
+        application: Application,
+        events: dict[str, int | float],
+        relative_sample_duration: float
+    ) -> None:
+        
+        # Create empty dict for the total metrics of an application on first occurence
+        if not application in self.__total_metrics.keys():
+            self.__total_metrics[application] = {}
+                
+        # Add event values to total counts
+        event_dict = self.__total_metrics[application]
+        for event, value in events.items():
+            event_dict[event] = event_dict.get(event, 0) + int(relative_sample_duration * value)
+            #if "instructions" in event:
+            #    print(f"{application} = {event_dict[event]}")
 
     def get_metrics_by_core(self, n: int) -> list[dict[int, dict[str, float | int]]]:
         if self.__capacity and n > self.__capacity:
@@ -130,7 +148,9 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
                 2 : {"inst": 20, "cycles": 40}
             },
             system_events={ "power_system" : 100, "power_core": 10, "power_package": 20},
-            frequencies={}
+            frequencies={},
+            relative_sample_duration=1.0,
+            core_to_application={}
         )
         # Check if basic insertion works (app events)
         self.assertEqual(buffer.get_metrics_for_core(core_id=1,n=1)[-1]["inst"], 10)
@@ -156,7 +176,7 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
             },
             system_events={ "power_system" : 100, "power_core": 10, "power_package": 20},
             frequencies={},
-            relative_sample_time=1.0,
+            relative_sample_duration=1.0,
             pid_to_application={}
         )
         # Check basic insertion (application events)
@@ -182,7 +202,9 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
                 2: {"instructions": 0}
             },
             system_events={},
-            frequencies={}
+            frequencies={},
+            relative_sample_duration=1.0,
+            core_to_application={}
         )
         buffer.push_core_and_sys_events(
             app_events={
@@ -190,7 +212,9 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
                 2: {"instructions": 20}
             },
             system_events={},
-            frequencies={}
+            frequencies={},
+            relative_sample_duration=1.0,
+            core_to_application={}
         )
         core_event_trace = buffer.get_metrics_for_core(core_id=0, n=2)
         instructions = [events["instructions"] for events in core_event_trace]
