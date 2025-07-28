@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from threading import Lock
+from benchmarks.application import Application
 
 class EventBuffer:
 
@@ -13,11 +14,14 @@ class EventBuffer:
         raise NotImplementedError
 
     @abstractmethod
-    def push_pid_and_sys_events(self,
-                       app_events: dict[int, dict[str, int|float]],
-                       system_events: dict[str, int|float],
-                       frequencies: dict[int, float]
-                       ) -> None:
+    def push_pid_and_sys_events(
+        self,
+        app_events: dict[int, dict[str, int|float]],
+        system_events: dict[str, int|float],
+        frequencies: dict[int, float],
+        relative_sample_time: float,
+        pid_to_application: dict[int, Application]
+    ) -> None:
         """Adds the given pid and system events to the buffer."""
         raise NotImplementedError
 
@@ -130,6 +134,13 @@ class EventBuffer:
         """
         raise NotImplementedError
     
+    def get_total_events(self, application: Application) -> dict[str, int] | None:
+        """
+        Returns the total event counts for a given application.
+        Note: The total counts are based on extrapolatd samples. This is done to counteract sampling induced blind spots
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def get_lock(self) -> Lock:
         """

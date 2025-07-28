@@ -66,6 +66,7 @@ class Monitor:
         self.__running = False
         self.__perf_thread: threading.Thread | None = None
         self.__event_buffer = event_buffer
+        self.__last_sample_timestamp: float | None = None
 
     def update_tracking_config(self, next_config: TrackingConfig):
         """
@@ -244,6 +245,16 @@ class Monitor:
         sys_events = sys_level_thread.get()
         affinity, frequency = procfs_thread.get()
         
+        # Calculate relative sample time (sample_time + overhead / sample_time).
+        # Assuuming a sampling rate of 100 ms:
+        #   A value of 1 represents no overehad
+        #   A value of 1.2 implies an sampling overhead of 20%, (i.e. 20 ms overhead)
+        if self.__last_sample_timestamp == None:
+            relative_sample_time = 1.0
+        else:
+            relative_sample_time = (timer() - self.__last_sample_timestamp) / self.__sampling_rate_sec
+        self.__last_sample_timestamp = timer()
+
         result = PeriodicPIDResult(
             elapsed_time_sec=timer() - self.__start_time,
             app_events=app_events,
@@ -261,7 +272,9 @@ class Monitor:
             buffer.push_pid_and_sys_events(
                 app_events=app_events.get_events(aggregate_by_pid=True),
                 system_events= sys_events.events,
-                frequencies=frequency
+                frequencies=frequency,
+                relative_sample_time=relative_sample_time,
+                pid_to_application=self.__tracking_config.pid_to_app
             )
         
 

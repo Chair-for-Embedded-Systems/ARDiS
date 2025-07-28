@@ -1,16 +1,18 @@
 import threading
 from threading import Lock
-from core.buffering.event_buffer import EventBuffer
+from core.buffering.event_buffer import EventBuffer, Application
 from collections import deque
 
 class DequeBasedEventBuffer(EventBuffer):
-    def __init__(self, capacity: int | None):
+    def __init__(self, capacity: int | None, collect_total_metrics: bool = True):
         self.__capacity = capacity
         self.__pid_event_deque: deque[dict[int, dict[str, int | float]]] = deque(maxlen=capacity)
         self.__core_event_deque: deque[dict[int, dict[str, int | float]]] = deque(maxlen=capacity)
         self.__sys_event_deque: deque[dict[str, int | float]] = deque(maxlen=capacity)
         self.__core_frequency_deque: deque[dict[int, float]] = deque(maxlen=capacity)
         self.__lock = threading.Lock()
+        self.__collect_total_metrics: bool = collect_total_metrics
+        self.__total_metrics: dict[Application, dict[str, int]] = {}
 
     def push_core_and_sys_events(
         self, app_events: dict[int, dict[str, int | float]],
@@ -21,17 +23,40 @@ class DequeBasedEventBuffer(EventBuffer):
             self.__core_event_deque.append(app_events)
             self.__sys_event_deque.append(system_events)
             self.__core_frequency_deque.append(frequencies)
-    
+
     def push_pid_and_sys_events(
         self, 
         app_events: dict[int, dict[str, int | float]],
         system_events: dict[str, int | float],
-        frequencies: dict[int, float]
+        frequencies: dict[int, float],
+        relative_sample_time: float,
+        pid_to_application: dict[int, Application]
     ) -> None:
         with self.__lock:
             self.__pid_event_deque.append(app_events)
             self.__sys_event_deque.append(system_events)
             self.__core_frequency_deque.append(frequencies)
+
+            if self.__collect_total_metrics:
+                for pid, events in app_events.items():
+                    application = pid_to_application.get(pid, None)
+                
+                    # Results contain metrics for an unknown application (This should never be the case)
+                    if application is None:
+                        print("Fixme! [DequeBasedEventBuffer]")
+                        continue
+                
+                    # Create empty dict for the total metrics of an application on first occurence
+                    if not application in self.__total_metrics.keys():
+                        self.__total_metrics[application] = {}
+                
+                    # Add event values to total sum
+                    event_dict = self.__total_metrics[application]
+                    for event, value in events.items():
+                        event_dict[event] = event_dict.get(event, 0) + int(relative_sample_time * value)
+                        if "instruction" in event:
+                            print(f"{application.get_display_name()}: {event_dict[event]}")
+
 
     def get_metrics_by_core(self, n: int) -> list[dict[int, dict[str, float | int]]]:
         if self.__capacity and n > self.__capacity:
@@ -87,6 +112,12 @@ class DequeBasedEventBuffer(EventBuffer):
         window = min(n, len(self.__core_event_deque))
         return list(self.__core_frequency_deque)[-window:]
 
+    def get_total_events(self, application: Application) -> dict[str, int] | None:
+        if self.__collect_total_metrics is False:
+            raise RuntimeError("Collection of total event counts is disabled !")
+        
+        return self.__total_metrics.get(application, None)
+
     def get_lock(self) -> Lock:
         return self.__lock
     
@@ -126,7 +157,9 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
                 42 : {"inst": 20, "cycles": 40}
             },
             system_events={ "power_system" : 100, "power_core": 10, "power_package": 20},
-            frequencies={}
+            frequencies={},
+            relative_sample_time=1.0,
+            pid_to_application={}
         )
         # Check basic insertion (application events)
         self.assertEqual(buffer.get_metrics_for_pid(pid=1,n=1)[-1]["inst"], 10)
