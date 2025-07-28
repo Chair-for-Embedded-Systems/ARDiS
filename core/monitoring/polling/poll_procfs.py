@@ -18,7 +18,7 @@ def poll_affinity(pids: set[int]) -> dict[int, list[int]]:
                         affinity = [core for core,bit in enumerate(bin_mask) if bit == '1']
                         output[pid] = affinity
                         break
-        except FileNotFoundError as fe:
+        except (FileNotFoundError, PermissionError, OSError) as e:
             output[pid] = []
             continue
     
@@ -43,7 +43,7 @@ def poll_last_sceduled_cpu(pids: set[int]) -> dict[int, int]:
     for pid in pids:
         try:
             tids = [int(tid) for tid in os.listdir(f"/proc/{pid}/task")]
-        except FileNotFoundError:
+        except (FileNotFoundError, PermissionError, OSError) as e:
             continue
             
         for tid in tids:
@@ -54,7 +54,7 @@ def poll_last_sceduled_cpu(pids: set[int]) -> dict[int, int]:
                     fields = f.read().split(' ')
                     cpu = int(fields[38])
                     output[tid] = cpu
-            except FileExistsError:
+            except (FileNotFoundError, PermissionError, OSError) as e:
                 continue
     
     return output
@@ -65,7 +65,10 @@ def poll_frequency(logic_cores: set[int]) -> dict[int, float]:
     """
     core_to_freq = {}
     for core in logic_cores:
-        with open(f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_cur_freq", 'r') as f:
-            core_freq_mhz = int(f.read().strip()) / 1000
-            core_to_freq[core] = core_freq_mhz
+        try:
+            with open(f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_cur_freq", 'r') as f:
+                core_freq_mhz = int(f.read().strip()) / 1000
+                core_to_freq[core] = core_freq_mhz
+        except (FileNotFoundError, PermissionError, OSError) as e:
+            continue
     return core_to_freq
