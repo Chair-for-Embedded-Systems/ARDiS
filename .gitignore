@@ -9,3 +9,5 @@ tests/
 *.png
 *.pdf
 *.csv
+.venv
+*.egg-info
