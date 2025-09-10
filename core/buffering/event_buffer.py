@@ -1,21 +1,30 @@
 from abc import abstractmethod
 from threading import Lock
+from benchmarks.application import Application
 
 class EventBuffer:
 
     @abstractmethod
-    def push_core_and_sys_events(self,
-                        app_events: dict[int, dict[str, int|float]],
-                        system_events: dict[str, int|float]
-                        ) -> None:
+    def push_core_and_sys_events(
+        self,
+        app_events: dict[int, dict[str, int|float]],
+        system_events: dict[str, int|float],
+        frequencies: dict[int, float],
+        relative_sample_duration: float,
+        core_to_application: dict[int, Application]
+      ) -> None:
         """Adds the given core and system events to the buffer."""
         raise NotImplementedError
 
     @abstractmethod
-    def push_pid_and_sys_events(self,
-                       app_events: dict[int, dict[str, int|float]],
-                       system_events: dict[str, int|float]
-                       ) -> None:
+    def push_pid_and_sys_events(
+        self,
+        app_events: dict[int, dict[str, int|float]],
+        system_events: dict[str, int|float],
+        frequencies: dict[int, float],
+        relative_sample_duration: float,
+        pid_to_application: dict[int, Application]
+    ) -> None:
         """Adds the given pid and system events to the buffer."""
         raise NotImplementedError
 
@@ -112,6 +121,37 @@ class EventBuffer:
         """
         raise NotImplementedError
     
+    def get_core_frequencies(self, n: int) -> list[dict[int, float]]:
+        """
+        Returns the last `n` frequency measurements as a list of dict, 
+        where the **first** element in the list is the **oldest** measurement.
+        Each dict only contains the frequencies of those cores that were used by the monitored applications.
+
+        Example:
+        >>> get_core_frequencies(n=3)
+        [
+          { 2 : 3500, 16: 1500 },
+          { 2 : 3300, 16: 1600 },
+          { 2 : 3300           }, # Application on core 16 finished
+        ]
+        """
+        raise NotImplementedError
+    
+    def get_total_events(self, application: Application) -> dict[str, int] | None:
+        """
+        Returns the total event counts for a given application.
+        Note: The total counts are based on extrapolatd samples. This is done to counteract sampling induced blind spots
+
+        Example:
+        >>> get_total_events(application = app)
+        {
+          "instructions" : 20_000_000_000
+          "cycles" : 8_000_000_000
+          ...
+        }
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def get_lock(self) -> Lock:
         """
