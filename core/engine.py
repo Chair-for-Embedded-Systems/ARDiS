@@ -309,8 +309,13 @@ class Engine:
         return total_energy, time_elapsed, cpu_core_instructions + cpu_atom_instructions
 
     def __clearCaches(self):
-        runProc("sudo sync")
-        runProc("sudo echo 3 > /proc/sys/vm/drop_caches")
+        try:
+            os.sync() # Flush all caches and buffers to disk
+            with open('/proc/sys/vm/drop_caches', 'w') as f:
+                # 1 = page cache, 2 = free slab objects, 3 = page cache + slab objects
+                f.write('3\n')
+        except Exception as e:
+            print(f"Failed to drop caches: {e}")
 
     def __clear_runtime_data(self):
         if os.path.exists(config.RUNTIME_TEMP):
