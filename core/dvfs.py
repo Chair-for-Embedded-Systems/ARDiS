@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
-from utils.inteldvfs import *
-from config import *
+from config import system_cores
 from core.actions import DVFSAction
 from core.system_state import SystemState
+from core.cpu.frequency_manager import CPUFrequencyManager
 
 class DVFSPolicy(ABC):
     def __init__(
@@ -13,10 +13,20 @@ class DVFSPolicy(ABC):
         max_frequency: int = 3500, 
         governor: str = "userspace"
     ) -> None:
-        self.manager = CPUFrequencyManager(min_frequency, max_frequency, governor)
+        
+        self.manager : CPUFrequencyManager = CPUFrequencyManager(
+            clock_domains=[{core for core in range(system_cores)}]
+        )
         self.__core_frequencies = core_frequencies
+        
         if governor == "userspace":
-            self.__setInitialFrequencies()
+            for core in self.manager.cores:
+                self.manager.set_governor(core, governor)
+                self.manager.set_cpu_freq(core, core_frequencies[core])
+        else:
+            for core in self.manager.cores:
+                self.manager.set_governor(core, governor)
+                self.manager.set_scaling_limits(core, min_frequency, max_frequency)
 
     @abstractmethod
     def get_dvfs_actions(self, system_state: SystemState) -> list[DVFSAction]:
@@ -31,7 +41,7 @@ class DVFSPolicy(ABC):
         Applies the given list of dvfs actions.
         """
         for action in actions:
-            self.manager.setFrequency(action.core_id, action.frequency_mhz)
+            self.manager.set_cpu_freq(action.core_id, action.frequency_mhz)
             self.__core_frequencies[action.core_id] = action.frequency_mhz
 
     def getCoreFrequencies(self) -> dict[int, int]:
@@ -40,9 +50,3 @@ class DVFSPolicy(ABC):
         It does not contain the actual frequency, but rather the last requested.
         """
         return self.__core_frequencies
-
-    def __setInitialFrequencies(self):
-        for core in self.__core_frequencies.keys():
-            self.manager.setFrequency(core, self.__core_frequencies[core])
-            if DEBUG:
-                print(f"Core {core} set to {self.__core_frequencies[core]} MHz")

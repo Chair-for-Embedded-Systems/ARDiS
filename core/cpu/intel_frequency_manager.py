@@ -11,7 +11,6 @@ class IntelFrequencyManager(CPUFrequencyManager):
     IA32_HWP_REQUEST = 0x774
     
     def __init__(self, use_hwp: bool = False) -> None:
-        super().__init__()
         self.__use_hwp = use_hwp
 
     def set_cpu_freq(self, core: int, frequency_mhz: float):
@@ -89,12 +88,15 @@ class IntelFrequencyManager(CPUFrequencyManager):
 
 if __name__ == "__main__":
     freq_manager = IntelFrequencyManager()
+    
+    freq_manager._print_core_stats(0)
+    
     #print(freq_manager.get_governor(2))
     #print(freq_manager.get_available_governors(2))
-    freq_manager.set_governor(16, "userspace")
-    freq_manager.set_governor(17, "userspace")
-    freq_manager.set_governor(18, "userspace")
-    freq_manager.set_governor(19, "userspace")
+    #freq_manager.set_governor(16, "userspace")
+    #freq_manager.set_governor(17, "userspace")
+    #freq_manager.set_governor(18, "userspace")
+    #freq_manager.set_governor(19, "userspace")
     #freq_manager.set_governor(3, "userspace")
     
     if False:
@@ -105,7 +107,7 @@ if __name__ == "__main__":
     #freq_manager.set_scaling_limits(3, 1000, 2000)
 
     #freq_manager._print_core_stats(2)
-    if True:
+    if False:
         freq = 2000 
         freq_manager.set_scaling_limits(16, freq, freq)
         freq_manager.set_scaling_limits(17, freq, freq)
@@ -113,9 +115,9 @@ if __name__ == "__main__":
         freq_manager.set_scaling_limits(19, freq, freq)
         #freq_manager.set_scaling_limits(3, freq, freq)
     
-    freq_manager._print_core_stats(16)
-    freq_manager._print_core_stats(17)
-    freq_manager._print_core_stats(18)
-    freq_manager._print_core_stats(19)
+    #freq_manager._print_core_stats(16)
+    #freq_manager._print_core_stats(17)
+    #freq_manager._print_core_stats(18)
+    #freq_manager._print_core_stats(19)
     #print()
     #freq_manager._print_core_stats(3)
