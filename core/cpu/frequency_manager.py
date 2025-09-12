@@ -3,12 +3,12 @@ import os
 
 class CPUFrequencyManager():
 
-    __cores: set[int] 
-    __core_to_dvfs_domain : dict[int, set[int]] = dict()
-    __core_to_freq_limits_khz: dict[int, tuple[int, int]] = dict()
-
     def __init__(self, clock_domains: list[set[int]]) -> None:
         
+        self.__cores: set[int] 
+        self.__core_to_dvfs_domain : dict[int, set[int]] = dict()
+        self.__core_to_freq_limits_khz: dict[int, tuple[int, int]] = dict()
+
         # Detect available cores
         logical_cores = [os.path.basename(d) for d in glob.glob(os.path.join("/sys/devices/system/cpu/", "cpu[0-9]*")) if os.path.isdir(d)]
         logical_cores = {int(core.replace('cpu','')) for core in logical_cores}
@@ -69,7 +69,7 @@ class CPUFrequencyManager():
                 f.write(governor)
             print(f"Governor of core {core} set to {governor}")
         except IOError as e:
-            print(f"Failed to set governor for core {core}: {e}")
+            print(f"Failed to set governor for core {core} to {governor}: {e}")
 
     def get_available_governors(self, core: int) -> set[str]:
         path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_available_governors"
