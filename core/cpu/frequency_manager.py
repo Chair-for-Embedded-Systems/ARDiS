@@ -49,12 +49,13 @@ class CPUFrequencyManager():
 
     def set_cpu_freq(self, core: int, frequency_mhz: int) -> None:
         """
-        Sets the given core to the provided frequency.
+        Sets the given core to the provided frequency in MHz.
         Automatically applies the frequency to all cores in the same DVFS domain.
         """
         affected_cores = self.__core_to_dvfs_domain[core]
-        for affected_core in affected_cores:
-            self.set_scaling_limits(affected_core, frequency_mhz, frequency_mhz)
+        frequency_khz = frequency_mhz * 1000
+        for affected_core in affected_cores:            
+            self.set_scaling_limits(affected_core, frequency_khz, frequency_khz)
     
     def get_cpu_freq(self, core: int) -> float:
         """
@@ -124,14 +125,11 @@ class CPUFrequencyManager():
         except Exception as e:
             raise e
 
-    def set_scaling_limits(self, core: int, min_freq_mhz: int, max_freq_mhz: int):
+    def set_scaling_limits(self, core: int, min_freq_khz: int, max_freq_khz: int):
         """
-        Sets the scaling limits of 
+        Sets the scaling limits of the given core in KHz.
         """
         DEBUG = False
-        
-        min_freq_khz = 1000 * min_freq_mhz
-        max_freq_khz = 1000 * max_freq_mhz
 
         min_freq_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_min_freq"
         max_freq_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_max_freq"
@@ -141,13 +139,13 @@ class CPUFrequencyManager():
             with open(min_freq_path, 'w') as f:
                 f.write(str(min_freq_khz))
             if DEBUG:
-                print(f"Minimum frequency for core {core} set to {min_freq_mhz} MHz ({min_freq_khz} kHz)")
+                print(f"Minimum frequency for core {core} set to {min_freq_khz} MHz ({min_freq_khz} kHz)")
                 
             # Set the maximum frequency
             with open(max_freq_path, 'w') as f:
                 f.write(str(max_freq_khz))
             if DEBUG:
-                print(f"Maximum frequency for core {core} set to {max_freq_mhz} MHz ({max_freq_khz} kHz)")
+                print(f"Maximum frequency for core {core} set to {max_freq_khz} MHz ({max_freq_khz} kHz)")
             
         except IOError as e:
             print(f"Failed to set frequency limits for core {core}: {e}")
@@ -199,14 +197,14 @@ class CPUFrequencyManager():
             raise ValueError(f"Unknown governor : {governor}")
         
         # Get processor min and max
-        min_cpu_freq, max_cpu_freq = self.get_processor_limits(core)
+        min_cpu_freq_khz, max_cpu_freq_khz = self.get_processor_limits(core)
         self.set_governor(core, governor)
-        self.set_scaling_limits(core, min_cpu_freq, max_cpu_freq)
+        self.set_scaling_limits(core, min_cpu_freq_khz, max_cpu_freq_khz)
 
     def reset_all(self, governor: str):
         for core in self.__cores:
             self.reset(core, governor)
 
 if __name__ == "__main__":
-    freq_manager = CPUFrequencyManager(clock_domains=[{core for core in range(4)}])
-    freq_manager.reset_all
+    freq_manager = CPUFrequencyManager(clock_domains=[{core for core in range(24)}])
+    freq_manager.reset_all("schedutil")
