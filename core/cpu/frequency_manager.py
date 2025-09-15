@@ -31,6 +31,9 @@ class CPUFrequencyManager():
             if not core in self.__core_to_dvfs_domain:
                 raise ValueError(f"Core {core} is not assigned to a DVFS domain")
 
+        # Save initial state of all cores            
+        self._save_initial_state()
+
     @property
     def cores(self) -> set[int]:
         return self.__cores

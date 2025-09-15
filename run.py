@@ -15,7 +15,6 @@ from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
 from benchmarks.application import Application
 from benchmarks.parsec_application import ParsecApplication
 from benchmarks.binary_application import BinaryApplication
-from timeit import default_timer as timer
 from random import randrange
 import os
 
@@ -23,7 +22,17 @@ import os
 
 
 class Experiment:
-    def __init__(self, name="", applications: list[Application] = [], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy: DVFSPolicy=StaticDVFS(), migration_policy=None, monitoring_mode=MonitoringMode.PERIODIC_ON_CORE, results_folder=RESULTS_FOLDER):   
+    def __init__(
+        self, 
+        name: str="", 
+        applications: list[Application] = [],
+        mapping_policy: MappingPolicy = MappingPolicy(),
+        scheduler: Scheduler = Scheduler(), 
+        dvfs_policy: DVFSPolicy | None = None, # No default to avoid multiple instances of a frequency manager
+        migration_policy: MigrationPolicy | None = None, 
+        monitoring_mode: MonitoringMode = MonitoringMode.PERIODIC_ON_CORE,
+        results_folder: str = RESULTS_FOLDER
+    ):   
         self.__name = name
         self.__applications = applications
         self.__engine = Engine(self.__name, 

@@ -198,6 +198,10 @@ class Engine:
                 
                 # Clear the caches after the experiment is done
                 self.__clearCaches()
+                
+                # Restore initial CPU state
+                if self.__dvfs_policy:
+                    self.__dvfs_policy.manager.restore_initial_state() 
                 break
             else:  
                 with system_state_lock:
