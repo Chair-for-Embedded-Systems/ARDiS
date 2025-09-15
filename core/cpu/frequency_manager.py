@@ -37,6 +37,12 @@ class CPUFrequencyManager():
     @property
     def cores(self) -> set[int]:
         return self.__cores
+    
+    def affected_cores(self, core: int) -> set[int]:
+        """
+        Returns the set of cores in the same DVFS domain as the given core.
+        """
+        return self.__core_to_dvfs_domain[core]
 
     def set_cpu_freq(self, core: int, frequency_mhz: int) -> None:
         """

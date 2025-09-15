@@ -1,27 +1,26 @@
-import struct
 import subprocess
 from core.cpu.frequency_manager import CPUFrequencyManager
+from core.cpu.intel.hwp_interface import IntelHWPInterface, HWPRequest
 
 class IntelFrequencyManager(CPUFrequencyManager):
     
-    # MSR for the HWP Programming Interface 
-    # (see Intel® 64 and IA-32 Architectures Software Developer’s Manual Volume 3B: System Programming Guide, Part 2)
-    # https://cdrdv2.intel.com/v1/dl/getContent/671427
-    IA32_PM_ENABLE = 0x770
-    IA32_HWP_CAPABILITIES = 0x771
-    IA32_HWP_REQUEST = 0x774
-
     def __init__(
         self,
         clock_domains: list[set[int]],
-        use_hwp: bool = False,
+        use_hwp: bool = True,
         disable_thermald: bool = True
     ) -> None:
         
         self.__use_hwp = use_hwp
+        self.__initial_hwp_requests: dict[int, HWPRequest] | None = None
         self.__disable_thermald = disable_thermald
         super().__init__(clock_domains=clock_domains)
         
+        # Initialize HWP interface if desired
+        if self.__use_hwp:
+            self._hwp_interface = IntelHWPInterface()
+            self._save_hwp_state()
+
         # Set pstate to passive
         self._set_pstate_status("passive")
 
@@ -30,59 +29,31 @@ class IntelFrequencyManager(CPUFrequencyManager):
             self._disable_thermald()
         
 
-    def set_cpu_freq(self, core: int, frequency_mhz: float):
-        ...
+    def set_cpu_freq(self, core: int, frequency_mhz: int):
+        if not self.__use_hwp:
+            super().set_cpu_freq(core, frequency_mhz)
+        else:
+            p_state = self._frequency_to_pstate(core, frequency_mhz)
+            if p_state is None:
+                raise ValueError(f"Cannot map frequency {frequency_mhz} MHz to a p-state")
+            else:
+                self._set_pstate(core, p_state)
+            return
+            
     
     def get_cpu_freq(self, core: int) -> float:
-        ...
-
-    def _read_msr(self, core: int, msr: int) -> int | None:
-        msr_file = f"/dev/cpu/{core}/msr"
-        try:
-            with open(msr_file, 'rb') as f:
-                f.seek(msr)
-                value = f.read(8)
-                return struct.unpack('Q', value)[0]
-        except IOError as e:
-            print(f"Error reading MSR {msr:#x} on core {core}: {e}")
-            return None
-
-    def _write_msr(self, core: int, msr: int, value: int):
-        msr_file = f"/dev/cpu/{core}/msr"
-        try:
-            with open(msr_file, 'wb') as f:
-                f.seek(msr)
-                f.write(struct.pack('Q', value))
-        except IOError as e:
-            print(f"Error writing MSR {msr:#x} on core {core}: {e}")
+        return super().get_cpu_freq(core)
 
     def _set_pstate(self, core: int, pstate: int):        
-        hwp_request = (
-            (pstate & 0xFF) |                    # Minimum Performance
-            ((pstate & 0xFF) << 8) |             # Maximum Performance
-            #((pstate & 0xFF) << 16) |            # Desired Performance
-            ((0x80 & 0xFF) << 24)                # Energy Performance Preference
-        )
-        self._write_msr(core, self.IA32_HWP_REQUEST, hwp_request)
+        for affected_core in self.affected_cores(core):
+            self._hwp_interface.set_p_state(affected_core, pstate)
 
-    @staticmethod
-    def _parse_hwp_capabilities(result: int) -> dict[str, int]:
-        return {
-            "Highest_Performance" : result & 0xFF,
-            "Guaranteed_Performance" : result >> 8 & 0xFF,
-            "Most_Efficient_Performance" : result >> 16 & 0xFF,
-            "Lowest_Performance" : result >> 24 & 0xFF
-        }
-    
-    @staticmethod
-    def _parse_hwp_request(result: int) -> dict[str, int]:
-        return {
-            "Minimum_performance" : result & 0xFF,
-            "Maximum_performance" : result >> 8 & 0xFF,
-            "Desired_performance" : result >> 16 & 0xFF,
-            "Energy_performance_preference" : result >> 24 & 0xFF
-        }
-    
+    def _frequency_to_pstate(self, core: int, frequency_mhz: int) -> int | None:
+        """
+        Maps a frequency in MHz to the closest corresponding p-state.
+        """
+        raise NotImplementedError("Mapping frequency to p-state is not implemented yet")
+
     def _get_pstate_status(self) -> str | None:
         """Reads the current status of the intel_pstate driver (active, passive, or off)"""
         pstate_status_path = "/sys/devices/system/cpu/intel_pstate/status"
@@ -95,6 +66,7 @@ class IntelFrequencyManager(CPUFrequencyManager):
             return None
         
     def _set_pstate_status(self, status: str):
+        """Sets the status of the intel_pstate driver (active, passive, or off)"""
         pstate_status_path = "/sys/devices/system/cpu/intel_pstate/status"
         try:
             with open(pstate_status_path, 'w') as f:
@@ -118,31 +90,70 @@ class IntelFrequencyManager(CPUFrequencyManager):
         except subprocess.CalledProcessError as e:
             print(f"Failed to start thermald service: {e}")
 
+    def _save_hwp_state(self):
+        if not self.__use_hwp:
+            return
+        self.__initial_hwp_requests = dict()
+        for core in self.cores:
+            hwp_request = self._hwp_interface.get_hwp_request(core)
+            if hwp_request:
+                self.__initial_hwp_requests[core] = hwp_request
+
     def restore_initial_state(self):
-        super().restore_initial_state()
         # Re-enable thermald service if it was disabled
         if self.__disable_thermald:
             self._enable_thermald()
+        
+        # Restore initial HWP requests
+        if self.__use_hwp and self.__initial_hwp_requests:
+            for core, hwp_request in self.__initial_hwp_requests.items():
+                self._hwp_interface.set_hwp_request(core, hwp_request)
+        
+        super().restore_initial_state()
+
 
     def _print_core_stats(self, core: int):
         print(f"Core: {core}")
         print(f"Scaling driver: {self.get_scaling_driver(core)}")
         print(f"Current governor: {self.get_governor(core)}")
-        
-        scaling_min_khz, scaling_max_khz = self.get_scaling_limits(core)
-        print(f"Scaling_Min: {scaling_min_khz/1000:.1f} MHz, Scalin_Max: {scaling_max_khz/1000:.1f} MHz")
+        output = [
+            "==============================",
+            f" Core: {core}",
+            "------------------------------",
+            f" Scaling driver: {self.get_scaling_driver(core)}",
+            f" Current governor: {self.get_governor(core)}"
+        ]
 
-        cpu_min_khz, cpu_max_khz = self.get_processor_limits(core)
-        print(f"CPU_Min: {cpu_min_khz / 1000 :.1f} MHz, CPU_Max: {cpu_max_khz / 1000 :.1f} MHz")
-        
-        if hwp_capabilities := freq_manager._read_msr(core, IntelFrequencyManager.IA32_HWP_CAPABILITIES):
-            cap = freq_manager._parse_hwp_capabilities(hwp_capabilities)
-            print(cap)
+        try:
+            scaling_min_khz, scaling_max_khz = self.get_scaling_limits(core)
+            output.append(f" Scaling Min: {scaling_min_khz / 1000:.1f} MHz")
+            output.append(f" Scaling Max: {scaling_max_khz / 1000:.1f} MHz")
+        except Exception as e:
+            output.append(f" Failed to get scaling limits: {e}")
 
-        if hwp_request := freq_manager._read_msr(core, IntelFrequencyManager.IA32_HWP_REQUEST):
-            print(freq_manager._parse_hwp_request(hwp_request))
+        try:
+            cpu_min_khz, cpu_max_khz = self.get_processor_limits(core)
+            output.append(f" CPU Min: {cpu_min_khz / 1000:.1f} MHz")
+            output.append(f" CPU Max: {cpu_max_khz / 1000:.1f} MHz")
+        except Exception as e:
+            output.append(f" Failed to get processor limits: {e}")
 
-        print(f"Available governors: {self.get_available_governors(core)}")
+        if hasattr(self, "_hwp_interface"):
+            hwp_capabilities = self._hwp_interface.get_hwp_capabilities(core)
+            if hwp_capabilities:
+                output.append(f" HWP Capabilities: {hwp_capabilities}")
+            hwp_request = self._hwp_interface.get_hwp_request(core)
+            if hwp_request:
+                output.append(f" HWP Request: {hwp_request}")
+
+        try:
+            available_governors = self.get_available_governors(core)
+            output.append(f" Available governors: {available_governors}")
+        except Exception as e:
+            output.append(f" Failed to get available governors: {e}")
+
+        output.append("==============================")
+        print("\n".join(output))
 
 if __name__ == "__main__":
     from config import clock_domains
@@ -180,3 +191,4 @@ if __name__ == "__main__":
     #freq_manager._print_core_stats(19)
     #print()
     #freq_manager._print_core_stats(3)
+    freq_manager.restore_initial_state()
