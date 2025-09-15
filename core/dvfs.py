@@ -1,22 +1,19 @@
 from abc import ABC, abstractmethod
 
-from config import system_cores
+import config
 from core.actions import DVFSAction
 from core.system_state import SystemState
-from core.cpu.frequency_manager import CPUFrequencyManager
+from core.cpu import CPUFrequencyManager, get_platform_frequency_manager
 
 class DVFSPolicy(ABC):
     def __init__(
         self,
-        core_frequencies: dict[int, int] = {core: 2000 for core in range(system_cores)},
+        core_frequencies: dict[int, int] = {core: 2000 for core in range(config.system_cores)},
         min_frequency: int = 1500, 
         max_frequency: int = 3500, 
         governor: str = "userspace"
     ) -> None:
-        
-        self.manager : CPUFrequencyManager = CPUFrequencyManager(
-            clock_domains=[{core for core in range(system_cores)}]
-        )
+        self.manager : CPUFrequencyManager = get_platform_frequency_manager()
         self.__core_frequencies = core_frequencies
         
         if governor == "userspace":
