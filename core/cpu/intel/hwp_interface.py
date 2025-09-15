@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+from core.cpu.cpu_info import get_cpu_flags
 import struct
 
 @dataclass
@@ -52,9 +53,10 @@ class IntelHWPInterface:
     IA32_HWP_CAPABILITIES = 0x771
     IA32_HWP_REQUEST = 0x774
 
-    def __init__(self) -> None:
-        # TODO: Check if HWP is supported, raise exception if not
-        pass
+    def __init__(self) -> None:    
+        hwp_supported = "hwp" in get_cpu_flags()
+        if not hwp_supported:
+            raise RuntimeError("HWP is not supported on this CPU")
     
     def get_hwp_capabilities(self, core: int) -> HWPCapabilities | None:
         result = self._read_msr(core, IntelHWPInterface.IA32_HWP_CAPABILITIES)

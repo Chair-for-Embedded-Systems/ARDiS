@@ -18,3 +18,13 @@ def read_cpuinfo() -> dict[str, str]:
             return cpu_info
     except IOError as e:
         raise IOError(f"Failed to read /proc/cpuinfo: {e}")
+
+def get_cpu_flags() -> set[str]:
+    """
+    Returns a set of CPU flags supported by the processor.
+    """
+    cpu_info = read_cpuinfo()
+    flags_line = cpu_info.get("flags", "")
+    flags = {flag for flag in flags_line.split() if flag}
+    return flags
+
