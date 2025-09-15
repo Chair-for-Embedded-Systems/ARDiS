@@ -1,4 +1,5 @@
 import struct
+import subprocess
 from core.cpu.frequency_manager import CPUFrequencyManager
 
 class IntelFrequencyManager(CPUFrequencyManager):
@@ -9,9 +10,25 @@ class IntelFrequencyManager(CPUFrequencyManager):
     IA32_PM_ENABLE = 0x770
     IA32_HWP_CAPABILITIES = 0x771
     IA32_HWP_REQUEST = 0x774
-    
-    def __init__(self, use_hwp: bool = False) -> None:
+
+    def __init__(
+        self,
+        clock_domains: list[set[int]],
+        use_hwp: bool = False,
+        disable_thermald: bool = True
+    ) -> None:
+        
         self.__use_hwp = use_hwp
+        self.__disable_thermald = disable_thermald
+        super().__init__(clock_domains=clock_domains)
+        
+        # Set pstate to passive
+        self._set_pstate_status("passive")
+
+        # Disable thermald service
+        if self.__disable_thermald:
+            self._disable_thermald()
+        
 
     def set_cpu_freq(self, core: int, frequency_mhz: float):
         ...
@@ -65,6 +82,47 @@ class IntelFrequencyManager(CPUFrequencyManager):
             "Desired_performance" : result >> 16 & 0xFF,
             "Energy_performance_preference" : result >> 24 & 0xFF
         }
+    
+    def _get_pstate_status(self) -> str | None:
+        """Reads the current status of the intel_pstate driver (active, passive, or off)"""
+        pstate_status_path = "/sys/devices/system/cpu/intel_pstate/status"
+        try:
+            with open(pstate_status_path, 'r') as f:
+                status = f.read().strip()
+                return status
+        except IOError as e:
+            print(f"Failed to read intel_pstate status: {e}")
+            return None
+        
+    def _set_pstate_status(self, status: str):
+        pstate_status_path = "/sys/devices/system/cpu/intel_pstate/status"
+        try:
+            with open(pstate_status_path, 'w') as f:
+                f.write(status)
+        except IOError as e:
+            print(f"Failed to set intel_pstate status: {e}")
+
+    def _disable_thermald(self):
+        command = ['sudo', 'systemctl', 'stop', 'thermald']
+        try:
+            subprocess.run(command, check=True)
+            print("thermald service stopped")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to stop thermald service: {e}")
+
+    def _enable_thermald(self):
+        command = ['sudo', 'systemctl', 'start', 'thermald']
+        try:
+            subprocess.run(command, check=True)
+            print("thermald service started")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to start thermald service: {e}")
+
+    def restore_initial_state(self):
+        super().restore_initial_state()
+        # Re-enable thermald service if it was disabled
+        if self.__disable_thermald:
+            self._enable_thermald()
 
     def _print_core_stats(self, core: int):
         print(f"Core: {core}")
@@ -87,9 +145,10 @@ class IntelFrequencyManager(CPUFrequencyManager):
         print(f"Available governors: {self.get_available_governors(core)}")
 
 if __name__ == "__main__":
-    freq_manager = IntelFrequencyManager()
+    from config import clock_domains
+    freq_manager = IntelFrequencyManager(clock_domains=clock_domains)
     
-    freq_manager._print_core_stats(0)
+    freq_manager._print_core_stats(0) # type: ignore
     
     #print(freq_manager.get_governor(2))
     #print(freq_manager.get_available_governors(2))
