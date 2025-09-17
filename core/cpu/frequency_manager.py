@@ -155,11 +155,11 @@ class CPUFrequencyManager():
         """
         Returns the scaling driver for the given logical core.
         Common drivers include, but are not limited to:
-
-        'intel_cpufreq' : Older Intel CPUs or Modern Intel CPUs with HWP set to passive.
-        'intel_pstate': Modern Intel CPUs
-        'amd-pstate': Modern AMD CPUs
-        'acpi-cpufreq': Legacy
+        
+            intel_pstate: Modern Intel CPUs
+            intel_cpufreq : Older Intel CPUs or Modern Intel CPUs with HWP set to passive.
+            amd-pstate: Modern AMD CPUs (AMD Zen 3 and later)
+            acpi-cpufreq: Legacy
         """
         path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_driver"
         try:
@@ -168,6 +168,48 @@ class CPUFrequencyManager():
             return scaling_driver
         except:
             return ""
+        
+    def get_available_frequencies(self, core: int) -> list[int]:
+        """
+        Returns a list of available frequencies in KHz for the given core.
+        """
+        path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_available_frequencies"
+        try:
+            with open(path, 'r') as f:
+                freqs = f.read()
+            return [int(freq) for freq in freqs.split()]
+        except IOError as _:
+            return []
+        
+    def get_boost_state(self) -> bool | None:
+        """
+        Returns True if boost is enabled, False if disabled, and None if unknown.
+        """
+        boost_path = "/sys/devices/system/cpu/cpufreq/boost"
+        try:
+            with open(boost_path, 'r') as f:
+                state = f.read().strip()
+                if state == '1':
+                    return True
+                elif state == '0':
+                    return False
+                else:
+                    return None
+        except IOError as e:
+            print(f"Failed to read boost state: {e}")
+            return None
+        
+    def _set_boost_state(self, enable: bool) -> None:
+        """
+        Enables or disables boosting.
+        """
+        boost_path = "/sys/devices/system/cpu/cpufreq/boost"
+        try:
+            with open(boost_path, 'w') as f:
+                f.write('1' if enable else '0')
+            print(f"Boost state set to {'enabled' if enable else 'disabled'}.")
+        except IOError as e:
+            print(f"Failed to set boost state to {'enabled' if enable else 'disabled'}: {e}")
     
     def _save_initial_state(self):
         """
