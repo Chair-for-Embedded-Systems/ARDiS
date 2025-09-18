@@ -16,7 +16,7 @@ def get_platform_frequency_manager() -> CPUFrequencyManager:
         raise EnvironmentError("Could not determine scaling driver!")
 
     # Instantiate the appropriate frequency manager based on the scaling driver
-    if scaling_driver == "intel_pstate":
+    if scaling_driver == "intel_cpufreq" or scaling_driver == "intel_pstate":
         return IntelFrequencyManager(
             clock_domains=clock_domains,
             disable_thermald=True,
@@ -26,7 +26,6 @@ def get_platform_frequency_manager() -> CPUFrequencyManager:
     elif scaling_driver == "amd-pstate":
         return AMDFrequencyManager(
             clock_domains=clock_domains,
-            disable_boost=True
         )
     elif scaling_driver == "acpi-cpufreq":
         return ACPIFrequencyManager(

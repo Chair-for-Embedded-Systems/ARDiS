@@ -33,10 +33,10 @@ class ACPIFrequencyManager(CPUFrequencyManager):
         # Save the initial state of all cores
         self._save_initial_state()
 
-        # Disable boosting if available
+        # Disable boosting to ensure consistent frequency control
         self._initial_boost_state = self.get_boost_state()
-        if self._initial_boost_state is True:
-            self._set_boost_state(False)
+        self._set_boost_state(False)
+        
 
     def set_cpu_freq(self, core: int, frequency_mhz: int):
         freq_khz = frequency_mhz * 1000
@@ -60,9 +60,3 @@ class ACPIFrequencyManager(CPUFrequencyManager):
 
     def get_cpu_freq(self, core: int) -> float:
         return super().get_cpu_freq(core)
-
-    def restore_initial_state(self):
-        # Restore initial boost state if it was changed
-        if self._initial_boost_state is not None:
-            self._set_boost_state(self._initial_boost_state)
-        return super().restore_initial_state()

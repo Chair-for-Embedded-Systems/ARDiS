@@ -58,10 +58,12 @@ class DVFSPolicy(ABC):
                 self.cpu_freq_manager.set_cpu_freq(core, freq)
             return
         elif self.__initial_governor:
-            governor, min_freq, max_freq = self.__initial_governor
+            governor, min_freq_mhz, max_freq_mhz = self.__initial_governor
+            min_freq_khz = min_freq_mhz * 1000
+            max_freq_khz = max_freq_mhz * 1000
             for core in self.cpu_freq_manager.cores:
                 self.cpu_freq_manager._set_governor(core, governor)
-                self.cpu_freq_manager._set_scaling_limits(core, min_freq, max_freq)
+                self.cpu_freq_manager._set_scaling_limits(core, min_freq_khz, max_freq_khz)
             return
         else:
             print("[DVFS Policy] No initial state to apply")

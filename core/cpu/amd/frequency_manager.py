@@ -5,7 +5,7 @@ class AMDFrequencyManager(CPUFrequencyManager):
     P_STATE_STATUS_PATH = "/sys/devices/system/cpu/amd_pstate/status"
     CPB_BOOST_PATH = "/sys/devices/system/cpu/amd_pstate/cpb_boost"
     
-    def __init__(self, clock_domains: list[set[int]], disable_boost: bool = True) -> None:
+    def __init__(self, clock_domains: list[set[int]]) -> None:
         super().__init__(clock_domains)
         
         # Check if the scaling driver is amd-pstate
@@ -16,11 +16,9 @@ class AMDFrequencyManager(CPUFrequencyManager):
         # Set scaling driver to passive
         self._set_pstate_status("passive")
 
-        # Disable boosting (optional)
-        self.__disable_boost = disable_boost
-        if disable_boost:
-            self._initial_boost_state = self.get_boost_state()
-            self._set_boost_state(False)
+        # Enable boosting
+        self._initial_boost_state = self.get_boost_state()
+        self._set_boost_state(True)
 
     def set_cpu_freq(self, core: int, frequency_mhz: int):
         super().set_cpu_freq(core, frequency_mhz)
@@ -62,9 +60,3 @@ class AMDFrequencyManager(CPUFrequencyManager):
                 f.write("1" if enable else "0")
         except IOError as e:
             print(f"Failed to set cpb_boost state: {e}")
-
-    def restore_initial_state(self):
-        # Restore initial boost state if it was changed
-        if self.__disable_boost and self._initial_boost_state is not None:
-            self._set_boost_state(self._initial_boost_state)
-        return super().restore_initial_state()

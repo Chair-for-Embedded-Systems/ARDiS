@@ -36,11 +36,9 @@ class IntelFrequencyManager(CPUFrequencyManager):
         # Set pstate to passive
         self._set_pstate_status("passive")
 
-        # Disable boosting if available
-        if disable_boost:
-            self._initial_boost_state = self.get_boost_state()
-            if self._initial_boost_state is True:
-                self._set_boost_state(False)
+        # Make sure boost is enabled (access to larger frequency range)
+        self._initial_boost_state = self.get_boost_state()
+        self._set_boost_state(True)
 
         # Disable thermald service
         if self.__disable_thermald:
@@ -154,5 +152,5 @@ class IntelFrequencyManager(CPUFrequencyManager):
         super().restore_initial_state()
 
         # Restore initial boost state if it was changed
-        if self.__disable_boost and self._initial_boost_state is not None:
+        if self._initial_boost_state is not None:
             self._set_boost_state(self._initial_boost_state)
