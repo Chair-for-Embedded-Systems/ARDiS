@@ -19,6 +19,12 @@ class AMDFrequencyManager(CPUFrequencyManager):
         # Disable boosting (optional)
         self._set_boost_state(False)
 
+    def set_cpu_freq(self, core: int, frequency_mhz: int):
+        super().set_cpu_freq(core, frequency_mhz)
+
+    def get_cpu_freq(self, core: int) -> float:
+        return super().get_cpu_freq(core)
+
     def _get_pstate_status(self) -> str | None:
         """Reads the current status of the amd_pstate driver (active, passive, or off)"""
         try:
@@ -57,7 +63,7 @@ class AMDFrequencyManager(CPUFrequencyManager):
 if __name__ == "__main__":
     freq_manager = AMDFrequencyManager(clock_domains=[{core for core in range(24)}])
     for core in range(24):
-        freq_manager.set_governor(core, "userspace")
+        freq_manager._set_governor(core, "userspace")
     #print(freq_manager.get_scaling_driver(core))
     #print(freq_manager._get_pstate_status())
     #print(freq_manager.get_scaling_limits(core))

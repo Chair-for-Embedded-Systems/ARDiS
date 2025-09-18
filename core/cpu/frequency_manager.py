@@ -1,12 +1,21 @@
 import glob
 import os
+from abc import ABC, abstractmethod
 
-class CPUFrequencyManager():
+class CPUFrequencyManager(ABC):
+    """
+    Class to manage CPU frequency scaling on Linux systems.
+    It provides and interface to read and modify CPU frequency settings via the sysfs interface.
+    Depending on the CPU architecture, different scaling drivers may be used.
+    Therefore there are different subclasses for different CPU vendors / scaling drivers in this package.
+    
+    **Note**: Setter methods are instance methods, as they require knowledge of the DVFS domains to coordinate adjustments.
+    """
 
     def __init__(self, clock_domains: list[set[int]]) -> None:
-        
+    
         self.__cores: set[int] 
-        self.__core_to_dvfs_domain : dict[int, set[int]] = dict()
+        self.__core_to_dvfs_domain: dict[int, set[int]] = dict()
         self.__core_to_freq_limits_khz: dict[int, tuple[int, int]] = dict()
 
         # Detect available cores
@@ -16,7 +25,10 @@ class CPUFrequencyManager():
         # Determine allowed frequency ranges
         self.__cores = logical_cores
         for core in logical_cores:
-            self.__core_to_freq_limits_khz[core] = self.get_processor_limits(core)
+            limits = self.get_processor_limits(core)
+            if limits is None:
+                raise EnvironmentError(f"Could not retrieve processor frequency limits for core {core}")
+            self.__core_to_freq_limits_khz[core] = limits
 
         # Create LUT for DVFS domains [Core -> Cores in same domain]
         for domain in clock_domains:
@@ -31,7 +43,7 @@ class CPUFrequencyManager():
             if not core in self.__core_to_dvfs_domain:
                 raise ValueError(f"Core {core} is not assigned to a DVFS domain")
 
-        # Save initial state of all cores            
+        # Save initial state of all cores
         self._save_initial_state()
 
     @property
@@ -47,7 +59,8 @@ class CPUFrequencyManager():
         """
         return self.__core_to_dvfs_domain[core]
 
-    def set_cpu_freq(self, core: int, frequency_mhz: int) -> None:
+    @abstractmethod
+    def set_cpu_freq(self, core: int, frequency_mhz: int):
         """
         Sets the given core to the provided frequency in MHz.
         Automatically applies the frequency to all cores in the same DVFS domain.
@@ -55,16 +68,21 @@ class CPUFrequencyManager():
         affected_cores = self.__core_to_dvfs_domain[core]
         frequency_khz = frequency_mhz * 1000
         for affected_core in affected_cores:            
-            self.set_scaling_limits(affected_core, frequency_khz, frequency_khz)
-    
+            self._set_scaling_limits(affected_core, frequency_khz, frequency_khz)
+
+    @abstractmethod
     def get_cpu_freq(self, core: int) -> float:
         """
-        Returns the current frequency of the given core in MHz"""
+        Returns the current frequency of the given core in MHz
+        """
+        # This is a default implementation that should work for most drivers.
+        # It is not guaranteed to work for all drivers, so subclasses can override it if necessary.
         with open(f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_cur_freq", 'r') as f:
             core_freq_mhz = float(f.read().strip()) / 1000
             return core_freq_mhz
 
-    def get_governor(self, core: int) -> str | None:
+    @staticmethod
+    def get_governor(core: int) -> str | None:
         """
         Returns the current governor of the given core."""
         governor_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_governor"
@@ -76,27 +94,44 @@ class CPUFrequencyManager():
             print(f"Failed to get governor for core {core}: {e}")
             return None
         
-    def set_governor(self, core: int, governor: str):
-        governor_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_governor"
-        try:
-            with open(governor_path, 'w') as f:
-                f.write(governor)
-            print(f"Governor of core {core} set to {governor}")
-        except IOError as e:
-            print(f"Failed to set governor for core {core} to {governor}: {e}")
+    def _set_governor(self, core: int, governor: str):
+        """
+        Sets the governor of the given core.
+        Automatically applies the governor to all cores in the same DVFS domain.
+        """
+        # Check if governor is available
+        available_governors = self.get_available_governors(core)
+        if available_governors is None:
+            raise EnvironmentError(f"Could not retrieve available governors for core {core}")
+        if governor not in available_governors:
+            raise ValueError(f"Governor '{governor}' is not available for core {core}. Available governors: {available_governors}")
+        
+        # Apply governor to all cores in the same DVFS domain
+        affected_cores = self.__core_to_dvfs_domain[core]
+        for core in affected_cores:
+            governor_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_governor"
+            try:
+                with open(governor_path, 'w') as f:
+                    f.write(governor)
+            except IOError as e:
+                print(f"Failed to set governor for core {core} to {governor}: {e}")
 
-    def get_available_governors(self, core: int) -> set[str]:
+    @staticmethod
+    def get_available_governors(core: int) -> set[str] | None:
         path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_available_governors"
         try:
             with open(path, 'r') as f:
                 governos = f.read()
             return {gov.rstrip() for gov in governos.split()}
         except IOError as _:
-            return set()
-        
-    def get_scaling_limits(self, core: int) -> tuple[int, int]:
+            print(f"Failed to get available governors for core {core}")
+            return None
+    
+    @staticmethod
+    def get_scaling_limits(core: int) -> tuple[int, int] | None:
         """
-        Returns the scaling limits in KHz
+        Returns the lower and upper scaling limits of the given core in KHz.
+        This is the range in which the governor can set the frequency and is not necessarily the same as the processor limits.
         """
         min_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_min_freq"
         max_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_max_freq"
@@ -106,11 +141,12 @@ class CPUFrequencyManager():
             with open(max_path, 'r') as f_max:
                 freq_max_khz = int(f_max.read())
             return freq_min_khz, freq_max_khz
-        
         except Exception as e:
-            raise e
-        
-    def get_processor_limits(self, core: int) -> tuple[int, int]:
+            print(f"Failed to get scaling limits for core {core}: {e}")
+            return None
+    
+    @staticmethod
+    def get_processor_limits(core: int) -> tuple[int, int] | None:
         """
         Returns the processors upper and lower frequency limits in KHz.
         """
@@ -123,35 +159,35 @@ class CPUFrequencyManager():
                 freq_max_khz = int(f_max.read())
             return freq_min_khz, freq_max_khz
         except Exception as e:
-            raise e
+            print(f"Failed to get processor limits for core {core}: {e}")
+            return None
 
-    def set_scaling_limits(self, core: int, min_freq_khz: int, max_freq_khz: int):
+    def _set_scaling_limits(self, core: int, min_freq_khz: int, max_freq_khz: int):
         """
         Sets the scaling limits of the given core in KHz.
-        """
-        DEBUG = False
+        Automatically applies the limits to all cores in the same DVFS domain.
+        """        
+        # Check that requested limits are within processor limits
+        proc_min, proc_max = self.__core_to_freq_limits_khz[core]
+        if min_freq_khz < proc_min or max_freq_khz > proc_max:
+            raise ValueError(f"Requested frequency limits [{min_freq_khz}, {max_freq_khz}] kHz for core {core} are outside processor limits [{proc_min}, {proc_max}] kHz")
+        if min_freq_khz > max_freq_khz:
+            raise ValueError(f"Requested minimum frequency {min_freq_khz} kHz is greater than requested maximum frequency {max_freq_khz} kHz for core {core}")
 
-        min_freq_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_min_freq"
-        max_freq_path = f"/sys/devices/system/cpu/cpu{core}/cpufreq/scaling_max_freq"
-        
-        try:
-            # Set the minimum frequency
-            with open(min_freq_path, 'w') as f:
-                f.write(str(min_freq_khz))
-            if DEBUG:
-                print(f"Minimum frequency for core {core} set to {min_freq_khz} MHz ({min_freq_khz} kHz)")
-                
-            # Set the maximum frequency
-            with open(max_freq_path, 'w') as f:
-                f.write(str(max_freq_khz))
-            if DEBUG:
-                print(f"Maximum frequency for core {core} set to {max_freq_khz} MHz ({max_freq_khz} kHz)")
-            
-        except IOError as e:
-            print(f"Failed to set frequency limits for core {core}: {e}")
+        # Set scaling limits for all cores in the same DVFS domain
+        for affected_core in self.__core_to_dvfs_domain[core]:
+            min_freq_path = f"/sys/devices/system/cpu/cpu{affected_core}/cpufreq/scaling_min_freq"
+            max_freq_path = f"/sys/devices/system/cpu/cpu{affected_core}/cpufreq/scaling_max_freq"
+            try:
+                with open(min_freq_path, 'w') as f:
+                    f.write(str(min_freq_khz))
+                with open(max_freq_path, 'w') as f:
+                    f.write(str(max_freq_khz))
+            except IOError as e:
+                print(f"Failed to set frequency limits for core {core}: {e}")
 
-
-    def get_scaling_driver(self, core: int) -> str:
+    @staticmethod
+    def get_scaling_driver(core: int) -> str | None:
         """
         Returns the scaling driver for the given logical core.
         Common drivers include, but are not limited to:
@@ -166,10 +202,12 @@ class CPUFrequencyManager():
             with open(path, 'r') as f:
                 scaling_driver = str(f.read()).rstrip()
             return scaling_driver
-        except:
-            return ""
-        
-    def get_available_frequencies(self, core: int) -> list[int]:
+        except Exception as e:
+            print(f"Failed to get scaling driver for core {core}: {e}")
+            return None
+    
+    @staticmethod
+    def get_available_frequencies(core: int) -> list[int] | None:
         """
         Returns a list of available frequencies in KHz for the given core.
         """
@@ -178,8 +216,9 @@ class CPUFrequencyManager():
             with open(path, 'r') as f:
                 freqs = f.read()
             return [int(freq) for freq in freqs.split()]
-        except IOError as _:
-            return []
+        except IOError as e:
+            print(f"Failed to get available frequencies for core {core}: {e}")
+            return None
         
     def get_boost_state(self) -> bool | None:
         """
@@ -218,7 +257,7 @@ class CPUFrequencyManager():
         core_to_config: dict[int, tuple[str, int, int]] = dict()
         for core in self.__cores:
             governor = self.get_governor(core)
-            min_freq, max_freq = self.get_scaling_limits(core)
+            min_freq, max_freq = self.get_scaling_limits(core) # type: ignore
             assert governor is not None
             core_to_config[core] = (governor, min_freq, max_freq)
         self.__initial_state = core_to_config
@@ -229,24 +268,33 @@ class CPUFrequencyManager():
         Restores the initial state of all cores.
         """
         for core, (governor, min_freq, max_freq) in self.__initial_state.items():
-            self.set_governor(core, governor)
-            self.set_scaling_limits(core, min_freq, max_freq)
+            self._set_governor(core, governor)
+            self._set_scaling_limits(core, min_freq, max_freq)
 
-    def reset(self, core: int, governor: str):
+    def _reset(self, core: int, governor: str):
         
         # Check if governor is available
-        if not governor in self.get_available_governors(core):
-            raise ValueError(f"Unknown governor : {governor}")
+        available_governors = self.get_available_governors(core)
+        if available_governors is None:
+            raise EnvironmentError(f"Could not retrieve available governors for core {core}")
+        if governor not in available_governors:
+            raise ValueError(f"Governor '{governor}' is not available for core {core}. Available governors: {available_governors}")
         
         # Get processor min and max
-        min_cpu_freq_khz, max_cpu_freq_khz = self.get_processor_limits(core)
-        self.set_governor(core, governor)
-        self.set_scaling_limits(core, min_cpu_freq_khz, max_cpu_freq_khz)
+        limits = self.get_processor_limits(core)
+        if limits is None:
+            raise EnvironmentError(f"Could not retrieve processor frequency limits for core {core}")
+        min_cpu_freq_khz, max_cpu_freq_khz = limits
+
+        self._set_governor(core, governor)
+        self._set_scaling_limits(core, min_cpu_freq_khz, max_cpu_freq_khz)
 
     def reset_all(self, governor: str):
-        for core in self.__cores:
-            self.reset(core, governor)
-
-if __name__ == "__main__":
-    freq_manager = CPUFrequencyManager(clock_domains=[{core for core in range(24)}])
-    freq_manager.reset_all("schedutil")
+        """
+        Resets all cores to use the specified governor and their processor frequency limits.
+        """
+        # Get one representative core from each DVFS domain
+        core_group_representatives = {min(domain) for domain in self.__core_to_dvfs_domain.values()}
+        # Reset each representative core, which will also reset all cores in the same DVFS domain
+        for core in core_group_representatives:
+            self._reset(core, governor)

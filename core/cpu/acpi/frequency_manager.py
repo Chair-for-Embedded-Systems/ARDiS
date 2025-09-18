@@ -16,8 +16,8 @@ class ACPIFrequencyManager(CPUFrequencyManager):
         self._allowed_frequencies: dict[int, set[int]] = {}
         for core in self.cores:
             available_freqs = self.get_available_frequencies(core)
-            if not available_freqs:
-                print(f"Warning: No available frequencies found for core {core}.")
+            if available_freqs is None:
+                raise EnvironmentError(f"Could not determine available frequencies for core {core}.")
             self._allowed_frequencies[core] = set(available_freqs)
 
         # Save the initial state of all cores
@@ -28,12 +28,17 @@ class ACPIFrequencyManager(CPUFrequencyManager):
         if self._initial_boost_state is True:
             self._set_boost_state(False)
 
-    def set_cpu_freq(self, core: int, frequency_mhz: int) -> None:
+    def set_cpu_freq(self, core: int, frequency_mhz: int):
         freq_khz = frequency_mhz * 1000
-        # Warn if the requested frequency is not in the allowed frequencies
+        
+        # Check if the requested frequency is allowed for the core
         if freq_khz not in self._allowed_frequencies.get(core, set()):
             raise ValueError(f"Frequency {frequency_mhz} MHz is not allowed for core {core}. Allowed frequencies: {[f//1000 for f in self._allowed_frequencies.get(core, set())]}")
-        return super().set_cpu_freq(core, frequency_mhz)
+        # Utilize default implementation from base class
+        super().set_cpu_freq(core, frequency_mhz)
+
+    def get_cpu_freq(self, core: int) -> float:
+        return super().get_cpu_freq(core)
 
     def restore_initial_state(self):
         # Restore initial boost state if it was changed
@@ -49,6 +54,6 @@ if __name__ == "__main__":
     
     for core in frequency_manager.cores:
         frequency = frequency_manager.get_cpu_freq(core)
-        min_freq, max_freq = frequency_manager.get_scaling_limits(core)
+        min_freq, max_freq = frequency_manager.get_scaling_limits(core) # type: ignore
         governor = frequency_manager.get_governor(core)
         print(f"Core {core}: Frequency: {frequency} MHz, Min: {min_freq} kHz, Max: {max_freq} kHz, Governor: {governor}")

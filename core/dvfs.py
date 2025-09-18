@@ -17,13 +17,19 @@ class DVFSPolicy(ABC):
         self.__core_frequencies = core_frequencies
         
         if governor == "userspace":
+
+            # Validate that all cores have a specified frequency
+            unassigned_cores = [core for core in self.manager.cores if core not in core_frequencies]
+            if unassigned_cores:
+                raise ValueError(f"All cores must have a specified frequency when using 'userspace' governor. Unassigned cores: {unassigned_cores}")
+
             for core in self.manager.cores:
-                self.manager.set_governor(core, governor)
+                self.manager._set_governor(core, governor)
                 self.manager.set_cpu_freq(core, core_frequencies[core])
         else:
             for core in self.manager.cores:
-                self.manager.set_governor(core, governor)
-                self.manager.set_scaling_limits(core, min_frequency, max_frequency)
+                self.manager._set_governor(core, governor)
+                self.manager._set_scaling_limits(core, min_frequency, max_frequency)
 
     @abstractmethod
     def get_dvfs_actions(self, system_state: SystemState) -> list[DVFSAction]:
