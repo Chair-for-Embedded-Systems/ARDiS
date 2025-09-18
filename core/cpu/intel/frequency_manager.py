@@ -4,16 +4,28 @@ from core.cpu.intel.hwp_interface import IntelHWPInterface, HWPRequest
 
 class IntelFrequencyManager(CPUFrequencyManager):
     
+    INTEL_TURBO_PATH = "/sys/devices/system/cpu/intel_pstate/no_turbo"
+    INTEL_P_STATE_STATUS_PATH = "/sys/devices/system/cpu/intel_pstate/status"
+    
+    """
+    Frequency manager for Intel CPUs using the intel_pstate driver.
+    - `disable_thermald`: If True, stops the thermald service to prevent interference with manual frequency management.
+    - `disable_boost`: If True, disables CPU boosting (Turbo Boost) during operation.
+    - `use_hwp`: If True, utilizes Intel's Hardware P-States (HWP) for frequency management. Which effectively bypasses the driver.
+    This option is currently not fully implemented.
+    """
     def __init__(
         self,
         clock_domains: list[set[int]],
-        use_hwp: bool = True,
-        disable_thermald: bool = True
+        disable_thermald: bool = True,
+        disable_boost: bool = True, 
+        use_hwp: bool = False,
     ) -> None:
         
         self.__use_hwp = use_hwp
         self.__initial_hwp_requests: dict[int, HWPRequest] | None = None
         self.__disable_thermald = disable_thermald
+        self.__disable_boost = disable_boost
         super().__init__(clock_domains=clock_domains)
         
         # Initialize HWP interface if desired
@@ -24,26 +36,39 @@ class IntelFrequencyManager(CPUFrequencyManager):
         # Set pstate to passive
         self._set_pstate_status("passive")
 
+        # Disable boosting if available
+        if disable_boost:
+            self._initial_boost_state = self.get_boost_state()
+            if self._initial_boost_state is True:
+                self._set_boost_state(False)
+
         # Disable thermald service
         if self.__disable_thermald:
             self._disable_thermald()
         
 
     def set_cpu_freq(self, core: int, frequency_mhz: int):
-        if not self.__use_hwp:
-            super().set_cpu_freq(core, frequency_mhz)
-        else:
-            p_state = self._frequency_to_pstate(core, frequency_mhz)
-            if p_state is None:
-                raise ValueError(f"Cannot map frequency {frequency_mhz} MHz to a p-state")
+        
+        if self.__use_hwp:
+            if p_state := self._frequency_to_pstate(core, frequency_mhz):
+                self.set_pstate(core, p_state)
             else:
-                self._set_pstate(core, p_state)
-            return
+                raise ValueError(f"Cannot map frequency {frequency_mhz} MHz to a p-state")
+        else:
+            super().set_cpu_freq(core, frequency_mhz)
             
     def get_cpu_freq(self, core: int) -> float:
+        # The default implementation which reads from scaling_cur_freq is sufficient
         return super().get_cpu_freq(core)
 
-    def _set_pstate(self, core: int, pstate: int):        
+    def set_pstate(self, core: int, pstate: int):
+        """
+        Sets the p-state for the specified core and all cores in its clock domain.
+        Requires HWP to be enabled.
+        """
+        if not self.__use_hwp:
+            raise RuntimeError("Cannot set p-state when HWP is not in use")
+        
         for affected_core in self.affected_cores(core):
             self._hwp_interface.set_p_state(affected_core, pstate)
 
@@ -51,13 +76,15 @@ class IntelFrequencyManager(CPUFrequencyManager):
         """
         Maps a frequency in MHz to the closest corresponding p-state.
         """
+        # Its difficult to solve this generally, as the formula depends on the specific CPU model (different scaling factors).
+        # Additionally the mapping is not linear.
+        # Fortunatly we can use the scaling driver if we are only interested in setting frequencies.
         raise NotImplementedError("Mapping frequency to p-state is not implemented yet")
 
     def _get_pstate_status(self) -> str | None:
         """Reads the current status of the intel_pstate driver (active, passive, or off)"""
-        pstate_status_path = "/sys/devices/system/cpu/intel_pstate/status"
         try:
-            with open(pstate_status_path, 'r') as f:
+            with open(self.INTEL_P_STATE_STATUS_PATH, 'r') as f:
                 status = f.read().strip()
                 return status
         except IOError as e:
@@ -66,9 +93,8 @@ class IntelFrequencyManager(CPUFrequencyManager):
         
     def _set_pstate_status(self, status: str):
         """Sets the status of the intel_pstate driver (active, passive, or off)"""
-        pstate_status_path = "/sys/devices/system/cpu/intel_pstate/status"
         try:
-            with open(pstate_status_path, 'w') as f:
+            with open(self.INTEL_P_STATE_STATUS_PATH, 'w') as f:
                 f.write(status)
         except IOError as e:
             print(f"Failed to set intel_pstate status: {e}")
@@ -89,6 +115,22 @@ class IntelFrequencyManager(CPUFrequencyManager):
         except subprocess.CalledProcessError as e:
             print(f"Failed to start thermald service: {e}")
 
+    def get_boost_state(self) -> bool | None:
+        try:
+            with open(self.INTEL_TURBO_PATH, 'r') as f:
+                boost_state = f.read().strip()
+                return boost_state == "0"  # Note: no_turbo=0 means turbo is enabled
+        except IOError as e:
+            print(f"Failed to read intel_pstate no_turbo state: {e}")
+            return None
+        
+    def _set_boost_state(self, enable: bool) -> None:
+        try:
+            with open(self.INTEL_TURBO_PATH, 'w') as f:
+                f.write("0" if enable else "1")  # no_turbo=0 means turbo is enabled
+        except IOError as e:
+            print(f"Failed to set intel_pstate no_turbo state: {e}")
+
     def _save_hwp_state(self):
         if not self.__use_hwp:
             return
@@ -107,5 +149,10 @@ class IntelFrequencyManager(CPUFrequencyManager):
         if self.__use_hwp and self.__initial_hwp_requests:
             for core, hwp_request in self.__initial_hwp_requests.items():
                 self._hwp_interface.set_hwp_request(core, hwp_request)
-        
+
+        # Restore initial governors and scaling ranges
         super().restore_initial_state()
+
+        # Restore initial boost state if it was changed
+        if self.__disable_boost and self._initial_boost_state is not None:
+            self._set_boost_state(self._initial_boost_state)

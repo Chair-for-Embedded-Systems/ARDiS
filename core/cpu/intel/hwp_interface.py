@@ -45,6 +45,14 @@ class HWPCapabilities:
 
 class IntelHWPInterface:
     
+    """
+    Interface to Intel's Hardware P-State (HWP) functionality via Model-Specific Registers (MSRs).
+    
+    The use of this interface effectively bypasses the intel_pstate driver.
+    I.e changing HWP settings here is not reflected in the sysfs exposed files like scaling_max_freq or scaling_min_freq.
+    This interface should only be used when there is a desire to work with P-states directly.
+    """
+
     # MSR for the HWP Programming Interface 
     # (see Intel® 64 and IA-32 Architectures Software Developer’s Manual Volume 3B: System Programming Guide, Part 2)
     # https://cdrdv2.intel.com/v1/dl/getContent/671427
