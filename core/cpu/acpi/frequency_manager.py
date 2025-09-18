@@ -66,15 +66,3 @@ class ACPIFrequencyManager(CPUFrequencyManager):
         if self._initial_boost_state is not None:
             self._set_boost_state(self._initial_boost_state)
         return super().restore_initial_state()
-
-if __name__ == "__main__":
-    clock_domain = [{0,1}, {2,3}, {4,5}, {6,7}, {8,9}, {10,11}, {12,13}, {14,15}, {16,17}, {18,19}, {20,21}, {22,23}]
-    frequency_manager = ACPIFrequencyManager(clock_domains=clock_domain)
-    frequency_manager.set_cpu_freq(0, 3800)
-    frequency_manager.set_cpu_freq(4, 3800)
-    
-    for core in frequency_manager.cores:
-        frequency = frequency_manager.get_cpu_freq(core)
-        min_freq, max_freq = frequency_manager.get_scaling_limits(core) # type: ignore
-        governor = frequency_manager.get_governor(core)
-        print(f"Core {core}: Frequency: {frequency} MHz, Min: {min_freq} kHz, Max: {max_freq} kHz, Governor: {governor}")

@@ -59,11 +59,3 @@ class AMDFrequencyManager(CPUFrequencyManager):
                 f.write("1" if enable else "0")
         except IOError as e:
             print(f"Failed to set cpb_boost state: {e}")
-
-if __name__ == "__main__":
-    freq_manager = AMDFrequencyManager(clock_domains=[{core for core in range(24)}])
-    for core in range(24):
-        freq_manager._set_governor(core, "userspace")
-    #print(freq_manager.get_scaling_driver(core))
-    #print(freq_manager._get_pstate_status())
-    #print(freq_manager.get_scaling_limits(core))
