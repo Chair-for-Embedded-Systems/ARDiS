@@ -34,6 +34,7 @@ class ACPIFrequencyManager(CPUFrequencyManager):
         # Check if the requested frequency is allowed for the core
         if freq_khz not in self._allowed_frequencies.get(core, set()):
             raise ValueError(f"Frequency {frequency_mhz} MHz is not allowed for core {core}. Allowed frequencies: {[f//1000 for f in self._allowed_frequencies.get(core, set())]}")
+        
         # Utilize default implementation from base class
         super().set_cpu_freq(core, frequency_mhz)
 

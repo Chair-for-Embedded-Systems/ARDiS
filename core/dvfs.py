@@ -6,30 +6,58 @@ from core.system_state import SystemState
 from core.cpu import CPUFrequencyManager, get_platform_frequency_manager
 
 class DVFSPolicy(ABC):
+    """
+    Abstract base class for DVFS policies.
+
+    A DVFS policy defines how to manage CPU frequencies based on system state.
+    It can specify an initial state (either fixed frequencies per core or a governor with min/max frequencies)
+    
+    **Note**:
+    raises ValueError if both `core_to_freq` and `governor` are specified, 
+    raises ValueError if `core_to_freq` does not specify a frequency for every core
+    """
     def __init__(
         self,
-        core_frequencies: dict[int, int] = {core: 2000 for core in range(config.system_cores)},
-        min_frequency: int = 1500, 
-        max_frequency: int = 3500, 
-        governor: str = "userspace"
+        core_to_freq_mhz: dict[int, int] | None = None,
+        governor: tuple[str, int, int] | None = None,
+        cpu_freq_manager: CPUFrequencyManager | None = None,
     ) -> None:
-        self.manager : CPUFrequencyManager = get_platform_frequency_manager()
-        self.__core_frequencies = core_frequencies
+        # You can either specify a mapping of core to frequency or a governor with min/max frequencies
+        if core_to_freq_mhz and governor:
+            raise ValueError("Cannot specify both core_to_freq and governor")
         
-        if governor == "userspace":
-
-            # Validate that all cores have a specified frequency
-            unassigned_cores = [core for core in self.manager.cores if core not in core_frequencies]
+        if core_to_freq_mhz:
+            unassigned_cores = [core for core in range(config.system_cores) if core not in core_to_freq_mhz]
             if unassigned_cores:
-                raise ValueError(f"All cores must have a specified frequency when using 'userspace' governor. Unassigned cores: {unassigned_cores}")
+                raise ValueError(f"All cores must have a specified frequency. Unassigned cores: {unassigned_cores}")
+        
+        self.__initial_governor = governor
+        self.__initial_core_to_freq = core_to_freq_mhz
+        self.__core_frequencies: dict[int, int] = dict()
 
-            for core in self.manager.cores:
-                self.manager._set_governor(core, governor)
-                self.manager.set_cpu_freq(core, core_frequencies[core])
+        if cpu_freq_manager is None:
+            self.cpu_freq_manager = get_platform_frequency_manager()
+
+    def apply_initial_state(self) -> None:
+        """
+        Applies the initial state of this policy. This is called once at the beginning of a workload by the engine.
+        Depending on how the policy was constructed, this is either setting fixed frequencies for each core,
+        or setting a governor with min/max frequencies for all cores.
+        Derived policies can override this method if they need to perform additional setup.
+        """
+        if self.__initial_core_to_freq:
+            for core, freq in self.__initial_core_to_freq.items():
+                self.cpu_freq_manager._set_governor(core, "userspace")
+                self.cpu_freq_manager.set_cpu_freq(core, freq)
+            return
+        elif self.__initial_governor:
+            governor, min_freq, max_freq = self.__initial_governor
+            for core in self.cpu_freq_manager.cores:
+                self.cpu_freq_manager._set_governor(core, governor)
+                self.cpu_freq_manager._set_scaling_limits(core, min_freq, max_freq)
+            return
         else:
-            for core in self.manager.cores:
-                self.manager._set_governor(core, governor)
-                self.manager._set_scaling_limits(core, min_frequency, max_frequency)
+            print("[DVFS Policy] No initial state to apply")
 
     @abstractmethod
     def get_dvfs_actions(self, system_state: SystemState) -> list[DVFSAction]:
@@ -44,7 +72,7 @@ class DVFSPolicy(ABC):
         Applies the given list of dvfs actions.
         """
         for action in actions:
-            self.manager.set_cpu_freq(action.core_id, action.frequency_mhz)
+            self.cpu_freq_manager.set_cpu_freq(action.core_id, action.frequency_mhz)
             self.__core_frequencies[action.core_id] = action.frequency_mhz
 
     def getCoreFrequencies(self) -> dict[int, int]:

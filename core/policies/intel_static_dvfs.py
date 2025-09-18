@@ -42,7 +42,7 @@ class IntelStaticDVFSPolicy(DVFSPolicy):
 
             # If a valid frequency was found, set it for the selected core
             if selected_vf_level is not None:
-                self.manager.setFrequency(selected_core, selected_vf_level)
+                self.cpu_freq_manager.setFrequency(selected_core, selected_vf_level)
                 
                 if DEBUG:
                     print(f"[DVFS Policy] Now entering Phase: {current_phase}, "

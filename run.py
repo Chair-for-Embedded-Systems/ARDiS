@@ -6,7 +6,7 @@ from core.policies.dvfs_for_training import *
 from core.policies.migrate_for_training import *
 from core.policies.consecutive_schedule import *
 from core.policies.intel_static_dvfs import *
-from core.policies.static_dvfs import StaticDVFS
+from core.policies.static_dvfs import StaticDVFS, StaticGovernorDVFS
 from core.dvfs import *
 from core.monitoringmode import *
 from core.migration import *
@@ -76,7 +76,7 @@ class DefaultLinuxExperiment:
         self.__engine = Engine(self.__name, 
                        mapping_policy=mapping_policy, 
                        scheduler=scheduler, 
-                       dvfs_policy=StaticDVFS(min_frequency=min_frequency, max_frequency=max_frequency, governor = governor), 
+                       dvfs_policy=StaticGovernorDVFS(governor=governor, min_frequency=min_frequency, max_frequency=max_frequency), 
                        migration_policy=None, 
                        monitoring_mode=monitoring_mode)
     
@@ -271,21 +271,20 @@ def run_example_with_random_migration_and_random_dvfs():
 def run_example_with_multiple_instances():
     
     configs: list[tuple[int, Application, int]] = [
-        (2, ParsecApplication('parsec.blackscholes'), 4800),
-        (4, ParsecApplication('parsec.blackscholes'), 3500),
-        (6, ParsecApplication('parsec.blackscholes'), 1500),
-        (8, ParsecApplication('parsec.blackscholes'), 800),
+        (2, ParsecApplication('parsec.blackscholes'), 2200),
+        (4, ParsecApplication('parsec.blackscholes'), 2800),
+        (6, ParsecApplication('parsec.blackscholes'), 3800),
+        (8, ParsecApplication('parsec.blackscholes'), 3800),
     ]
     cores, apps, freq = zip(*configs)
-    core_to_freq = { core: 2000 for core in range(system_cores) }
-    core_to_freq.update(dict(zip(cores, freq)))
+    core_to_freq= (dict(zip(cores, freq)))
     
     exp = Experiment(
         name="Experiment with multiple instances",
         scheduler=ConsecutiveScheduler(0),
         applications=list(apps),
         mapping_policy=ExplicitMapping.from_list(list(cores)),
-        dvfs_policy=StaticDVFS(core_to_freq),
+        dvfs_policy=StaticDVFS(core_to_freq, base_frequency_mhz=2200),
         monitoring_mode=MonitoringMode.PERIODIC_ON_PID
     )
     exp.executeExperiment()
@@ -316,4 +315,4 @@ if __name__ == "__main__":
     #run_example_with_TID_monitoring()
     #run_example_with_random_migration_and_random_dvfs()
     run_example_with_multiple_instances()
-    run_example_with_custom_binary()
+    #run_example_with_custom_binary()

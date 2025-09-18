@@ -19,7 +19,7 @@ def get_platform_frequency_manager(verbose: bool = False) -> CPUFrequencyManager
         return IntelFrequencyManager(clock_domains=clock_domains, use_hwp=False)
     elif scaling_driver == "amd-pstate":
         raise NotImplementedError("AMD P-State driver is not yet supported.") # TODO
-    elif scaling_driver == "acpi_cpufreq":
+    elif scaling_driver == "acpi-cpufreq":
         return ACPIFrequencyManager(clock_domains=clock_domains)
     else:
         raise NotImplementedError(f"Unsupported scaling driver '{scaling_driver}'. Only 'intel_pstate', 'amd-pstate', and 'acpi-cpufreq' are supported.")
