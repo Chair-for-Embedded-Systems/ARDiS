@@ -2,11 +2,21 @@ from core.cpu.frequency_manager import CPUFrequencyManager
 
 class ACPIFrequencyManager(CPUFrequencyManager):
     
-    """Manages CPU frequency using the ACPI cpufreq driver."""
+    """
+    Manages CPU frequency using the ACPI cpufreq driver.
+    
+    - `strict_mode`: If True, only allows setting frequencies that are supported by the driver.
+    If False, will warn but still attempt to set unsupported frequencies.
+    """
 
-    def __init__(self, clock_domains: list[set[int]]) -> None:
+    def __init__(
+        self,
+        clock_domains: list[set[int]],
+        strict_mode: bool
+    ) -> None:
         super().__init__(clock_domains=clock_domains)
-        
+        self.__strict_mode = strict_mode
+
         # Scaling driver is shared across all cores, so we can just check the first core
         scaling_driver = self.get_scaling_driver(core=0)
         if scaling_driver != "acpi-cpufreq":
@@ -33,8 +43,18 @@ class ACPIFrequencyManager(CPUFrequencyManager):
         
         # Check if the requested frequency is allowed for the core
         if freq_khz not in self._allowed_frequencies.get(core, set()):
-            raise ValueError(f"Frequency {frequency_mhz} MHz is not allowed for core {core}. Allowed frequencies: {[f//1000 for f in self._allowed_frequencies.get(core, set())]}")
-        
+            if self.__strict_mode:
+                raise ValueError(
+                    f"Cannot set frequency {frequency_mhz} MHz for core {core}. "
+                    f"Allowed frequencies: {[f//1000 for f in self._allowed_frequencies.get(core, set())]}"
+                )
+            else:
+                print(
+                    f"[Warning] Frequency {frequency_mhz} MHz is not supported for core {core}.\n"
+                    f"Allowed frequencies: {[f//1000 for f in self._allowed_frequencies.get(core, set())]}.\n"
+                    "Passing the request to the driver anyway, the behavior is undefined."
+                )
+
         # Utilize default implementation from base class
         super().set_cpu_freq(core, frequency_mhz)
 

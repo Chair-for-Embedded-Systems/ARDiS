@@ -9,9 +9,12 @@ class DVFSPolicy(ABC):
     """
     Abstract base class for DVFS policies.
 
-    A DVFS policy defines how to manage CPU frequencies based on system state.
-    It can specify an initial state (either fixed frequencies per core or a governor with min/max frequencies)
-    
+    The parameters in the constructor define the initial state of the policy.
+    Either `core_to_freq` or `governor` can be specified, but not both.
+
+    - `core_to_freq_mhz`: A dictionary mapping each core to a fixed frequency in MHz.
+    - `governor`: A tuple (governor_name, min_freq, max_freq) specifying the governor and its frequency limits.
+
     **Note**:
     raises ValueError if both `core_to_freq` and `governor` are specified, 
     raises ValueError if `core_to_freq` does not specify a frequency for every core
@@ -22,25 +25,29 @@ class DVFSPolicy(ABC):
         governor: tuple[str, int, int] | None = None,
         cpu_freq_manager: CPUFrequencyManager | None = None,
     ) -> None:
-        # You can either specify a mapping of core to frequency or a governor with min/max frequencies
+        # Prevent invalid argument combinations
         if core_to_freq_mhz and governor:
             raise ValueError("Cannot specify both core_to_freq and governor")
         
+        # Ensure all cores have a specified frequency if `core_to_freq_mhz` is provided
         if core_to_freq_mhz:
             unassigned_cores = [core for core in range(config.system_cores) if core not in core_to_freq_mhz]
             if unassigned_cores:
                 raise ValueError(f"All cores must have a specified frequency. Unassigned cores: {unassigned_cores}")
         
+        # Save initial configuration for later application
         self.__initial_governor = governor
         self.__initial_core_to_freq = core_to_freq_mhz
         self.__core_frequencies: dict[int, int] = dict()
 
+        # Initialize a CPU frequency manager if none provided
         if cpu_freq_manager is None:
             self.cpu_freq_manager = get_platform_frequency_manager()
 
     def apply_initial_state(self) -> None:
         """
-        Applies the initial state of this policy. This is called once at the beginning of a workload by the engine.
+        Applies the initial state of this policy.
+        This is called once at the beginning of a workload by the engine.
         Depending on how the policy was constructed, this is either setting fixed frequencies for each core,
         or setting a governor with min/max frequencies for all cores.
         Derived policies can override this method if they need to perform additional setup.
