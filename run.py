@@ -12,9 +12,7 @@ from core.monitoringmode import *
 from core.migration import *
 from core.policies.intel_motivational_mapping import *
 from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
-from benchmarks.application import Application
-from benchmarks.parsec_application import ParsecApplication
-from benchmarks.binary_application import BinaryApplication
+from benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
 from random import randrange
 import os
 
@@ -305,6 +303,20 @@ def run_example_with_custom_binary():
         monitoring_mode=MonitoringMode.PERIODIC_ON_PID
     )
     exp.executeExperiment()
+
+def run_all_spec2006_benchmarks():
+    for app in spec_apps:
+        exp = Experiment(
+            name=f"Spec_experiment_with_{app}",
+            scheduler=ConsecutiveScheduler(0),
+            applications=[
+                SpecApplication(app, input_file=SpecApplication.InputSize.TRAIN)
+            ],
+            mapping_policy=ExplicitMapping.from_list([2]),
+            dvfs_policy=StaticDVFS({core: 3500 for core in range(system_cores)}),
+            monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+        )
+        exp.executeExperiment()
 
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
