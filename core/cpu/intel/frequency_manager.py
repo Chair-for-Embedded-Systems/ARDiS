@@ -10,30 +10,26 @@ class IntelFrequencyManager(CPUFrequencyManager):
     """
     Frequency manager for Intel CPUs using the intel_pstate driver.
     - `disable_thermald`: If True, stops the thermald service to prevent interference with manual frequency management.
-    - `disable_boost`: If True, disables CPU boosting (Turbo Boost) during operation.
-    - `use_hwp`: If True, utilizes Intel's Hardware P-States (HWP) for frequency management. Which effectively bypasses the driver.
-    This option is currently not fully implemented.
+    - `bypass_scaling_driver`: If True, utilizes Intels Hardware P-States (HWP) interface for frequency management. This also allows setting p-states directly.
     """
     def __init__(
         self,
         clock_domains: list[set[int]],
         disable_thermald: bool = True,
-        disable_boost: bool = True, 
-        use_hwp: bool = False,
+        bypass_scaling_driver: bool = False,
     ) -> None:
         
-        self.__use_hwp = use_hwp
+        self.__bypass_scaling_driver = bypass_scaling_driver
         self.__initial_hwp_requests: dict[int, HWPRequest] | None = None
         self.__disable_thermald = disable_thermald
-        self.__disable_boost = disable_boost
         super().__init__(clock_domains=clock_domains)
         
         # Initialize HWP interface if desired
-        if self.__use_hwp:
+        if self.__bypass_scaling_driver:
             self._hwp_interface = IntelHWPInterface()
             self._save_hwp_state()
 
-        # Set pstate to passive
+        # Set intel_pstate scaling driver to passive
         self._set_pstate_status("passive")
 
         # Make sure boost is enabled (access to larger frequency range)
@@ -47,14 +43,25 @@ class IntelFrequencyManager(CPUFrequencyManager):
 
     def set_cpu_freq(self, core: int, frequency_mhz: int):
         
-        if self.__use_hwp:
+        if not self.__bypass_scaling_driver:
+            # The default implementation which uses `scaling_setspeed` does not work with intel_pstate.
+            # (See https://www.kernel.org/doc/Documentation/cpu-freq/intel-pstate.txt)
+            # Instead we adjust both limits (scaling_min_freq and scaling_max_freq) to achieve the desired frequency.
+            # The driver converts the requested frequency to the closest available p-state and then writes it to the MSR of the CPU.
+            frequency_khz = frequency_mhz * 1000
+            for affected_core in self.affected_cores(core):
+                super()._set_scaling_limits(
+                    core=affected_core,
+                    min_freq_khz=frequency_khz,
+                    max_freq_khz=frequency_khz
+                )
+        else:
+            # Here we are doing the exact same as the scaling driver would do internally.
             if p_state := self._frequency_to_pstate(core, frequency_mhz):
                 self.set_pstate(core, p_state)
             else:
                 raise ValueError(f"Cannot map frequency {frequency_mhz} MHz to a p-state")
-        else:
-            super().set_cpu_freq(core, frequency_mhz)
-            
+
     def get_cpu_freq(self, core: int) -> float:
         # The default implementation which reads from scaling_cur_freq is sufficient
         return super().get_cpu_freq(core)
@@ -62,11 +69,11 @@ class IntelFrequencyManager(CPUFrequencyManager):
     def set_pstate(self, core: int, pstate: int):
         """
         Sets the p-state for the specified core and all cores in its clock domain.
-        Requires HWP to be enabled.
+        Requires scaling driver bypass to be enabled.
         """
-        if not self.__use_hwp:
-            raise RuntimeError("Cannot set p-state when HWP is not in use")
-        
+        if not self.__bypass_scaling_driver:
+            raise RuntimeError("Cannot set p-state when scaling driver bypass is disabled")
+
         for affected_core in self.affected_cores(core):
             self._hwp_interface.set_p_state(affected_core, pstate)
 
@@ -130,7 +137,7 @@ class IntelFrequencyManager(CPUFrequencyManager):
             print(f"Failed to set intel_pstate no_turbo state: {e}")
 
     def _save_hwp_state(self):
-        if not self.__use_hwp:
+        if not self.__bypass_scaling_driver:
             return
         self.__initial_hwp_requests = dict()
         for core in self.cores:
@@ -144,7 +151,7 @@ class IntelFrequencyManager(CPUFrequencyManager):
             self._enable_thermald()
         
         # Restore initial HWP requests
-        if self.__use_hwp and self.__initial_hwp_requests:
+        if self.__bypass_scaling_driver and self.__initial_hwp_requests:
             for core, hwp_request in self.__initial_hwp_requests.items():
                 self._hwp_interface.set_hwp_request(core, hwp_request)
 

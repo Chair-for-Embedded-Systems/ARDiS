@@ -67,8 +67,12 @@ class CPUFrequencyManager(ABC):
         """
         affected_cores = self.__core_to_dvfs_domain[core]
         frequency_khz = frequency_mhz * 1000
-        for affected_core in affected_cores:            
-            self._set_scaling_limits(affected_core, frequency_khz, frequency_khz)
+        for affected_core in affected_cores:
+            try:
+                with open(f"/sys/devices/system/cpu/cpu{affected_core}/cpufreq/scaling_setspeed", 'w') as f:
+                    f.write(str(frequency_khz))
+            except IOError as e:
+                print(f"Failed to set frequency for core {affected_core} to {frequency_mhz} MHz: {e}")
 
     @abstractmethod
     def get_cpu_freq(self, core: int) -> float:

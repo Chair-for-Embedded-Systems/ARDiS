@@ -20,8 +20,7 @@ def get_platform_frequency_manager() -> CPUFrequencyManager:
         return IntelFrequencyManager(
             clock_domains=clock_domains,
             disable_thermald=True,
-            disable_boost=True,
-            use_hwp=False
+            bypass_scaling_driver=False
         )
     elif scaling_driver == "amd-pstate":
         return AMDFrequencyManager(
