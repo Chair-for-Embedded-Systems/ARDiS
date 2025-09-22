@@ -50,7 +50,7 @@ class IntelFrequencyManager(CPUFrequencyManager):
             # The driver converts the requested frequency to the closest available p-state and then writes it to the MSR of the CPU.
             frequency_khz = frequency_mhz * 1000
             for affected_core in self.affected_cores(core):
-                super()._set_scaling_limits(
+                super().set_scaling_limits(
                     core=affected_core,
                     min_freq_khz=frequency_khz,
                     max_freq_khz=frequency_khz

@@ -98,7 +98,7 @@ class CPUFrequencyManager(ABC):
             print(f"Failed to get governor for core {core}: {e}")
             return None
         
-    def _set_governor(self, core: int, governor: str):
+    def set_governor(self, core: int, governor: str):
         """
         Sets the governor of the given core.
         Automatically applies the governor to all cores in the same DVFS domain.
@@ -166,7 +166,7 @@ class CPUFrequencyManager(ABC):
             print(f"Failed to get processor limits for core {core}: {e}")
             return None
 
-    def _set_scaling_limits(self, core: int, min_freq_khz: int, max_freq_khz: int):
+    def set_scaling_limits(self, core: int, min_freq_khz: int, max_freq_khz: int):
         """
         Sets the scaling limits of the given core in KHz.
         Automatically applies the limits to all cores in the same DVFS domain.
@@ -272,8 +272,8 @@ class CPUFrequencyManager(ABC):
         Restores the initial state of all cores.
         """
         for core, (governor, min_freq, max_freq) in self.__initial_state.items():
-            self._set_governor(core, governor)
-            self._set_scaling_limits(core, min_freq, max_freq)
+            self.set_governor(core, governor)
+            self.set_scaling_limits(core, min_freq, max_freq)
 
     def _reset(self, core: int, governor: str):
         
@@ -290,8 +290,8 @@ class CPUFrequencyManager(ABC):
             raise EnvironmentError(f"Could not retrieve processor frequency limits for core {core}")
         min_cpu_freq_khz, max_cpu_freq_khz = limits
 
-        self._set_governor(core, governor)
-        self._set_scaling_limits(core, min_cpu_freq_khz, max_cpu_freq_khz)
+        self.set_governor(core, governor)
+        self.set_scaling_limits(core, min_cpu_freq_khz, max_cpu_freq_khz)
 
     def reset_all(self, governor: str):
         """
