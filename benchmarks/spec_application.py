@@ -56,4 +56,6 @@ class SpecApplication(Application):
         if pid := get_pid_of_app(self._application_package, self._start_affinity):
             self._pid = pid
             return pid
-        
+    
+    def get_display_name(self) -> str:
+        return f"{self._application_package}_{self._input.value}"
