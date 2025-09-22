@@ -305,12 +305,13 @@ def run_example_with_custom_binary():
     exp.executeExperiment()
 
 def run_all_spec2006_benchmarks():
-    for app in spec_apps:
+    for package_name in spec_apps:
+        app = package_name.split("-")[-1]
         exp = Experiment(
             name=f"Spec_experiment_with_{app}",
             scheduler=ConsecutiveScheduler(0),
             applications=[
-                SpecApplication(app, input_file=SpecApplication.InputSize.TRAIN)
+                SpecApplication(app, SpecApplication.InputSize.TRAIN)
             ],
             mapping_policy=ExplicitMapping.from_list([2]),
             dvfs_policy=StaticDVFS({core: 3500 for core in range(system_cores)}),
@@ -326,5 +327,6 @@ if __name__ == "__main__":
     #run_example_with_result_plotting()
     #run_example_with_TID_monitoring()
     #run_example_with_random_migration_and_random_dvfs()
-    run_example_with_multiple_instances()
-    run_example_with_custom_binary()
+    #run_example_with_multiple_instances()
+    #run_example_with_custom_binary()
+    run_all_spec2006_benchmarks()
