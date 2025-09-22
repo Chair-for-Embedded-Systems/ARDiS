@@ -138,6 +138,10 @@ class Engine:
             self.__app_to_cores = self.__mapping_policy.executeMapping(applications)
         else:
             self.__app_to_cores = {app: {-1} for app in applications}
+
+        # Execute initial DVFS policy (if present)
+        if self.__dvfs_policy is not None:
+            self.__dvfs_policy.apply_initial_state()
         
         # Set place holder pids 
         self.__app_to_pid = {app: -1 for app in applications}
@@ -198,6 +202,10 @@ class Engine:
                 
                 # Clear the caches after the experiment is done
                 self.__clearCaches()
+                
+                # Restore initial CPU state
+                if self.__dvfs_policy:
+                    self.__dvfs_policy.cpu_freq_manager.restore_initial_state() 
                 break
             else:  
                 with system_state_lock:

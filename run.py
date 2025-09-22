@@ -6,7 +6,7 @@ from core.policies.dvfs_for_training import *
 from core.policies.migrate_for_training import *
 from core.policies.consecutive_schedule import *
 from core.policies.intel_static_dvfs import *
-from core.policies.static_dvfs import StaticDVFS
+from core.policies.static_dvfs import StaticDVFS, StaticGovernorDVFS
 from core.dvfs import *
 from core.monitoringmode import *
 from core.migration import *
@@ -15,7 +15,6 @@ from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
 from benchmarks.application import Application
 from benchmarks.parsec_application import ParsecApplication
 from benchmarks.binary_application import BinaryApplication
-from timeit import default_timer as timer
 from random import randrange
 import os
 
@@ -23,7 +22,17 @@ import os
 
 
 class Experiment:
-    def __init__(self, name="", applications: list[Application] = [], mapping_policy=MappingPolicy(), scheduler=Scheduler(), dvfs_policy: DVFSPolicy=StaticDVFS(), migration_policy=None, monitoring_mode=MonitoringMode.PERIODIC_ON_CORE, results_folder=RESULTS_FOLDER):   
+    def __init__(
+        self, 
+        name: str="", 
+        applications: list[Application] = [],
+        mapping_policy: MappingPolicy = MappingPolicy(),
+        scheduler: Scheduler = Scheduler(), 
+        dvfs_policy: DVFSPolicy | None = None, # No default to avoid multiple instances of a frequency manager
+        migration_policy: MigrationPolicy | None = None, 
+        monitoring_mode: MonitoringMode = MonitoringMode.PERIODIC_ON_CORE,
+        results_folder: str = RESULTS_FOLDER
+    ):   
         self.__name = name
         self.__applications = applications
         self.__engine = Engine(self.__name, 
@@ -67,7 +76,7 @@ class DefaultLinuxExperiment:
         self.__engine = Engine(self.__name, 
                        mapping_policy=mapping_policy, 
                        scheduler=scheduler, 
-                       dvfs_policy=StaticDVFS(min_frequency=min_frequency, max_frequency=max_frequency, governor = governor), 
+                       dvfs_policy=StaticGovernorDVFS(governor=governor, min_frequency=min_frequency, max_frequency=max_frequency), 
                        migration_policy=None, 
                        monitoring_mode=monitoring_mode)
     
@@ -268,15 +277,14 @@ def run_example_with_multiple_instances():
         (8, ParsecApplication('parsec.blackscholes'), 800),
     ]
     cores, apps, freq = zip(*configs)
-    core_to_freq = { core: 2000 for core in range(system_cores) }
-    core_to_freq.update(dict(zip(cores, freq)))
+    core_to_freq= dict(zip(cores, freq))
     
     exp = Experiment(
         name="Experiment with multiple instances",
         scheduler=ConsecutiveScheduler(0),
         applications=list(apps),
         mapping_policy=ExplicitMapping.from_list(list(cores)),
-        dvfs_policy=StaticDVFS(core_to_freq),
+        dvfs_policy=StaticDVFS(core_to_freq, base_frequency_mhz=2200),
         monitoring_mode=MonitoringMode.PERIODIC_ON_PID
     )
     exp.executeExperiment()

@@ -23,7 +23,7 @@ class DVFSForTraining(DVFSPolicy):
         p_cores: set[int] = set(config.intel_p_core_ids),
         e_cores: set[int] = set(config.intel_e_core_ids)
     ) -> None:
-        super().__init__(core_frequencies, 800, 3500, "userspace")
+        super().__init__(core_to_freq_mhz=core_frequencies)
         self._pcore_range = p_core_range
         self._ecore_range = e_core_range
         self._p_cores = p_cores
