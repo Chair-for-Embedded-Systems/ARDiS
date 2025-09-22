@@ -12,8 +12,12 @@ class DVFSPolicy(ABC):
     The parameters in the constructor define the initial state of the policy.
     Either `core_to_freq` or `governor` can be specified, but not both.
 
-    - `core_to_freq_mhz`: A dictionary mapping each core to a fixed frequency in MHz.
-    - `governor`: A tuple (governor_name, min_freq, max_freq) specifying the governor and its frequency limits.
+    Parameters
+    ----------
+    - core_to_freq_mhz: dict[int, int] | None
+        The initial fixed frequency for each core in MHz. If specified, all cores must be included in the dictionary.
+    - governor: tuple[str, int, int] | None
+        A tuple (governor_name, min_freq, max_freq) specifying the governor and its frequency limits.
 
     **Note**:
     raises ValueError if both `core_to_freq` and `governor` are specified, 
@@ -48,9 +52,11 @@ class DVFSPolicy(ABC):
         """
         Applies the initial state of this policy.
         This is called once at the beginning of a workload by the engine.
+        
         Depending on how the policy was constructed, this is either setting fixed frequencies for each core,
         or setting a governor with min/max frequencies for all cores.
-        Derived policies can override this method if they need to perform additional setup.
+
+        **Note:** Derived policies can override this method if they need to perform additional setup steps.
         """
         if self.__initial_core_to_freq:
             # Reset scaling limits to processor limits (Linux only allows setting frequencies within the scaling range)

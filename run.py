@@ -271,13 +271,13 @@ def run_example_with_random_migration_and_random_dvfs():
 def run_example_with_multiple_instances():
     
     configs: list[tuple[int, Application, int]] = [
-        (2, ParsecApplication('parsec.blackscholes'), 2200),
-        (4, ParsecApplication('parsec.blackscholes'), 2800),
-        (6, ParsecApplication('parsec.blackscholes'), 3800),
-        (8, ParsecApplication('parsec.blackscholes'), 3800),
+        (2, ParsecApplication('parsec.blackscholes'), 4800),
+        (4, ParsecApplication('parsec.blackscholes'), 3500),
+        (6, ParsecApplication('parsec.blackscholes'), 1500),
+        (8, ParsecApplication('parsec.blackscholes'), 800),
     ]
     cores, apps, freq = zip(*configs)
-    core_to_freq= (dict(zip(cores, freq)))
+    core_to_freq= dict(zip(cores, freq))
     
     exp = Experiment(
         name="Experiment with multiple instances",
@@ -315,4 +315,4 @@ if __name__ == "__main__":
     #run_example_with_TID_monitoring()
     #run_example_with_random_migration_and_random_dvfs()
     run_example_with_multiple_instances()
-    #run_example_with_custom_binary()
+    run_example_with_custom_binary()
