@@ -35,6 +35,9 @@ class BinaryApplication(Application):
         # Block until executed
         process.wait()
     
+    def terminate(self) -> None:
+        pass
+
     def get_pid(self) -> int | None:
         return self._pid
     

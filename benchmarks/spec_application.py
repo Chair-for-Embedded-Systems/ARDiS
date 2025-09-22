@@ -51,6 +51,29 @@ class SpecApplication(Application):
         self._shell_pid = self._process.pid
         self._process.wait()
 
+    def terminate(self) -> None:
+        print(f"Terminating SPEC2006 application {self._application_package}...")
+        # Kill the process if it is still running
+        if self._pid is not None:
+            try:
+                os.kill(self._pid, 9)
+            except ProcessLookupError:
+                print(f"Process with PID {self._shell_pid} not found. It may have already terminated.")
+            except Exception as e:
+                print(f"An error occurred while trying to terminate the process: {e}")
+        else:
+            print("No running SPEC application to terminate.")
+        
+        # Kill the shell process if it is still running
+        if self._process is not None and self._process.poll() is None:
+            try:
+                self._process.terminate() 
+                self._process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+            except Exception as e:
+                print(f"An error occurred while trying to terminate the shell process: {e}")
+
     def get_pid(self) -> int | None:
         
         # Return if a PID is already known and the process is still running

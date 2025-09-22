@@ -276,6 +276,14 @@ class Engine:
             self.__epoch += 1
             time.sleep(action_interval)
     
+    def stop_engine(self):
+        """Stops the engine and all running applications."""
+        self.running = False
+        if self.__monitor:
+            self.__monitor.stop()
+        for app in self.__active_threads + self.__waiting_threads:
+            app.terminate()
+
     def fetch_perf_data(self, perf_file_path):
         # Initialize variables to store the energy, time, cpu_core, and cpu_atom instructions
         energy_psys = None

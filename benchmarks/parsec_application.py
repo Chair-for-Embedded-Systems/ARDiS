@@ -48,7 +48,7 @@ class ParsecApplication(Application):
 
             command = f"cd {PARSECBASE} && source env.sh && env"
             process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, executable="/bin/bash")
-            output, error = process.communicate()
+            output, _ = process.communicate()
 
             # Parse output and update os.environ
             for line in output.decode().splitlines():
@@ -71,6 +71,9 @@ class ParsecApplication(Application):
         
         subprocess.run(command, shell=True, executable="/bin/bash")
     
+    def terminate(self) -> None:
+        pass
+
     def get_pid(self) -> int | None:
         # Return cached pid if available
         if self._pid:
