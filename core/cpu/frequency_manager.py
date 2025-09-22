@@ -28,6 +28,15 @@ class CPUFrequencyManager(ABC):
             limits = self.get_processor_limits(core)
             if limits is None:
                 raise EnvironmentError(f"Could not retrieve processor frequency limits for core {core}")
+            
+            # According to documentation (https://www.kernel.org/doc/Documentation/cpu-freq/cpu-drivers.txt)
+            # Every CPU driver must initialize cpuinfo_min_freq and cpuinfo_max_freq, if these are not set something is wrong.
+            # If we interact with an uninitialized driver, we may risk a system crash.
+            # (This behaviour has been observed on AMD CPUs were the amd_pstate driver was not properly supported due to age)
+            min_cpu_freq_khz, max_cpu_freq_khz = limits
+            if min_cpu_freq_khz <= 0 or max_cpu_freq_khz <= 0:
+                raise EnvironmentError("Scaling driver seems to not be initialized properly (min or max frequency is non-positive)")
+            
             self.__core_to_freq_limits_khz[core] = limits
 
         # Create LUT for DVFS domains [Core -> Cores in same domain]
@@ -45,6 +54,11 @@ class CPUFrequencyManager(ABC):
 
         # Save initial state of all cores
         self._save_initial_state()
+
+        # Adjust scaling range to processor limits (scaling_setspeed only allows frequencies within scaling range)
+        for core in self.__cores:
+            proc_min, proc_max = self.__core_to_freq_limits_khz[core]
+            self.set_scaling_limits(core, proc_min, proc_max)
 
     @property
     def cores(self) -> set[int]:

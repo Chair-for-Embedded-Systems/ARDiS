@@ -53,9 +53,9 @@ class DVFSPolicy(ABC):
         Derived policies can override this method if they need to perform additional setup.
         """
         if self.__initial_core_to_freq:
-            for core, freq in self.__initial_core_to_freq.items():
+            for core, freq_mhz in self.__initial_core_to_freq.items():
                 self.cpu_freq_manager.set_governor(core, "userspace")
-                self.cpu_freq_manager.set_cpu_freq(core, freq)
+                self.cpu_freq_manager.set_cpu_freq(core, freq_mhz)
             return
         elif self.__initial_governor:
             governor, min_freq_mhz, max_freq_mhz = self.__initial_governor
