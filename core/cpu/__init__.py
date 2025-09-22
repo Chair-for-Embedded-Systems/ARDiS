@@ -29,7 +29,7 @@ def get_platform_frequency_manager() -> CPUFrequencyManager:
     elif scaling_driver == "acpi-cpufreq":
         return ACPIFrequencyManager(
             clock_domains=clock_domains,
-            strict_mode=True
+            strict_mode=False
         )
     else:
         raise NotImplementedError(

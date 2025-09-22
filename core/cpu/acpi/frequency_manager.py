@@ -7,6 +7,7 @@ class ACPIFrequencyManager(CPUFrequencyManager):
     
     - `strict_mode`: If True, only allows setting frequencies that are supported by the driver.
     If False, will warn but still attempt to set unsupported frequencies.
+    Typically the driver rounds it up to the nearest supported frequency.
     """
 
     def __init__(
@@ -51,8 +52,7 @@ class ACPIFrequencyManager(CPUFrequencyManager):
             else:
                 print(
                     f"[Warning] Frequency {frequency_mhz} MHz is not supported for core {core}.\n"
-                    f"Allowed frequencies: {[f//1000 for f in self._allowed_frequencies.get(core, set())]}.\n"
-                    "Passing the request to the driver anyway, the behavior is undefined."
+                    f"Supported frequencies: {[f//1000 for f in self._allowed_frequencies.get(core, set())]}."
                 )
 
         # Utilize default implementation from base class
