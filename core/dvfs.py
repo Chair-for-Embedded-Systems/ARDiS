@@ -53,10 +53,21 @@ class DVFSPolicy(ABC):
         Derived policies can override this method if they need to perform additional setup.
         """
         if self.__initial_core_to_freq:
-            for core, freq_mhz in self.__initial_core_to_freq.items():
+            # Reset scaling limits to processor limits (Linux only allows setting frequencies within the scaling range)
+            self.cpu_freq_manager.reset_scaling_limits()
+            
+            # Optimization which prevents redundant frequency sets within the same DVFS domain
+            domain_to_freq: dict[int, int] = dict()
+            for core, freq in self.__initial_core_to_freq.items():
+                # Smallest core ID in the domain is used as representative
+                dvfs_domain = self.cpu_freq_manager.affected_cores(core)
+                domain_to_freq[min(dvfs_domain)] = freq
+            
+            # Set fixed frequency for each dvfs domain
+            for core, freq_mhz in domain_to_freq.items():
                 self.cpu_freq_manager.set_governor(core, "userspace")
                 self.cpu_freq_manager.set_cpu_freq(core, freq_mhz)
-            return
+                
         elif self.__initial_governor:
             governor, min_freq_mhz, max_freq_mhz = self.__initial_governor
             min_freq_khz = min_freq_mhz * 1000
@@ -64,7 +75,6 @@ class DVFSPolicy(ABC):
             for core in self.cpu_freq_manager.cores:
                 self.cpu_freq_manager.set_governor(core, governor)
                 self.cpu_freq_manager.set_scaling_limits(core, min_freq_khz, max_freq_khz)
-            return
         else:
             print("[DVFS Policy] No initial state to apply")
 

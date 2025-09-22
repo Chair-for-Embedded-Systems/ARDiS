@@ -48,13 +48,12 @@ class IntelFrequencyManager(CPUFrequencyManager):
             # (See https://www.kernel.org/doc/Documentation/cpu-freq/intel-pstate.txt)
             # Instead we adjust both limits (scaling_min_freq and scaling_max_freq) to achieve the desired frequency.
             # The driver converts the requested frequency to the closest available p-state and then writes it to the MSR of the CPU.
-            frequency_khz = frequency_mhz * 1000
-            for affected_core in self.affected_cores(core):
-                super().set_scaling_limits(
-                    core=affected_core,
-                    min_freq_khz=frequency_khz,
-                    max_freq_khz=frequency_khz
-                )
+            frequency_khz = frequency_mhz * 1000            
+            super().set_scaling_limits(
+                core=core,
+                min_freq_khz=frequency_khz,
+                max_freq_khz=frequency_khz
+            )
         else:
             # Here we are doing the exact same as the scaling driver would do internally.
             if p_state := self._frequency_to_pstate(core, frequency_mhz):

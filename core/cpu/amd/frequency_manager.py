@@ -21,6 +21,8 @@ class AMDFrequencyManager(CPUFrequencyManager):
         self._set_boost_state(True)
 
     def set_cpu_freq(self, core: int, frequency_mhz: int):
+        # TODO: It is not tested if setting frequency directly works with amd-pstate driver.
+        # Maybe it behaves like intel_pstate driver and we need to set both scaling limits to the same value.
         super().set_cpu_freq(core, frequency_mhz)
 
     def get_cpu_freq(self, core: int) -> float:

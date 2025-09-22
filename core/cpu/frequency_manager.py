@@ -55,10 +55,6 @@ class CPUFrequencyManager(ABC):
         # Save initial state of all cores
         self._save_initial_state()
 
-        # Adjust scaling range to processor limits (scaling_setspeed only allows frequencies within scaling range)
-        for core in self.__cores:
-            proc_min, proc_max = self.__core_to_freq_limits_khz[core]
-            self.set_scaling_limits(core, proc_min, proc_max)
 
     @property
     def cores(self) -> set[int]:
@@ -288,6 +284,14 @@ class CPUFrequencyManager(ABC):
         for core, (governor, min_freq, max_freq) in self.__initial_state.items():
             self.set_governor(core, governor)
             self.set_scaling_limits(core, min_freq, max_freq)
+
+    def reset_scaling_limits(self):
+        """
+        Resets the scaling limits of all cores to their processor frequency limits.
+        """
+        for core in self.__cores:
+            proc_min, proc_max = self.__core_to_freq_limits_khz[core]
+            self.set_scaling_limits(core, proc_min, proc_max)
 
     def _reset(self, core: int, governor: str):
         
