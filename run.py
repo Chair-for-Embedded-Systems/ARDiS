@@ -311,16 +311,14 @@ def run_example_with_custom_binary():
 
 def run_all_spec2006_benchmarks():
     for package_name in spec_apps:
-        app = package_name.split("-")[-1]
-        print(f"Running SPEC benchmark {app}")
         exp = Experiment(
-            name=f"Spec_experiment_with_{app}",
+            name=f"Spec_experiment_{package_name}",
             scheduler=ConsecutiveScheduler(0),
             applications=[
-                SpecApplication(app, SpecApplication.InputSize.TRAIN)
+                SpecApplication(package_name, SpecApplication.InputSize.TRAIN)
             ],
-            mapping_policy=ExplicitMapping.from_list([2]),
-            dvfs_policy=StaticDVFS({2: 4500}, base_frequency_mhz=3600),
+            mapping_policy=ExplicitMapping.from_list([8]),
+            dvfs_policy=StaticDVFS({8: 4500}, base_frequency_mhz=3800),
             monitoring_mode=MonitoringMode.PERIODIC_ON_PID
         )
         exp.executeExperiment()
@@ -328,27 +326,7 @@ def run_all_spec2006_benchmarks():
             rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.INSTRUCTIONS])
             rp.plot_results(verbose=True)
         except Exception as e:
-            print(f"Could not plot results for SPEC benchmark {app}: {e}")
-
-def run_specific_spec_application():
-    app_name = "bzip2"
-    app = SpecApplication(app_name, SpecApplication.InputSize.REF)
-    exp = Experiment(
-        name=f"SPEC_{app_name}",
-        scheduler=ConsecutiveScheduler(0),
-        applications=[
-            app,
-        ],
-        mapping_policy=ExplicitMapping.from_list([2]),
-        dvfs_policy=StaticDVFS({2: 4500}, base_frequency_mhz=3600),
-        monitoring_mode=MonitoringMode.PERIODIC_ON_PID
-    )
-    exp.executeExperiment()
-    try:
-        rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.INSTRUCTIONS])
-        rp.plot_results(verbose=True)
-    except Exception as e:
-        print(f"Could not plot results for SPEC benchmark {app_name}: {e}")
+            print(f"Could not plot results for SPEC benchmark {package_name}: {e}")
 
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
@@ -358,7 +336,6 @@ if __name__ == "__main__":
     #run_example_with_result_plotting()
     #run_example_with_TID_monitoring()
     #run_example_with_random_migration_and_random_dvfs()
-    #run_example_with_multiple_instances()
-    #run_example_with_custom_binary()
+    run_example_with_multiple_instances()
+    run_example_with_custom_binary()
     #run_all_spec2006_benchmarks()
-    run_specific_spec_application()
