@@ -1,5 +1,6 @@
 from enum import Enum
 import os
+import signal
 import subprocess
 from benchmarks.application import Application
 from core.procworker import find_binary_in_exec_tree_recursively
@@ -58,26 +59,12 @@ class SpecApplication(Application):
         self._process.wait()
 
     def terminate(self) -> None:
-        # Kill the application process if it is still running
-        if self._pid is not None:
-            try:
-                os.kill(self._pid, 9)
-            except ProcessLookupError:
-                print(f"Process with PID {self._shell_pid} not found. It may have already terminated.")
-            except Exception as e:
-                print(f"An error occurred while trying to terminate the process: {e}")
-        else:
-            print("No running SPEC application to terminate.")
-
-        # Kill the shell process if it is still running
-        if self._process is not None and self._process.poll() is None:
-            try:
-                self._process.terminate() 
-                self._process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                self._process.kill()
-            except Exception as e:
-                print(f"An error occurred while trying to terminate the shell process: {e}")
+        try:
+            if pid := self._pid:
+                pgpid = os.getpgid(pid)
+                os.killpg(pgpid, signal.SIGTERM)
+        except Exception as e:
+            print(f"An error occurred while trying to terminate the process group: {e}")
 
     def get_pid(self) -> int | None:
         

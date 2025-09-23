@@ -15,6 +15,7 @@ from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
 from benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
 from random import randrange
 import os
+import sys
 
 
 
@@ -58,7 +59,8 @@ class Experiment:
             self.__engine.executeWorkload(self.__applications)
         except KeyboardInterrupt:
             print("Experiment interrupted by user")
-            self.__engine.stop_engine()
+            self.__engine.interrupt()
+            sys.exit()
             return
     
     def getWorkingDirectory(self):

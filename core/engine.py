@@ -277,8 +277,8 @@ class Engine:
             self.__epoch += 1
             time.sleep(action_interval)
     
-    def stop_engine(self):
-        """Stops the engine and all running applications."""
+    def interrupt(self):
+        """Interrupt the engine and terminate all running applications."""
         self.running = False
         if self.__monitor:
             self.__monitor.stop()
