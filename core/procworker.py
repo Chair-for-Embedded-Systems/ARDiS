@@ -80,6 +80,33 @@ def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
     
     return pid_matches[0]
 
+def find_binary_in_exec_tree_recursively(pid: int, binary_name: str) -> int | None:
+    """
+    Recursively search for a binary in the process tree starting from the given PID.
+    Returns the PID of the found binary or None if not found.
+    """
+    try:
+        with open(f"/proc/{pid}/task/{pid}/children", "r") as f:
+            children = f.read().strip().split()
+            for child_pid in children:
+                child_pid = int(child_pid)
+                # Potential symbolic link to the executable of this child
+                executable_link = f"/proc/{child_pid}/exe"
+                    
+                if os.path.islink(executable_link):
+                    target_path = os.readlink(executable_link)
+                    # Check if the target path contains the binary name
+                    if binary_name in os.path.basename(target_path):
+                        return child_pid
+
+                result = find_binary_in_exec_tree_recursively(child_pid, binary_name)
+                if result is not None:
+                    return result
+    except Exception as _:
+        return None
+        
+    return None
+
 def getPIDOfApp(app: str, max_tries: int = 100):
     proc = app.split("-")[1]
     if "splash2x" in proc:

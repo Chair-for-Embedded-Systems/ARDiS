@@ -2,6 +2,7 @@ from enum import Enum
 import os
 import subprocess
 from benchmarks.application import Application
+from core.procworker import find_binary_in_exec_tree_recursively
 from config import SPECPBASE, SPEC_CONFIGFILE
 
 class SpecApplication(Application):
@@ -52,7 +53,6 @@ class SpecApplication(Application):
         self._process.wait()
 
     def terminate(self) -> None:
-        print(f"Terminating SPEC2006 application {self._application_package}...")
         # Kill the process if it is still running
         if self._pid is not None:
             try:
@@ -63,7 +63,7 @@ class SpecApplication(Application):
                 print(f"An error occurred while trying to terminate the process: {e}")
         else:
             print("No running SPEC application to terminate.")
-        
+                    
         # Kill the shell process if it is still running
         if self._process is not None and self._process.poll() is None:
             try:
@@ -84,34 +84,8 @@ class SpecApplication(Application):
         if self._shell_pid is None:
             return None
         else:
-            self._pid = self._find_binary_in_tree_recursively(self._shell_pid, self._application_package)
+            self._pid = find_binary_in_exec_tree_recursively(self._shell_pid, self._application_package)
             return self._pid
-    
-    def _find_binary_in_tree_recursively(self, pid: int, binary_name: str) -> int | None:
-        """
-        Recursively search for a binary in the process tree starting from the given PID.
-        Returns the PID of the found binary or None if not found.
-        """
-        try:
-            with open(f"/proc/{pid}/task/{pid}/children", "r") as f:
-                children = f.read().strip().split()
-                for child_pid in children:
-                    child_pid = int(child_pid)
-                    executable_link = f"/proc/{child_pid}/exe"
-                    
-                    if os.path.islink(executable_link):
-                        target_path = os.readlink(executable_link)
-                        # Check if the target path contains the binary name
-                        if binary_name in os.path.basename(target_path):
-                            return child_pid
-
-                    result = self._find_binary_in_tree_recursively(child_pid, binary_name)
-                    if result is not None:
-                        return result
-        except Exception as _:
-            return None
         
-        return None
-    
     def get_display_name(self) -> str:
         return f"{self._application_package}_{self._input.value}"
