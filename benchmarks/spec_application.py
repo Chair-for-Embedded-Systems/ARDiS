@@ -3,7 +3,7 @@ import os
 import subprocess
 from benchmarks.application import Application
 from core.procworker import find_binary_in_exec_tree_recursively
-from config import SPECPBASE, SPEC_CONFIGFILE
+from config import SPECPBASE, SPEC_CONFIGFILE, spec_apps
 
 class SpecApplication(Application):
     
@@ -14,7 +14,12 @@ class SpecApplication(Application):
 
     def __init__(self, application_package: str, input: InputSize = InputSize.REF, labels: list[str] = []) -> None:
         super().__init__(labels)
+        
+        if not application_package in spec_apps:
+            raise ValueError(f"Unknown SPEC application: {application_package}")
+        
         self._application_package = application_package
+        self._binary_name = application_package.replace('spec-', '')
         self._input = input
         self._process: subprocess.Popen[bytes] | None = None
         self._shell_pid: int | None = None
@@ -38,7 +43,7 @@ class SpecApplication(Application):
         self._start_affinity = cores
 
         input_size = self._input.value
-        app = self._application_package
+        app = self._binary_name
         log_file = "/dev/null" # f"{app}.log"
 
         if cores is not None:
@@ -53,7 +58,7 @@ class SpecApplication(Application):
         self._process.wait()
 
     def terminate(self) -> None:
-        # Kill the process if it is still running
+        # Kill the application process if it is still running
         if self._pid is not None:
             try:
                 os.kill(self._pid, 9)
@@ -84,8 +89,8 @@ class SpecApplication(Application):
         if self._shell_pid is None:
             return None
         else:
-            self._pid = find_binary_in_exec_tree_recursively(self._application_package, self._shell_pid)
+            self._pid = find_binary_in_exec_tree_recursively(self._binary_name, self._shell_pid)
             return self._pid
         
     def get_display_name(self) -> str:
-        return f"{self._application_package}_{self._input.value}"
+        return f"{self._binary_name}-{self._input.value}"
