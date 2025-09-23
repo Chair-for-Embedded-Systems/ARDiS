@@ -63,7 +63,7 @@ class SpecApplication(Application):
                 print(f"An error occurred while trying to terminate the process: {e}")
         else:
             print("No running SPEC application to terminate.")
-                    
+
         # Kill the shell process if it is still running
         if self._process is not None and self._process.poll() is None:
             try:
@@ -84,7 +84,7 @@ class SpecApplication(Application):
         if self._shell_pid is None:
             return None
         else:
-            self._pid = find_binary_in_exec_tree_recursively(self._shell_pid, self._application_package)
+            self._pid = find_binary_in_exec_tree_recursively(self._application_package, self._shell_pid)
             return self._pid
         
     def get_display_name(self) -> str:

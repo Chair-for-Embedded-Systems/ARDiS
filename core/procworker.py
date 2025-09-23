@@ -1,40 +1,5 @@
 import os
 import subprocess
-import time
-from core.retthreading import *
-
-def runProc(app_str):
-    command = app_str.split(" ")
-    p = subprocess.Popen(command,  stdout=subprocess.PIPE)
-    p.wait()
-
-def killProc(proc_name):
-    str_cmd = "sudo killall " + proc_name
-    command = str_cmd.split(" ")
-    p = subprocess.Popen(command, stdout=subprocess.PIPE)
-    p.wait()
-
-def getPIDThread(proc : str, max_tries: int) -> int:
-    found = False
-    str_cmd = "taskset -c 0 pgrep " + proc
-    command = str_cmd.split(" ")
-    pid = -1
-    tries = 0
-    while not found:
-        p = subprocess.run(command,capture_output=True)
-        ans = p.stdout
-        try:
-            a = int(ans.decode("utf-8")) + 1 - 1
-            found = True
-            pid = a
-        except:
-            tries += 1
-            if tries >= max_tries:
-                print("Warning: Process ", proc, " has probably not started yet.")
-                found = True
-            else:
-                time.sleep(0.005)
-    return pid
 
 def get_affinity(pids: set[int]) -> dict[int, set[int]]:
     """
@@ -66,7 +31,7 @@ def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
     if affinity is None:
         pid_matches = pids
     else:
-        pid_matches = []
+        pid_matches: list[int] = []
         for pid, a in pid_to_affinity.items():
             if a == affinity:
                 pid_matches.append(pid)
@@ -80,7 +45,7 @@ def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
     
     return pid_matches[0]
 
-def find_binary_in_exec_tree_recursively(pid: int, binary_name: str) -> int | None:
+def find_binary_in_exec_tree_recursively(binary_name: str, pid: int) -> int | None:
     """
     Recursively search for a binary in the process tree starting from the given PID.
     Returns the PID of the found binary or None if not found.
@@ -99,17 +64,10 @@ def find_binary_in_exec_tree_recursively(pid: int, binary_name: str) -> int | No
                     if binary_name in os.path.basename(target_path):
                         return child_pid
 
-                result = find_binary_in_exec_tree_recursively(child_pid, binary_name)
+                result = find_binary_in_exec_tree_recursively(binary_name, child_pid)
                 if result is not None:
                     return result
     except Exception as _:
         return None
         
     return None
-
-def getPIDOfApp(app: str, max_tries: int = 100):
-    proc = app.split("-")[1]
-    if "splash2x" in proc:
-        proc = proc.replace("splash2x.", "")
-    pid = getPIDThread(proc, max_tries)
-    return pid
