@@ -36,6 +36,7 @@ class BinaryApplication(Application):
         process.wait()
     
     def terminate(self) -> None:
+        # Terminates properly when ARDiS is interrupted, no need for extra handling
         pass
 
     def get_pid(self) -> int | None:

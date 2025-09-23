@@ -72,6 +72,7 @@ class ParsecApplication(Application):
         subprocess.run(command, shell=True, executable="/bin/bash")
     
     def terminate(self) -> None:
+        # Terminates properly when ARDiS is interrupted, no need for extra handling
         pass
 
     def get_pid(self) -> int | None:
