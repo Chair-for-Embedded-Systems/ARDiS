@@ -14,6 +14,7 @@ from benchmarks.application import Application
 import config
 import re
 import threading
+import time
 import shutil
 from timeit import default_timer as timer
 
@@ -180,7 +181,7 @@ class Engine:
                     # Start the thread
                     self.__startThread(app)
                     #TODO while very unlikely, we might have a race condition here 
-                    Thread(target=self.getProcessID, args=(app,)).start()
+                    threading.Thread(target=self.getProcessID, args=(app,)).start()
                     # using the pool executor should avoid race conditions but the performance is a bit worse
                     # self.__executor.submit(self.getProcessID, app)
                       
