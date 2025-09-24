@@ -116,6 +116,14 @@ class TraceProvider:
         time_series: Series[float] = system_events['timestamp']
         metric_series: Series[float|int] = system_events[metric]
         return time_series, metric_series
+    
+    def get_instance_ids(self) -> set[int]:
+        """ Returns a set of all application instance IDs."""
+        return self._instance
+    
+    def get_thread_ids(self) -> set[int]:
+        """ Returns a set of all thread IDs across all application instances."""
+        return {tid for tids in self._instance_to_threads.values() for tid in tids}
 
 if __name__ == "__main__":
     core_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-54-09_Simple_Experiment_with_Specific_Applications"

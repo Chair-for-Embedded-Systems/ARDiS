@@ -44,6 +44,8 @@ if __name__ == "__main__":
     multiple_instance_experiment = "/home/uhqql/ARDIS/results/2025-09-24_15-16-33_Experiment_with_multiple_instances"
     multi_threaded_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
 
+    spec_tid_experiment= "/home/uhqql/ARDIS/results/2025-09-24_22-18-25_Simple_Experiment_with_Specific_Applications"
+
     post_processor = ClipPostProcessor(
         clips=[
             MultiMetricClip(["instructions"]),
@@ -53,6 +55,6 @@ if __name__ == "__main__":
         ],
         verbose=True
     )
-    #post_processor.process(experiment_folder=mixexperiment)
-    post_processor.process(experiment_folder=multiple_instance_experiment)
+    post_processor.process(experiment_folder=spec_tid_experiment)
+    #post_processor.process(experiment_folder=multiple_instance_experiment)
     #post_processor.process(experiment_folder=multi_threaded_experiment)
