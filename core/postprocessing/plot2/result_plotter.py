@@ -19,3 +19,4 @@ class ResultPlotter(ABC):
 
     def _load_results(self, expertiment_folder: str) -> ExperimentResultWrapper:
         return ExperimentResultWrapper(experiment_folder=expertiment_folder)
+    

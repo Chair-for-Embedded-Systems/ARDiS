@@ -1,10 +1,11 @@
 from typing import Any
-from core.postprocessing.plot2.result_plotter import ResultPlotter
+from core.postprocessing.plot2.result_plotter import *
 from core.postprocessing.analysis2.trace_provider import TraceProvider
-import os
-
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+import os
+
 
 class BasicPlotter(ResultPlotter):
     
@@ -18,24 +19,28 @@ class BasicPlotter(ResultPlotter):
         'ytick.labelsize': 10
     }
 
-    def __init__(self) -> None:
+    def __init__(self, output_formats: set[str]={"png"}, verbose: bool = False) -> None:
         super().__init__()
+        self.output_formats = output_formats
+        self.verbose = verbose
 
     def plot_results(self, expertiment_folder: str, output_folder: str | None = None):
-        print(f"Plotting results from: {expertiment_folder}")
         
+        # Use experiment folder as output folder if none is given
         if output_folder is None:
             output_folder = os.path.join(expertiment_folder, "plots")
-        os.makedirs(output_folder, exist_ok=True)
+            os.makedirs(output_folder, exist_ok=True)
 
         # Load data
         results = self._load_results(expertiment_folder)
         trace_provider = TraceProvider(results)
         
         with plt.style.context(self.style):            
+            # Sorted metrics for better visualization
+            sorted_metrics = sorted(trace_provider.available_app_metrics, key=lambda s: s.lower())
             self._plot_combined_metric(
                 trace_provider=trace_provider,
-                metrics=sorted(trace_provider.available_app_metrics, key=lambda s: s.lower()),
+                metrics=sorted_metrics,
                 output_folder=output_folder
             )
 
@@ -83,31 +88,24 @@ class BasicPlotter(ResultPlotter):
                     ax.set_title(label=fancy_metric)
                     ax.grid(True, axis='both', which='both', linestyle='-', linewidth=0.8, color='#000', alpha=0.2)
 
+        # Copy legend from first subplot to the figure and apply it to the whole figure
         handles, labels = axes[0].get_legend_handles_labels()
         fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.1), ncol=int(len(labels)))
-        output_file = os.path.join(output_folder, "combined.png")
-        print(f"Saving combined plot to: {output_file}")
-        fig.savefig(output_file, dpi=300, bbox_inches='tight')
-
-    def _plot_metric(self, trace_provider: TraceProvider, metric: str, ax: Axes, x_label: str | None = None, y_label: str | None = None) -> None:
-
-        app_index = trace_provider.get_app_index()
-
         
-        instance_ids = [iid for iids in app_index.values() for iid in iids]
-        cmap = plt.get_cmap("CMRmap")
-        instance_to_color = {iid: cmap(i / len(instance_ids)) for i, iid in enumerate(instance_ids)}
+        output_file = os.path.join(output_folder, "combined.png")
+        self._save_figure(fig, output_file)
 
-        for app_name, instance_ids in app_index.items():
-            for iid in instance_ids:
-                app_label = f"{app_name} <{iid}>"
-                (x, y) = trace_provider.get_app_metric_trace(metric=metric, instance_id=iid)
-                ax.plot(x, y, label=app_label, color=instance_to_color[iid])
-                if x_label is not None:
-                    ax.set_xlabel(x_label)
-                if y_label is not None:
-                    ax.set_ylabel(y_label)
-                ax.grid(True, axis='both', which='both', linestyle='-', linewidth=0.8, color='#000', alpha=0.2)
+    def _save_figure(self, fig: Figure, output_file: str):
+        # Ensure the output directory exists
+        output_folder = os.path.dirname(output_file)
+        os.makedirs(output_folder, exist_ok=True)
+        
+        # Save in multiple formats
+        for output_format in self.output_formats:
+            output_file = f"{os.path.splitext(output_file)[0]}.{output_format}"
+            fig.savefig(output_file, bbox_inches='tight', dpi=300) # type: ignore
+            if self.verbose:
+                print(f"Saved figure to: {output_file}")
 
 if __name__ == "__main__":
     
@@ -117,5 +115,5 @@ if __name__ == "__main__":
 
     multiple_instance_experiment = "/home/uhqql/ARDIS/results/2025-09-24_15-16-33_Experiment_with_multiple_instances"
 
-    plotter = BasicPlotter()
+    plotter = BasicPlotter(verbose=True)
     plotter.plot_results(multiple_instance_experiment)
