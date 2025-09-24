@@ -1,13 +1,11 @@
-from core.postprocessing.analysis2.result_wrapper import ExperimentResultWrapper
+from core.postprocessing.analysis2.parsing.periodic_log import PeriodicLog
 from typing import Any
 
 from pandas import DataFrame, Series
 
 class TraceProvider:
-    def __init__(self, result_wrapper: ExperimentResultWrapper):
-        self._wrapper = result_wrapper
+    def __init__(self, pl: PeriodicLog, verbose: bool = False) -> None:
         
-        pl = self._wrapper.get_periodic_log()
         verbose = False
 
         # Init pandas DataFrame for application events
@@ -125,11 +123,11 @@ if __name__ == "__main__":
     tid_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
     
     experiment_folders = [core_experiment, pid_experiment, tid_experiment]
-
+    from core.postprocessing.analysis2.result_wrapper import ExperimentResultWrapper
     for experiment in experiment_folders:
         print(f"\nAnalyzing experiment folder: {experiment}")
         wrapper = ExperimentResultWrapper(experiment)
-        trace_provider = TraceProvider(wrapper)
+        trace_provider = TraceProvider(wrapper.get_periodic_log())
 
         for app_name, instance_ids in trace_provider.get_app_index().items():
             print(f"Application '{app_name}' has instances: {instance_ids}")

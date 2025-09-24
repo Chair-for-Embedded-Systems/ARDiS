@@ -32,8 +32,8 @@ class BasicPlotter(ResultPlotter):
             os.makedirs(output_folder, exist_ok=True)
 
         # Load data
-        results = self._load_results(expertiment_folder)
-        trace_provider = TraceProvider(results)
+        experiment_results = self._load_results(expertiment_folder)
+        trace_provider = experiment_results.get_trace_provider()
         
         with plt.style.context(self.style):            
             # Sorted metrics for better visualization
@@ -77,7 +77,6 @@ class BasicPlotter(ResultPlotter):
 
             # Capitalize first letter and keep the rest as is
             fancy_metric = metric[0].upper() + metric[1:]
-            
             for app_name, instance_ids in trace_provider.get_app_index().items():
                 for iid in instance_ids:
                     app_label = f"{app_name} ({iid})" if len(instance_ids) > 1 else app_name
@@ -114,6 +113,6 @@ if __name__ == "__main__":
     tid_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
 
     multiple_instance_experiment = "/home/uhqql/ARDIS/results/2025-09-24_15-16-33_Experiment_with_multiple_instances"
-
+    mixexperiment = "/home/uhqql/ARDIS/results/2025-09-24_16-13-54_Simple_Experiment_with_Specific_Applications"
     plotter = BasicPlotter(verbose=True)
-    plotter.plot_results(multiple_instance_experiment)
+    plotter.plot_results(mixexperiment)

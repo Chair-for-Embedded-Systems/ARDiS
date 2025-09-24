@@ -1,5 +1,6 @@
 import os
 from core.postprocessing.analysis2.parsing.periodic_log.periodic_log import PeriodicLog
+from core.postprocessing.analysis2.trace_provider import TraceProvider
 
 class ExperimentResultWrapper:
     PERIODIC_COUNTERS_LOG_FILE = "periodic_counters.log"
@@ -24,6 +25,13 @@ class ExperimentResultWrapper:
 
     def get_periodic_log(self) -> PeriodicLog:
         return self.__periodic_counter_log
+    
+    def get_trace_provider(self, verbose: bool = False) -> TraceProvider:
+        # Cache the trace provider to avoid redundant computations
+        if hasattr(self, "__trace_provider"):
+            return self.__trace_provider
+        self.__trace_provider = TraceProvider(self.get_periodic_log(), verbose=verbose)
+        return self.__trace_provider
     
     
 
