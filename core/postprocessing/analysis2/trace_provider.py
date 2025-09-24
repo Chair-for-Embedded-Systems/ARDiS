@@ -36,8 +36,8 @@ class TraceProvider:
         self.__sys_events = DataFrame(system_datapoints)
 
         # Store which events are available
-        self._available_app_metrics = pl.periodic_application_events_labels
-        self._available_sys_metrics = pl.periodic_system_events_labels
+        self.available_app_metrics = pl.periodic_application_events_labels
+        self.available_sys_metrics = pl.periodic_system_events_labels
 
         # Cache some useful information
         self._app_to_instances = pl.get_application_index()
@@ -47,8 +47,8 @@ class TraceProvider:
         if verbose:
             print(f"Loaded {len(self.__app_events)} application event traces.")
             print(f"Loaded {len(self.__sys_events)} system event traces.")
-            print(f"Available application events: {self._available_app_metrics}")
-            print(f"Available system events: {self._available_sys_metrics}")
+            print(f"Available application events: {self.available_app_metrics}")
+            print(f"Available system events: {self.available_sys_metrics}")
             print(f"Instance to threads mapping: {self._instance_to_threads}")
 
     def get_app_index(self) -> dict[str, set[int]]:
@@ -93,8 +93,8 @@ class TraceProvider:
         Returns a DataFrame containing all application event traces for a given instance ID.
         If thread_id is provided, filters the events to that specific thread.
         """
-        if metric not in self._available_app_metrics:
-            raise ValueError(f"Event '{metric}' not found in application events. Available events: {self._available_app_metrics}")
+        if metric not in self.available_app_metrics:
+            raise ValueError(f"Event '{metric}' not found in application events. Available events: {self.available_app_metrics}")
         
         filtered_events = self.__filter_app_events(instance_id, thread_id)
         instance_events = filtered_events[['timestamp', metric]].sort_values(by='timestamp').reset_index(drop=True) # type: ignore
@@ -110,8 +110,8 @@ class TraceProvider:
         """
         Returns a DataFrame containing all system event traces for a given metric.
         """
-        if metric not in self._available_sys_metrics:
-            raise ValueError(f"Event '{metric}' not found in system events. Available events: {self._available_sys_metrics}")
+        if metric not in self.available_sys_metrics:
+            raise ValueError(f"Event '{metric}' not found in system events. Available events: {self.available_sys_metrics}")
         
         system_events = self.__sys_events[['timestamp', metric]].sort_values(by='timestamp').reset_index(drop=True) # type: ignore
 
