@@ -2,7 +2,7 @@ import glob
 import os
 import subprocess
 import json
-from timeit import default_timer as timer
+from timeit import default_timer as timer # type: ignore
 from dataclasses import dataclass
 
 @dataclass
@@ -38,7 +38,7 @@ class ResultPIDPolling:
                 pid = self._tid_to_pid[tid]
                 try:
                     pid_to_event[pid][event] += value
-                except KeyError as ke:
+                except KeyError as _:
                     print(pid_to_event)
                     print(self.event_to_pct_running)
         
@@ -95,7 +95,7 @@ class PollerAppLevel:
         This call will block for `sampling_rate_sec` which is defined in the constructor.
         """
         # Get thread ids (tids) for each passed pid
-        pid_to_tids = {}
+        pid_to_tids: dict[int, list[int]] = dict()
         for pid in pids:
             try:
                 # Fails when the process ends or an invalid pid has been passed
@@ -126,12 +126,13 @@ class PollerAppLevel:
         for line in output.splitlines():
             try:
                 perf_stat_event = json.loads(line)
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError as _:
                 continue
             
-            app_name, tid = str(perf_stat_event['thread']).split('-')[:2]
+            # The thread name is formatted as <comm>-<tid>, comm is the command name (executable name) truncated to 15 characters
+            partial_app_name, tid = str(perf_stat_event['thread']).rsplit('-', 1)
             tid = int(tid)
-            tid_names[tid] = app_name
+            tid_names[tid] = partial_app_name
             
             event = str(perf_stat_event['event']).replace("cpu_core","").replace("cpu_atom","").replace("/","")
             
@@ -167,8 +168,8 @@ class PollerAppLevel:
         _, output = process.communicate() # perf outputs on stderr 
         #print(f"Perf command for core tracking: {(timer()-start)*1000:2f}")
         events: dict[int, dict[str, int|float]] = {core: {event: 0 for event in self.__events} for core in cores}
-        
-        active_logic_cores = {}
+
+        active_logic_cores: dict[int, list[int]] = dict()
         for physical_core, logical_cores in self.__physical_to_logical_core.items():
             active_cores = [logic_core for logic_core in logical_cores if logic_core in cores]
             active_logic_cores[physical_core] = active_cores
@@ -178,7 +179,7 @@ class PollerAppLevel:
         for line in output.splitlines():
             try:
                 perf_stat_event = json.loads(line)
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError as _:
                 continue
             event = str(perf_stat_event['event']).replace("cpu_core","").replace("cpu_atom","").replace("/","")
             
@@ -189,7 +190,7 @@ class PollerAppLevel:
                 counter_value = counter_value.split('.')[0]
             counter_value = int(counter_value)
 
-            socket, die, core = str(perf_stat_event['core']).split('-')[:3]
+            socket, die, core = str(perf_stat_event['core']).split('-')[:3] # type: ignore
             core = int(core.replace('C',''))
 
             # Logical cores can share the same physical core e.g due to Hyper-Threading

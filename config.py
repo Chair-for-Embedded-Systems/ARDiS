@@ -24,7 +24,7 @@ spec_apps = [
     #'spec-gcc',
     'spec-milc',
     'spec-bzip2',
-    'spec-sphinx3',
+    'spec-sphinx',
     'spec-astar',
     'spec-lbm',
     'spec-bwaves',

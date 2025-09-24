@@ -14,6 +14,7 @@ from benchmarks.application import Application
 import config
 import re
 import threading
+import time
 import shutil
 from timeit import default_timer as timer
 
@@ -180,7 +181,7 @@ class Engine:
                     # Start the thread
                     self.__startThread(app)
                     #TODO while very unlikely, we might have a race condition here 
-                    Thread(target=self.getProcessID, args=(app,)).start()
+                    threading.Thread(target=self.getProcessID, args=(app,)).start()
                     # using the pool executor should avoid race conditions but the performance is a bit worse
                     # self.__executor.submit(self.getProcessID, app)
                       
@@ -276,6 +277,14 @@ class Engine:
             self.__epoch += 1
             time.sleep(action_interval)
     
+    def interrupt(self):
+        """Interrupt the engine and terminate all running applications."""
+        self.running = False
+        if self.__monitor:
+            self.__monitor.stop()
+        for app in self.__active_threads + self.__waiting_threads:
+            app.terminate()
+
     def fetch_perf_data(self, perf_file_path):
         # Initialize variables to store the energy, time, cpu_core, and cpu_atom instructions
         energy_psys = None

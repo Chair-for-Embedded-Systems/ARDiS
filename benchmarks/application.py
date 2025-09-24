@@ -34,6 +34,13 @@ class Application(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def terminate(self) -> None:
+        """
+        Terminates the application if it is running.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def get_pid(self) -> int | None:
         """
         Returns the PID of this application,

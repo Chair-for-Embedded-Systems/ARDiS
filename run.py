@@ -12,11 +12,10 @@ from core.monitoringmode import *
 from core.migration import *
 from core.policies.intel_motivational_mapping import *
 from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
-from benchmarks.application import Application
-from benchmarks.parsec_application import ParsecApplication
-from benchmarks.binary_application import BinaryApplication
+from benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
 from random import randrange
 import os
+import sys
 
 
 
@@ -56,7 +55,13 @@ class Experiment:
    
     # Execute the experiment and wait for it to finish
     def executeExperiment(self):
-        self.__engine.executeWorkload(self.__applications)
+        try:
+            self.__engine.executeWorkload(self.__applications)
+        except KeyboardInterrupt:
+            print("Experiment interrupted by user")
+            self.__engine.interrupt()
+            sys.exit()
+            return
     
     def getWorkingDirectory(self):
         return self.__engine.reporter.workdir
@@ -306,6 +311,25 @@ def run_example_with_custom_binary():
     )
     exp.executeExperiment()
 
+def run_all_spec2006_benchmarks():
+    for package_name in spec_apps:
+        exp = Experiment(
+            name=f"Spec_experiment_{package_name}",
+            scheduler=ConsecutiveScheduler(0),
+            applications=[
+                SpecApplication(package_name, SpecApplication.InputSize.TRAIN)
+            ],
+            mapping_policy=ExplicitMapping.from_list([8]),
+            dvfs_policy=StaticDVFS({8: 4500}, base_frequency_mhz=3800),
+            monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+        )
+        exp.executeExperiment()
+        try:
+            rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.INSTRUCTIONS])
+            rp.plot_results(verbose=True)
+        except Exception as e:
+            print(f"Could not plot results for SPEC benchmark {package_name}: {e}")
+
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
     #run_example_with_PID_monitoring()
@@ -316,3 +340,4 @@ if __name__ == "__main__":
     #run_example_with_random_migration_and_random_dvfs()
     run_example_with_multiple_instances()
     run_example_with_custom_binary()
+    #run_all_spec2006_benchmarks()
