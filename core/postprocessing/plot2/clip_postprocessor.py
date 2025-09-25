@@ -43,10 +43,12 @@ if __name__ == "__main__":
     from core.postprocessing.plot2.clips.multi_metric_clip import MultiMetricClip
     from core.postprocessing.plot2.clips.execution_range_clips import AppLifeTimeClip, ThreadExecutionClip
     from core.postprocessing.plot2.clips.app_mapping_clip import AppMappingClip
+    from core.postprocessing.plot2.clips.thread_mapping_clip import ThreadMappingClip
     
     mixexperiment = "/home/uhqql/ARDIS/results/2025-09-24_16-13-54_Simple_Experiment_with_Specific_Applications"
     multiple_instance_experiment = "/home/uhqql/ARDIS/results/2025-09-24_15-16-33_Experiment_with_multiple_instances"
-    multi_threaded_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
+    multi_threaded_experiment = "/home/uhqql/ARDIS/results/2025-09-25_16-05-47_Experiment_with_tid_monitoring"
+    multi_threaded_experiment2 = "/home/uhqql/ARDIS/results/2025-09-25_16-27-46_Experiment_with_tid_monitoring"
 
     spec_tid_experiment= "/home/uhqql/ARDIS/results/2025-09-24_22-18-25_Simple_Experiment_with_Specific_Applications"
     random_migration_and_dvfs_experiment = "/home/uhqql/ARDIS/results/2025-09-25_12-09-39_Simple_Experiment_with_random_dvfs_and_app_migration"
@@ -57,10 +59,11 @@ if __name__ == "__main__":
             #MultiMetricClip(["instructions", "cycles"]),
             #AppLifeTimeClip(),
             #ThreadExecutionClip(),
-            AppMappingClip()
+            AppMappingClip(),
+            ThreadMappingClip()
         ],
         verbose=True
     )
-    post_processor.process(experiment_folder=random_migration_and_dvfs_experiment)
-    post_processor.process(experiment_folder=multiple_instance_experiment)
-    post_processor.process(experiment_folder=multi_threaded_experiment)
+    #post_processor.process(experiment_folder=random_migration_and_dvfs_experiment)
+    #post_processor.process(experiment_folder=multiple_instance_experiment)
+    post_processor.process(experiment_folder=multi_threaded_experiment2)

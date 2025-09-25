@@ -131,3 +131,4 @@ class AppMappingClip(ResultClip):
                     else:
                         result[number].append((index, index))
         return result
+    
