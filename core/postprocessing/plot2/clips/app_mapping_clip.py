@@ -3,7 +3,7 @@ from typing import Any
 from matplotlib import pyplot as plt
 
 from core.postprocessing.plot2.clips.result_clip import ResultClip, ExperimentResultWrapper, Figure
-from core.postprocessing.analysis2.trace_provider import PeriodicLog
+from core.postprocessing.analysis2.trace_provider import TraceProvider
 
 class AppMappingClip(ResultClip):
     """
@@ -34,7 +34,7 @@ class AppMappingClip(ResultClip):
         
         # Load data
         trace_provider = result_wrapper.get_trace_provider()
-        instance_to_affinity_ranges = self._get_instacne_affinity_ranges(result_wrapper.get_periodic_log())
+        instance_to_affinity_ranges = self._get_instance_affinity_ranges(trace_provider)
         
         # Calculate colors and positions
         cmap = self._color_map
@@ -86,29 +86,23 @@ class AppMappingClip(ResultClip):
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, padding), ncol=legend_columns)
 
         return fig
+
+    def _get_instance_affinity_ranges(self, trace_provider: TraceProvider) -> dict[int, dict[int, list[tuple[float, float]]]]:
+        instance_to_affinity_ranges: dict[int, dict[int, list[tuple[float, float]]]] = defaultdict(dict)
+        for _, instance_ids in trace_provider.get_app_index().items():
+            for iid in instance_ids:
+                timestamps, affinity = trace_provider.get_affinity_trace(iid)
+                affinity_index_ranges = self.find_number_ranges(affinity) # type: ignore
+                # Map indexed affinity ranges to timestamp ranges
+                affinity_timestamp_ranges = {
+                    core: [(timestamps[start], timestamps[min(end + 1, len(timestamps) - 1)]) 
+                           for start, end in ranges] 
+                           for core, ranges in affinity_index_ranges.items()
+                }
+                instance_to_affinity_ranges[iid] = affinity_timestamp_ranges
+
+        return instance_to_affinity_ranges  
     
-    def _get_instacne_affinity_ranges(self, periodic_log: PeriodicLog) -> dict[int, dict[int, list[tuple[float, float]]]]:
-
-        iid_to_affinity: dict[int, list[tuple[float, set[int]]]] = defaultdict(list)
-        for app_event in periodic_log.app_events:
-            iid_to_affinity[app_event.instance_id].append((app_event.timestamp_sec, app_event.affinity))
-
-        instance_to_affinity_ranges: dict[int, dict[int, list[tuple[float, float]]]] = {}
-
-        for iid, timestamp_and_affinity in iid_to_affinity.items():
-            timestamps = [t for t, _ in timestamp_and_affinity]
-            afflist = [a for _, a in timestamp_and_affinity]
-            affinity_index_ranges = self.find_number_ranges(afflist)
-            # Map indexed affinity ranges to timestamp ranges
-            affinity_timestamp_ranges = {
-                core: [(timestamps[start], timestamps[min(end + 1, len(timestamps) - 1)]) 
-                       for start, end in ranges] 
-                       for core, ranges in affinity_index_ranges.items()
-            }
-            instance_to_affinity_ranges[iid] = affinity_timestamp_ranges
-
-        return instance_to_affinity_ranges
-
     def find_number_ranges(self, list_of_sets: list[set[int]]) -> dict[int, list[tuple[int, int]]]:
         """
         Finds the contiguous ranges for each number in a list of sets.

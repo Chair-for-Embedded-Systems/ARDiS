@@ -117,6 +117,21 @@ class TraceProvider:
         metric_series: Series[float|int] = system_events[metric]
         return time_series, metric_series
     
+    def get_affinity_trace(self, instance_id: int, thread_id: int | None = None) -> tuple[Series, Series]:
+        """
+        Returns the timestamps and core affinity sets for a given application instance ID.
+        If thread_id is provided, filters the events to that specific thread.
+        """
+        filtered_events = self.__filter_app_events(instance_id, thread_id)
+        affinity_events = filtered_events[['timestamp', 'core_id']].sort_values(by='timestamp').reset_index(drop=True) # type: ignore
+
+        # If we have data on a per thread basis, but no specific thread is requested, merge the affinity sets across threads
+        affinity_events = affinity_events.groupby('timestamp', as_index=False).agg({'core_id': lambda x: set().union(*x)})
+
+        time_series: Series[float] = affinity_events['timestamp']
+        affinity_series: Series[set[int]] = affinity_events['core_id']  # type: ignore
+        return time_series, affinity_series
+
     def get_instance_ids(self) -> set[int]:
         """ Returns a set of all application instance IDs."""
         return self._instance
