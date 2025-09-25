@@ -6,7 +6,7 @@ from .result_clip import ResultClip, ExperimentResultWrapper, Figure
 from core.postprocessing.analysis2.trace_provider import TraceProvider 
 
 
-class MultiMetricClip(ResultClip):
+class AppMultiMetricClip(ResultClip):
     """
     Figure clip that creates a plot with multiple metrics.
     """

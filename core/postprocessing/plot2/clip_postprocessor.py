@@ -49,12 +49,12 @@ if __name__ == "__main__":
 
     post_processor = ClipPostProcessor(
         clips=[
-            #MultiMetricClip(),
-            #MultiMetricClip(["instructions", "cycles"]),
-            #AppLifeTimeClip(),
-            #ThreadExecutionClip(),
-            #AppMappingClip(),
-            #ThreadMappingClip()
+            AppMultiMetricClip(),
+            AppMultiMetricClip(["instructions", "cycles"]),
+            AppExecutionClip(),
+            ThreadExecutionClip(),
+            AppMappingClip(),
+            ThreadMappingClip(),
             SystemMetricClip(),
         ],
         verbose=True
