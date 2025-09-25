@@ -132,6 +132,28 @@ class TraceProvider:
         affinity_series: Series[set[int]] = affinity_events['core_id']  # type: ignore
         return time_series, affinity_series
 
+    def get_core_frequency_traces(self) -> dict[int, tuple[Series, Series]]:
+        """
+        Returns a dictionary mapping core IDs to their frequency traces (timestamps and frequencies).
+        """
+        # Filter application events that have valid frequency values
+        freq_events = self.__app_events.dropna(subset=['frequency'])
+        
+        # Select core_id, timestamp, frequency columns
+        freq_events = freq_events[['core_id', 'timestamp', 'frequency']]
+        freq_events['core_id'] = freq_events['core_id'].apply(lambda x: list(x)[0])
+        freq_events['core_id_int'] = freq_events['core_id'].astype(int)
+
+        # Group by core_id
+        core_frequency_traces: dict[int, tuple[Series, Series]] = {}
+        for core_id, group in freq_events.groupby('core_id_int'):
+            sorted_group = group.sort_values(by='timestamp').reset_index(drop=True) 
+            time_series: Series[float] = sorted_group['timestamp']
+            freq_series: Series[float] = sorted_group['frequency']
+            core_frequency_traces[core_id] = (time_series, freq_series)
+
+        return core_frequency_traces
+
     def get_instance_ids(self) -> set[int]:
         """ Returns a set of all application instance IDs."""
         return self._instance
@@ -152,6 +174,8 @@ if __name__ == "__main__":
         wrapper = ExperimentResultWrapper(experiment)
         trace_provider = TraceProvider(wrapper.get_periodic_log())
 
+        trace_provider.get_core_frequency_traces()
+        continue
         for app_name, instance_ids in trace_provider.get_app_index().items():
             print(f"Application '{app_name}' has instances: {instance_ids}")
             for iid in instance_ids:

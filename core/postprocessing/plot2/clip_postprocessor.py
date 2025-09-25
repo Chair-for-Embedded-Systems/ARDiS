@@ -46,19 +46,20 @@ if __name__ == "__main__":
 
     spec_tid_experiment= "/home/uhqql/ARDIS/results/2025-09-24_22-18-25_Simple_Experiment_with_Specific_Applications"
     random_migration_and_dvfs_experiment = "/home/uhqql/ARDIS/results/2025-09-25_12-09-39_Simple_Experiment_with_random_dvfs_and_app_migration"
-
+    
     post_processor = ClipPostProcessor(
         clips=[
-            AppMultiMetricClip(),
-            AppMultiMetricClip(["instructions", "cycles"]),
-            AppExecutionClip(),
-            ThreadExecutionClip(),
-            AppMappingClip(),
-            ThreadMappingClip(),
-            SystemMetricClip(),
+            #AppMultiMetricClip(),
+            #AppMultiMetricClip(["instructions", "cycles"]),
+            #AppExecutionClip(),
+            #ThreadExecutionClip(iids={0}),
+            #AppMappingClip(),
+            #ThreadMappingClip(),
+            #SystemMetricClip(),
+            SystemFrequencyClip(),
         ],
         verbose=True
     )
-    #post_processor.process(experiment_folder=random_migration_and_dvfs_experiment)
-    #post_processor.process(experiment_folder=multiple_instance_experiment)
-    post_processor.process(experiment_folder="/home/uhqql/ARDIS/results/2025-09-25_17-08-48_Experiment_with_tid_monitoring")
+    post_processor.process(experiment_folder=random_migration_and_dvfs_experiment)
+    post_processor.process(experiment_folder=multiple_instance_experiment)
+    post_processor.process(experiment_folder="/home/uhqql/ARDIS/results/2025-09-25_22-15-56_Experiment_with_tid_monitoring")

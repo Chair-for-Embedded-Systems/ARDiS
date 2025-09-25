@@ -4,6 +4,7 @@ from .app_execution_range_clip import AppExecutionClip
 from .thread_mapping_clip import ThreadMappingClip
 from .thread_execution_range_clip import ThreadExecutionClip
 from .system_metric_clip import SystemMetricClip
+from .system_frequency_clip import SystemFrequencyClip
 from .result_clip import ResultClip
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "ThreadExecutionClip", 
     "AppMultiMetricClip",
     "SystemMetricClip",
+    "SystemFrequencyClip",
     "ResultClip",
 ]
