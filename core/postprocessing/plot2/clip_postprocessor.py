@@ -2,8 +2,22 @@ import os
 import matplotlib.pyplot as plt
 from core.postprocessing.plot2.clips.result_clip import ResultClip
 from core.postprocessing.analysis2.result_wrapper import ExperimentResultWrapper
+from core.postprocessing.postprocessor import PostProcessor
 
-class ClipPostProcessor:
+class ClipPostProcessor(PostProcessor):
+    """
+    Post-processor that generates plots using specified ResultClip instances.
+    Parameters
+    ----------
+    clips: list[ResultClip]
+        List of ResultClip instances to use for generating plots.
+    output_folder: str | None
+        Folder where the generated plots will be saved. If None, the default folder (plots folder in experiment) will be used.
+    formats: set[str]
+        Set of file formats to save the plots (e.g., {"png", "pdf"}).
+    verbose: bool
+        If True, additional information will be printed during processing.
+    """
 
     def __init__(self, clips: list[ResultClip], output_folder: str | None = None, formats: set[str] = {"png"}, verbose: bool = False) -> None:
         self._clips = clips
