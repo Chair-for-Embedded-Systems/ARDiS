@@ -49,9 +49,7 @@ class ThreadMappingClip(ResultClip):
         fig, axs = plt.subplots(rows, columns, figsize=(fig_width, fig_height), layout='constrained')
         axs: list[Axes] = axs.flatten() if instance_count > 1 else [axs]
 
-        #print(thread_to_affinity_ranges)
         for ax, iid in zip(axs, instances):
-            print(f"Processing instance {iid}")
             threads = trace_provider.get_threads(iid)
             
             if not threads:
@@ -86,16 +84,16 @@ class ThreadMappingClip(ResultClip):
         thread_to_offset = {tid: i * bar_height for i, tid in enumerate(thread_ids)}
 
         # Plot bars for each thread's affinity ranges
-        for thread_id in thread_to_affinity_ranges.keys():
-            bar_color = thread_to_color[thread_id]
-            affinity_ranges = thread_to_affinity_ranges[thread_id]
-            label = f"T-{thread_id}"
+        for thread_index, tid in enumerate(sorted(thread_to_affinity_ranges.keys())):
+            bar_color = thread_to_color[tid]
+            affinity_ranges = thread_to_affinity_ranges[tid]
+            label = f"T-{thread_index}"
 
             label_once = label  # To only label the first bar for the legend
             for core, time_ranges in affinity_ranges.items():
                 for start, end in time_ranges:
                     ax.barh(
-                        y=core_to_y[core] - thread_to_offset[thread_id],
+                        y=core_to_y[core] - thread_to_offset[tid],
                         width=end - start, left=start,
                         color=bar_color, height=bar_height,
                         label=label_once
@@ -109,12 +107,12 @@ class ThreadMappingClip(ResultClip):
         ax.set_axisbelow(True)
 
         # Adjust legend based on number of threads
-        legend_columns = min(3, len(thread_ids))
+        legend_columns = min(4, len(thread_ids))
         legend_rows = (len(thread_ids) + legend_columns - 1) // legend_columns
         padding = (
-            1.15 if legend_rows <= 1 else
-            1.25 if legend_rows <= 4 else
-            1.35
+            1.25 if legend_rows <= 1 else
+            1.35 if legend_rows <= 4 else
+            1 + 0.115 * legend_rows
         )
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, padding), ncol=legend_columns)
 
