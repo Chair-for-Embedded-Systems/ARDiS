@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 from matplotlib.figure import Figure
-from core.postprocessing.analysis2.result_wrapper import ExperimentResultWrapper
+from core.postprocessing.analysis.result_wrapper import ExperimentResultWrapper
 
 class ResultClip(ABC):
 

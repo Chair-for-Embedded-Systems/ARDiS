@@ -1,4 +1,4 @@
-from core.postprocessing.analysis2.parsing.periodic_log import PeriodicLog
+from core.postprocessing.analysis.parsing.periodic_log import PeriodicLog
 from typing import Any
 
 from pandas import DataFrame, Series
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     tid_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
     
     experiment_folders = [core_experiment, pid_experiment, tid_experiment]
-    from core.postprocessing.analysis2.result_wrapper import ExperimentResultWrapper
+    from core.postprocessing.analysis.result_wrapper import ExperimentResultWrapper
     for experiment in experiment_folders:
         print(f"\nAnalyzing experiment folder: {experiment}")
         wrapper = ExperimentResultWrapper(experiment)

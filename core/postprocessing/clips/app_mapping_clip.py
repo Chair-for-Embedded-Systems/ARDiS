@@ -2,8 +2,8 @@ from collections import defaultdict
 from typing import Any
 from matplotlib import pyplot as plt
 
-from core.postprocessing.plot2.clips.result_clip import ResultClip, ExperimentResultWrapper, Figure
-from core.postprocessing.analysis2.trace_provider import TraceProvider
+from core.postprocessing.clips.result_clip import ResultClip, ExperimentResultWrapper, Figure
+from core.postprocessing.analysis.trace_provider import TraceProvider
 
 class AppMappingClip(ResultClip):
     """

@@ -1,6 +1,6 @@
 import os
-from core.postprocessing.analysis2.parsing.periodic_log.periodic_log import PeriodicLog
-from core.postprocessing.analysis2.trace_provider import TraceProvider
+from core.postprocessing.analysis.parsing.periodic_log.periodic_log import PeriodicLog
+from core.postprocessing.analysis.trace_provider import TraceProvider
 
 class ExperimentResultWrapper:
     PERIODIC_COUNTERS_LOG_FILE = "periodic_counters.log"

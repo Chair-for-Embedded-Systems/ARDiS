@@ -3,7 +3,7 @@ from matplotlib.axes import Axes
 from matplotlib import pyplot as plt
 
 from .result_clip import ResultClip, ExperimentResultWrapper, Figure
-from core.postprocessing.analysis2.trace_provider import TraceProvider 
+from core.postprocessing.analysis.trace_provider import TraceProvider 
 
 class AppExecutionClip(ResultClip):
     """

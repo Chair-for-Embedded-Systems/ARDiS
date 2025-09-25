@@ -1,7 +1,7 @@
 import os
 import matplotlib.pyplot as plt
-from core.postprocessing.plot2.clips.result_clip import ResultClip
-from core.postprocessing.analysis2.result_wrapper import ExperimentResultWrapper
+from core.postprocessing.clips.result_clip import ResultClip
+from core.postprocessing.analysis.result_wrapper import ExperimentResultWrapper
 from core.postprocessing.postprocessor import PostProcessor
 
 class ClipPostProcessor(PostProcessor):

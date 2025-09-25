@@ -11,10 +11,9 @@ from core.dvfs import *
 from core.monitoringmode import *
 from core.migration import *
 from core.policies.intel_motivational_mapping import *
-#from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
 from core.postprocessing.postprocessor import PostProcessor
-from core.postprocessing.plot2.clip_postprocessor import ClipPostProcessor
-from core.postprocessing.plot2.clips import *
+from core.postprocessing.clip_postprocessor import ClipPostProcessor
+from core.postprocessing.clips import *
 
 from benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
 from random import randrange
