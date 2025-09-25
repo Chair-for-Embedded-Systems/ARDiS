@@ -7,7 +7,15 @@ from core.postprocessing.analysis2.trace_provider import TraceProvider
 
 class AppMappingClip(ResultClip):
     """
-    Clip that visualizes the mapping of applications to CPU cores over time.
+    This clip visualizes the mapping of application instances to CPU cores over time.
+    The granularity is at the instance level, meaning each bar represents the mapping of an application instance to a CPU core.
+    Works with all monitoring modes.
+
+    Parameters
+    ----------
+    color_map: str | None
+        The name of the matplotlib colormap to use for coloring different application instances.
+        See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
 
     def __init__(self, color_map: str | None = "CMRmap") -> None:
@@ -69,6 +77,7 @@ class AppMappingClip(ResultClip):
                         )
                         label_once = None
 
+        # Decorate plot
         ax.set_yticks([core_to_y[core] for core in utilized_cores])
         ax.set_yticklabels([f"Core {core}" for core in utilized_cores])
         ax.set_xlabel("Time (s)")
@@ -77,13 +86,7 @@ class AppMappingClip(ResultClip):
 
         # Adjust legend based on number of instances
         legend_columns = min(3, len(instance_ids))
-        legend_rows = (len(instance_ids) + legend_columns - 1) // legend_columns
-        padding = (
-            1.15 if legend_rows <= 1 else
-            1.25 if legend_rows <= 4 else
-            1.35
-        )
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, padding), ncol=legend_columns)
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, 1), ncol=legend_columns)
 
         return fig
 

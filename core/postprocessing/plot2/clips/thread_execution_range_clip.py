@@ -9,7 +9,15 @@ from core.postprocessing.analysis2.trace_provider import TraceProvider
 class ThreadExecutionClip(ResultClip):
 
     """
-    Figure clip that creates a plot showing the lifetime of application threads.
+    This clip visualizes the execution ranges of threads over time.
+    Each horizontal bar represents the active execution period of a thread, with the main thread of each
+    application instance highlighted distinctly.
+
+    Parameters
+    ----------
+    color_map: str | None
+        The name of the matplotlib colormap to use for coloring different application instances.
+        See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
     def __init__(self, color_map: str | None = "CMRmap") -> None:
         self._color_map = plt.get_cmap(color_map)

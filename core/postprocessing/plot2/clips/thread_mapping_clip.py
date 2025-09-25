@@ -9,7 +9,14 @@ from core.postprocessing.analysis2.trace_provider import TraceProvider
 
 class ThreadMappingClip(ResultClip):
     """
-    Clip that visualizes the mapping of threads to CPU cores over time.
+    This clip visualizes the mapping of threads to CPU cores over time.
+    Each horizontal bar represents the mapping of a thread to a CPU core.
+
+    Parameters
+    ----------
+    color_map: str | None
+        The name of the matplotlib colormap to use for coloring different application instances.
+        See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
 
     def __init__(self, color_map: str | None = "CMRmap") -> None:
@@ -50,6 +57,7 @@ class ThreadMappingClip(ResultClip):
         axs: list[Axes] = axs.flatten() if instance_count > 1 else [axs]
 
         for ax, iid in zip(axs, instances):
+            
             threads = trace_provider.get_threads(iid)
             
             if not threads:
@@ -108,13 +116,7 @@ class ThreadMappingClip(ResultClip):
 
         # Adjust legend based on number of threads
         legend_columns = min(4, len(thread_ids))
-        legend_rows = (len(thread_ids) + legend_columns - 1) // legend_columns
-        padding = (
-            1.25 if legend_rows <= 1 else
-            1.35 if legend_rows <= 4 else
-            1 + 0.115 * legend_rows
-        )
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, padding), ncol=legend_columns)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.25), ncol=legend_columns)
 
     def _get_thread_affinity_ranges(self, trace_provider: TraceProvider) -> dict[int, dict[int, list[tuple[float, float]]]]:
         

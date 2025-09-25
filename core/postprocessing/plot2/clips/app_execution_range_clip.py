@@ -7,7 +7,16 @@ from core.postprocessing.analysis2.trace_provider import TraceProvider
 
 class AppExecutionClip(ResultClip):
     """
-    Figure clip that creates a plot showing the lifetime of applications.
+    This clip creates a horizontal bar plot showing the execution ranges of application instances.
+    The granularity is at the instance level, meaning each bar represents the lifetime of an application instance.
+    Works with all monitoring modes.
+
+    Parameters
+    ----------
+
+    color_map: str | None
+        The name of the matplotlib colormap to use for coloring different application instances.
+        See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
     def __init__(self, color_map: str | None = "CMRmap") -> None:
         self._color_map = plt.get_cmap(color_map)
@@ -33,7 +42,6 @@ class AppExecutionClip(ResultClip):
         trace_provider = result_wrapper.get_trace_provider()
         
         instance_count = len([iid for iids in trace_provider.get_app_index().values() for iid in iids])
-        
         fig_height = min(4, instance_count * 0.4)
         fig, ax = plt.subplots(figsize=(6, fig_height))
 

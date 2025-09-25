@@ -6,6 +6,15 @@ from core.postprocessing.plot2.clips.result_clip import ResultClip, ExperimentRe
 from core.postprocessing.analysis2.trace_provider import TraceProvider
 
 class SystemMetricClip(ResultClip):
+    """
+    This clip creates a grid of line plots for multiple system-level metrics.
+    Each subplot corresponds to one metric, showing its evolution over time.
+    
+    Parameters
+    ----------
+    system_metrics: set[str] | None
+        A set of system metric names to plot. If None, all available system metrics will be plotted.
+    """
     def __init__(self, system_metrics: set[str] | None = None) -> None:
         self._sys_metrics_to_plot = system_metrics
 

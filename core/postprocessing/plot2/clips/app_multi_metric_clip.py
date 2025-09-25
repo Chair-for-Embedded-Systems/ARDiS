@@ -8,7 +8,16 @@ from core.postprocessing.analysis2.trace_provider import TraceProvider
 
 class AppMultiMetricClip(ResultClip):
     """
-    Figure clip that creates a plot with multiple metrics.
+    This clip creates a grid of line plots for multiple application-level metrics.
+    Each subplot corresponds to one metric, showing its evolution over time for each application instance.
+    Works with all monitoring modes.
+    Parameters
+    ----------
+    application_events: list[str] | None
+        A list of application event names to plot. If None, all available application events will be plotted.
+    color_map: str | None
+        The name of the matplotlib colormap to use for coloring different application instances.
+        See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
 
     _style: dict[str, str|int|bool] = {
@@ -21,8 +30,8 @@ class AppMultiMetricClip(ResultClip):
         'ytick.labelsize': 10
     }
 
-    def __init__(self, metrics: list[str] | None = None, color_map: str | None = "CMRmap") -> None:
-        self._metrics = metrics
+    def __init__(self, application_events: list[str] | None = None, color_map: str | None = "CMRmap") -> None:
+        self._metrics = application_events
         self._color_map = plt.get_cmap(color_map)
 
     @property
@@ -39,14 +48,14 @@ class AppMultiMetricClip(ResultClip):
         return self._style
 
     def create_plot(self, result_wrapper: ExperimentResultWrapper) -> Figure:
-        # Implementation for creating a plot with multiple metrics
         
-        # Load data
         trace_provider = result_wrapper.get_trace_provider()
 
         if self._metrics:
+            # Keep order metrics as specified by the user
             metrics = self._metrics
         else:
+            # Sort metrics alphabetically for better readability
             metrics = sorted(trace_provider.available_app_metrics, key=lambda s: s.lower())
         
         fig = self._plot_combined_metric(trace_provider, metrics)
@@ -56,7 +65,7 @@ class AppMultiMetricClip(ResultClip):
 
     def _plot_combined_metric(self, trace_provider: TraceProvider, metrics: list[str]) -> Figure:
         
-        # Amount of instances to plot
+        # Cretate colormap for instances
         cmap = self._color_map
         instance_ids = [iid for iids in trace_provider.get_app_index().values() for iid in iids]
         instance_to_color = {iid: cmap(i / len(instance_ids)) for i, iid in enumerate(instance_ids)}
@@ -66,7 +75,7 @@ class AppMultiMetricClip(ResultClip):
             if metric not in trace_provider.available_app_metrics:
                 raise ValueError(f"Metric '{metric}' is not available in the trace provider. Available metrics: {trace_provider.available_app_metrics}")
             
-        # Calculate grid dimensions to plot all metrics
+        # Calculate grid for all subplots (max 4 columns)
         num_metrics = len(metrics)
         num_cols = 4
         if num_metrics <= num_cols:
@@ -98,10 +107,8 @@ class AppMultiMetricClip(ResultClip):
 
         handles, labels = axes[0].get_legend_handles_labels()
 
-        # Conditional placement of the legend
-        if num_rows == 1:
-            fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.2), ncol=int(len(labels)))
-        else:
-            fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.1), ncol=int(len(labels)))
-
+        # Calculate legend layout (max 4 columns)
+        legend_columns = min(4, len(labels))
+        fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 1), ncol=legend_columns)
+        
         return fig
