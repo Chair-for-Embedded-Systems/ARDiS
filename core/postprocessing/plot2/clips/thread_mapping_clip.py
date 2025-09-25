@@ -90,48 +90,52 @@ class ThreadMappingClip(ResultClip):
         utilized_cores = sorted({core for ranges in thread_to_affinity_ranges.values() for core in ranges.keys()})
         
         # Simulate placement of bars to determine max threads per core
-        occupation_until: dict[int, list[float]] = {core: [0.0] for core in utilized_cores}
+        # Iterate from oldest to newest thread and greedy place in the first available slot.
+        # A slot is available if the start time of the new bar is after the end time of the last bar in that slot.
+        # If no slot is available, create a new one
+        core_to_slot_occupation: dict[int, list[float]] = {core: [0.0] for core in utilized_cores}
         for thread_index, tid in enumerate(sorted(thread_to_affinity_ranges.keys())):
             for core in thread_to_affinity_ranges[tid].keys():
                 affinity_ranges = thread_to_affinity_ranges[tid]
                 for start, end in affinity_ranges[core]:
-                    for i in range(len(occupation_until[core])):
-                        if start >= occupation_until[core][i]:
-                            occupation_until[core][i] = end
+                    for slot_index in range(len(core_to_slot_occupation[core])):
+                        if start >= core_to_slot_occupation[core][slot_index]:
+                            core_to_slot_occupation[core][slot_index] = end
                             break
                     else:
-                        occupation_until[core].append(end)
-        max_threads_per_core = {core: len(occupation_until[core]) for core in utilized_cores}
+                        core_to_slot_occupation[core].append(end)
+        
+        # Detemine the upper bound of threads per core
+        max_threads_per_core = {core: len(core_to_slot_occupation[core]) for core in utilized_cores}
         max_threads = max(max_threads_per_core.values())
-        print(f"[ThreadMappingClip] Max threads per core: {max_threads_per_core}, overall max: {max_threads}")
 
         bar_height = 1 / max_threads
         core_to_y = {core: -i * 2  for i, core in enumerate(utilized_cores)}
 
-        occupation_until = {core: [0] for core in utilized_cores}
+        core_to_slot_occupation = {core: [0] for core in utilized_cores}
         # Plot bars for each thread's affinity ranges
         for thread_index, tid in enumerate(sorted(thread_to_affinity_ranges.keys())):
             bar_color = thread_to_color[tid]
             affinity_ranges = thread_to_affinity_ranges[tid]
             label = f"T-{thread_index}"
-
             label_once = label  # To only label the first bar for the legend
+            
             for core, time_ranges in affinity_ranges.items():
                 for start, end in time_ranges:
                     
-                    # Determine slot on the core
-                    slot_list = occupation_until[core]
-                    for i in range(len(slot_list)):
-                        if start >= slot_list[i]:
-                            occupation_until[core][i] = end
+                    # Here we are doing the same greedy placement as above to determine the offset.
+                    # However, now we actually plot the bars. This double computation is a bit redundant,
+                    # but it keeps the code simpler.
+                    slots = core_to_slot_occupation[core]
+                    for slot_index in range(len(slots)):
+                        if start >= slots[slot_index]:
+                            core_to_slot_occupation[core][slot_index] = end
                             break
                     else:
-                        i = len(slot_list)
-                        occupation_until[core].append(end)
+                        slot_index = len(slots)
+                        core_to_slot_occupation[core].append(end)
                         
-
-                    offset = i * bar_height
-
+                    offset = slot_index * bar_height
                     ax.barh(
                         y=core_to_y[core] - offset,
                         width=end - start, left=start,
@@ -140,7 +144,8 @@ class ThreadMappingClip(ResultClip):
                         align='edge'
                     )
                     label_once = None
-
+        
+        # Add dashed lines to separate cores visually
         for y_pos in core_to_y.values():
             padding = bar_height * 0.5
             upper_line = y_pos + bar_height + padding
@@ -148,10 +153,10 @@ class ThreadMappingClip(ResultClip):
             ax.axhline(y=upper_line, color='black', linestyle='--', linewidth=.75, alpha=0.2)
             ax.axhline(y=lower_line, color='black', linestyle='--', linewidth=.75, alpha=0.2)
 
+        # Axis decorations
         ax.set_yticks([core_to_y[core] + bar_height - 0.5 for core in utilized_cores])
         ax.set_yticklabels([f"Core {core}" for core in utilized_cores])
         ax.set_xlabel("Time (s)")
-        #ax.grid(axis='y', linestyle='--', alpha=0.5)
         ax.set_axisbelow(True)
 
         # Adjust legend based on number of threads
