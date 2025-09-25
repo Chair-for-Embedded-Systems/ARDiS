@@ -11,7 +11,11 @@ from core.dvfs import *
 from core.monitoringmode import *
 from core.migration import *
 from core.policies.intel_motivational_mapping import *
-from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
+#from core.postprocessing.result_plotter import BasicResultPlotter, Diagrams
+from core.postprocessing.postprocessor import PostProcessor
+from core.postprocessing.plot2.clip_postprocessor import ClipPostProcessor
+from core.postprocessing.plot2.clips import *
+
 from benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
 from random import randrange
 import os
@@ -34,6 +38,7 @@ class Experiment:
     ):   
         self.__name = name
         self.__applications = applications
+        self.__postprocessor: PostProcessor | None = None
         self.__engine = Engine(self.__name, 
                        mapping_policy=mapping_policy, 
                        scheduler=scheduler, 
@@ -57,12 +62,17 @@ class Experiment:
     def executeExperiment(self):
         try:
             self.__engine.executeWorkload(self.__applications)
+            if self.__postprocessor:
+                self.__postprocessor.process(self.getWorkingDirectory())
         except KeyboardInterrupt:
             print("Experiment interrupted by user")
             self.__engine.interrupt()
             sys.exit()
             return
     
+    def setPostProcessor(self, postprocessor: PostProcessor):
+        self.__postprocessor = postprocessor
+
     def getWorkingDirectory(self):
         return self.__engine.reporter.workdir
 
@@ -220,15 +230,16 @@ def run_example_with_result_plotting():
         ParsecApplication('splash2x.radix'),
         ParsecApplication('parsec.bodytrack')
     ])
+    exp.setPostProcessor(
+        ClipPostProcessor(
+            clips=[
+                SystemFrequencyClip(),
+                AppMultiMetricClip(["instructions"]),
+                AppMappingClip()
+            ]
+        )
+    )
     exp.executeExperiment()
-    
-    # Plots the diagrams
-    result_plt =  BasicResultPlotter(
-        experiment_folder=exp.getWorkingDirectory(),
-        diagrams=[Diagrams.FREQUENCY, Diagrams.INSTRUCTIONS, Diagrams.MAPPING], # Leave undefined for all diagrams
-        #aoi="parsec-blackscholes" # Specify an application of interest, leave undefined for all apps
-        ) 
-    result_plt.plot_results(verbose=True)
 
 def run_example_with_TID_monitoring():
     exp = Experiment(
@@ -242,12 +253,12 @@ def run_example_with_TID_monitoring():
         dvfs_policy=StaticDVFS({core: 3500 for core in range(system_cores)}),
         monitoring_mode=MonitoringMode.PERIODIC_ON_TID
     )
-    exp.executeExperiment()
-    rp = BasicResultPlotter(
-        experiment_folder=exp.getWorkingDirectory(),
-        diagrams=[Diagrams.EXECUTION_OVERVIEW, Diagrams.INSTRUCTIONS, Diagrams.MAPPING, Diagrams.FREQUENCY]
+    exp.setPostProcessor(
+        ClipPostProcessor(
+            clips=[AppExecutionClip(), AppMultiMetricClip(["instructions"]), AppMappingClip(), SystemFrequencyClip()]
+        )
     )
-    rp.plot_results(verbose=True)
+    exp.executeExperiment()
 
 def run_example_with_random_migration_and_random_dvfs():
     # Create an experiment object
@@ -269,9 +280,8 @@ def run_example_with_random_migration_and_random_dvfs():
         ],
         monitoring_mode=MonitoringMode.PERIODIC_ON_PID
     )
+    exp.setPostProcessor(ClipPostProcessor(clips=[AppMappingClip(), SystemFrequencyClip()]))
     exp.executeExperiment()
-    rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.MAPPING, Diagrams.FREQUENCY])
-    rp.plot_results(verbose=True)
 
 def run_example_with_multiple_instances():
     
@@ -292,10 +302,8 @@ def run_example_with_multiple_instances():
         dvfs_policy=StaticDVFS(core_to_freq, base_frequency_mhz=2200),
         monitoring_mode=MonitoringMode.PERIODIC_ON_PID
     )
+    exp.setPostProcessor(ClipPostProcessor(clips=[AppMappingClip(), SystemFrequencyClip()]))
     exp.executeExperiment()
-
-    rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.MAPPING, Diagrams.FREQUENCY])
-    rp.plot_results(verbose=True)
 
 def run_example_with_custom_binary():
     exp = Experiment(
@@ -323,12 +331,8 @@ def run_all_spec2006_benchmarks():
             dvfs_policy=StaticDVFS({8: 4500}, base_frequency_mhz=3800),
             monitoring_mode=MonitoringMode.PERIODIC_ON_PID
         )
+        exp.setPostProcessor(ClipPostProcessor(clips=[AppMultiMetricClip(["instructions"])]))
         exp.executeExperiment()
-        try:
-            rp = BasicResultPlotter(experiment_folder=exp.getWorkingDirectory(), diagrams=[Diagrams.INSTRUCTIONS])
-            rp.plot_results(verbose=True)
-        except Exception as e:
-            print(f"Could not plot results for SPEC benchmark {package_name}: {e}")
 
 if __name__ == "__main__":
     #run_example_with_core_monitoring()
