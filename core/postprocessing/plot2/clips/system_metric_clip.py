@@ -16,12 +16,15 @@ class SystemMetricClip(ResultClip):
         A set of system metric names to plot. If None, all available system metrics will be plotted.
     """
     def __init__(self, system_metrics: set[str] | None = None) -> None:
+        if system_metrics is not None and len(system_metrics) == 0:
+            raise ValueError("System metrics set must not be empty if provided.")
         self._sys_metrics_to_plot = system_metrics
 
     @property
     def clip_filename(self) -> str:
-        return "system_metric_plot"
-    
+        metric_part = f"_{'_'.join(sorted(self._sys_metrics_to_plot))}" if self._sys_metrics_to_plot else ""
+        return f"system_metric_plot{metric_part}"
+
     @property
     def style(self) -> dict[str, Any] | None:
         return {
@@ -42,6 +45,11 @@ class SystemMetricClip(ResultClip):
         available_metrics = trace_provider.available_sys_metrics
         metrics = self._sys_metrics_to_plot or available_metrics
 
+        # Check for unavailable metrics
+        unavailable_metrics = [m for m in metrics if m not in available_metrics]
+        if unavailable_metrics:
+            raise ValueError(f"Some specified system metrics are not available: {unavailable_metrics}. Available metrics: {available_metrics}")
+
         # Determine plot parameters
         column_count = min(4, len(available_metrics))
         row_count = (len(available_metrics) + column_count - 1) // column_count
@@ -50,25 +58,9 @@ class SystemMetricClip(ResultClip):
         fig, axes = plt.subplots(figsize=fig_size, ncols=column_count, nrows=row_count, constrained_layout=True)
         axs: list[Axes] = axes.flatten() if len(available_metrics) > 1 else [axes]
 
-        # Warn about unavailable metrics
-        unavailable_metrics = [m for m in metrics if m not in available_metrics]
-        if unavailable_metrics:
-            print(f"[SystemMetricClip] Warning: The following system metrics are not available: {', '.join(unavailable_metrics)}")
-            print(f"[SystemMetricClip] Available system metrics: {', '.join(available_metrics)}")
-
         # Plot each metric
         for i, metric in enumerate(sorted(metrics)):
             ax = axs[i]
-            
-            # Add placeholder if metric not available
-            if metric not in available_metrics:
-                ax.text(
-                    x=0.5, y=0.5, 
-                    s=f"Metric '{metric}' not available.\n\nAvailable metrics:\n" + "\n".join(available_metrics),
-                    ha='center', va='center', wrap=True
-                )
-                continue
-            
             x, y = trace_provider.get_sys_metric_trace(metric)
             ax.plot(x, y, label=metric)
             ax.set_xlabel("Time (s)")

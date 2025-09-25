@@ -15,16 +15,22 @@ class ThreadExecutionClip(ResultClip):
 
     Parameters
     ----------
-    color_map: str | None
+    iids: set[int] | None
+        A set of instance IDs to include in the plot. If None, all instances are included.
+    color_map: str
         The name of the matplotlib colormap to use for coloring different application instances.
         See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
-    def __init__(self, color_map: str | None = "CMRmap") -> None:
+    def __init__(self, iids: set[int] | None = None, color_map: str = "CMRmap") -> None:
+        if iids is not None and len(iids) == 0:
+            raise ValueError("If provided, the set of instance IDs must not be empty.")
         self._color_map = plt.get_cmap(color_map)
+        self._iids = iids
 
     @property
     def clip_filename(self) -> str:
-        return "thread_execution_plot"
+        iid_part = "_iids_" + "_".join(map(str, sorted(self._iids))) if self._iids else ""
+        return f"thread_execution_plot{iid_part}"
     
     @property
     def style(self) -> dict[str, Any] | None:
@@ -67,6 +73,10 @@ class ThreadExecutionClip(ResultClip):
 
         for app_id, instance_ids in (trace_provider.get_app_index().items()):
             for iid in instance_ids:
+                # Skip instance if not in the selected set
+                if self._iids is not None and iid not in self._iids:
+                    continue
+
                 threads = trace_provider.get_threads(iid)
 
                 color_main_thread = instance_to_color[iid]

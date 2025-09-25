@@ -32,7 +32,8 @@ class ThreadMappingClip(ResultClip):
 
     @property
     def clip_filename(self) -> str:
-        return "thread_mapping_plot"
+        iid_part = "_iids_" + "_".join(map(str, sorted(self._iids))) if self._iids else ""
+        return f"thread_mapping_plot{iid_part}"
     
     @property
     def style (self) -> dict[str, Any] | None:

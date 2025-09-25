@@ -13,12 +13,12 @@ class AppMappingClip(ResultClip):
 
     Parameters
     ----------
-    color_map: str | None
+    color_map: str
         The name of the matplotlib colormap to use for coloring different application instances.
         See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
 
-    def __init__(self, color_map: str | None = "CMRmap") -> None:
+    def __init__(self, color_map: str = "CMRmap") -> None:
         self._color_map = plt.get_cmap(color_map)
 
     @property

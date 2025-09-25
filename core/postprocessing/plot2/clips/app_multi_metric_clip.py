@@ -11,11 +11,14 @@ class AppMultiMetricClip(ResultClip):
     This clip creates a grid of line plots for multiple application-level metrics.
     Each subplot corresponds to one metric, showing its evolution over time for each application instance.
     Works with all monitoring modes.
+    
     Parameters
     ----------
     application_events: list[str] | None
         A list of application event names to plot. If None, all available application events will be plotted.
-    color_map: str | None
+    iids: set[int] | None
+        A set of instance IDs to include in the plot. If None, all instances are included.
+    color_map: str
         The name of the matplotlib colormap to use for coloring different application instances.
         See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
@@ -30,19 +33,25 @@ class AppMultiMetricClip(ResultClip):
         'ytick.labelsize': 10
     }
 
-    def __init__(self, application_events: list[str] | None = None, color_map: str | None = "CMRmap") -> None:
+    def __init__(self, application_events: list[str] | None = None, iids: set[int] | None = None, color_map: str = "CMRmap") -> None:
+        
+        if application_events is not None and len(application_events) == 0:
+            raise ValueError("Application events list must not be empty if provided.")
+        
+        if iids is not None and len(iids) == 0:
+            raise ValueError("Instance IDs set must not be empty if provided.")
+        
         self._metrics = application_events
         self._color_map = plt.get_cmap(color_map)
+        self._iids = iids
 
     @property
     def clip_filename(self) -> str:
-        # Generate a filename based on the selected metrics
-        if self._metrics:
-            metric_part = "_".join(self._metrics)
-            return f"multi_metric_plot_{metric_part}"
-        else:
-            return "multi_metric_plot"
-    
+        # Generate a filename based on the selected metrics and instance IDs
+        iid_part = "_iids_" + "_".join(map(str, sorted(self._iids))) if self._iids else ""
+        metric_part = f"_{'_'.join(self._metrics)}" if self._metrics else ""
+        return f"app_multi_metric_plot{iid_part}{metric_part}"
+        
     @property
     def style(self) -> dict[str, Any] | None:
         return self._style
