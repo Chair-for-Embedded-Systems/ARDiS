@@ -17,17 +17,19 @@ class ClipPostProcessor:
 
         # Create output folder if it doesn't exist
         if self._output_folder is None:
-            self._output_folder = os.path.join(experiment_folder, "plots")
-        os.makedirs(self._output_folder, exist_ok=True)
+            output_folder = os.path.join(experiment_folder, "plots")
+        else:
+            output_folder = self._output_folder
+        os.makedirs(output_folder, exist_ok=True)
 
         for clip in self._clips:
             try:
                 with plt.style.context(clip.style or {}):
                     fig = clip.create_plot(result_wrapper)
-                    output_file = os.path.join(self._output_folder, f"{clip.clip_filename}.png")
+                    output_file = os.path.join(output_folder, f"{clip.clip_filename}.png")
                     # Save in all specified formats
                     for fmt in self._formats:
-                        output_file = os.path.join(self._output_folder, f"{clip.clip_filename}.{fmt}")
+                        output_file = os.path.join(output_folder, f"{clip.clip_filename}.{fmt}")
                         fig.savefig(output_file, bbox_inches='tight', dpi=300)
                 
                 if self._verbose:
@@ -47,7 +49,7 @@ if __name__ == "__main__":
     multi_threaded_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
 
     spec_tid_experiment= "/home/uhqql/ARDIS/results/2025-09-24_22-18-25_Simple_Experiment_with_Specific_Applications"
-    random_migration_and_dvfs_experiment = "/home/uhqql/ARDIS/results/2025-09-25_10-33-29_Simple_Experiment_with_random_dvfs_and_app_migration"
+    random_migration_and_dvfs_experiment = "/home/uhqql/ARDIS/results/2025-09-25_12-09-39_Simple_Experiment_with_random_dvfs_and_app_migration"
 
     post_processor = ClipPostProcessor(
         clips=[
@@ -60,5 +62,5 @@ if __name__ == "__main__":
         verbose=True
     )
     post_processor.process(experiment_folder=random_migration_and_dvfs_experiment)
-    #post_processor.process(experiment_folder=multiple_instance_experiment)
-    #post_processor.process(experiment_folder=multi_threaded_experiment)
+    post_processor.process(experiment_folder=multiple_instance_experiment)
+    post_processor.process(experiment_folder=multi_threaded_experiment)
