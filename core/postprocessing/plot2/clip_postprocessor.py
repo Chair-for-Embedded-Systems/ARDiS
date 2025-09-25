@@ -14,12 +14,9 @@ class ClipPostProcessor:
     def process(self, experiment_folder: str) -> None:
         # Get experiment wrapper
         result_wrapper = ExperimentResultWrapper(experiment_folder)
-
-        # Create output folder if it doesn't exist
-        if self._output_folder is None:
-            output_folder = os.path.join(experiment_folder, "plots")
-        else:
-            output_folder = self._output_folder
+        
+        # Create output folder if not exists
+        output_folder = self._output_folder or os.path.join(experiment_folder, "plots")
         os.makedirs(output_folder, exist_ok=True)
 
         for clip in self._clips:
@@ -33,17 +30,14 @@ class ClipPostProcessor:
                         fig.savefig(output_file, bbox_inches='tight', dpi=300)
                 
                 if self._verbose:
-                    print(f"Saved clip to: {output_file}")
+                    print(f"[Clip-Postprocessor] Saved clip to: {output_file}")
                 plt.close(fig)
             except Exception as e:
-                print(f"Failed to create clip '{clip.clip_filename}': {e}")
+                print(f"[Clip-Postprocessor] Failed to create clip '{clip.clip_filename}': {e}")
 
         
 if __name__ == "__main__":
-    from core.postprocessing.plot2.clips.multi_metric_clip import MultiMetricClip
-    from core.postprocessing.plot2.clips.execution_range_clips import AppLifeTimeClip, ThreadExecutionClip
-    from core.postprocessing.plot2.clips.app_mapping_clip import AppMappingClip
-    from core.postprocessing.plot2.clips.thread_mapping_clip import ThreadMappingClip
+    from core.postprocessing.plot2.clips import *
     
     mixexperiment = "/home/uhqql/ARDIS/results/2025-09-24_16-13-54_Simple_Experiment_with_Specific_Applications"
     multiple_instance_experiment = "/home/uhqql/ARDIS/results/2025-09-24_15-16-33_Experiment_with_multiple_instances"
@@ -55,15 +49,16 @@ if __name__ == "__main__":
 
     post_processor = ClipPostProcessor(
         clips=[
-            #MultiMetricClip(["instructions"]),
+            #MultiMetricClip(),
             #MultiMetricClip(["instructions", "cycles"]),
             #AppLifeTimeClip(),
             #ThreadExecutionClip(),
-            AppMappingClip(),
-            ThreadMappingClip()
+            #AppMappingClip(),
+            #ThreadMappingClip()
+            SystemMetricClip(),
         ],
         verbose=True
     )
     #post_processor.process(experiment_folder=random_migration_and_dvfs_experiment)
     #post_processor.process(experiment_folder=multiple_instance_experiment)
-    post_processor.process(experiment_folder=multi_threaded_experiment2)
+    post_processor.process(experiment_folder="/home/uhqql/ARDIS/results/2025-09-25_17-08-48_Experiment_with_tid_monitoring")
