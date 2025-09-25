@@ -9,18 +9,26 @@ from core.postprocessing.analysis2.trace_provider import TraceProvider
 
 class ThreadMappingClip(ResultClip):
     """
-    This clip visualizes the mapping of threads to CPU cores over time.
-    Each horizontal bar represents the mapping of a thread to a CPU core.
+    This clip visualizes the mapping of threads to CPU cores for an instance over time.
+    Every horizontal bar represents the mapping of a thread to a CPU core.
+    Each individual subplot represents one application instance.
 
     Parameters
     ----------
-    color_map: str | None
+    iids: set[int] | None
+        A set of instance IDs to include in the plot. If None, all instances are included
+    color_map: str
         The name of the matplotlib colormap to use for coloring different application instances.
         See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
     """
 
-    def __init__(self, color_map: str | None = "CMRmap") -> None:
+    def __init__(self, iids: set[int] | None = None, color_map: str = "CMRmap") -> None:
+        
+        if iids is not None and len(iids) == 0:
+            raise ValueError("If provided, the set of instance IDs must not be empty.")
+        
         self._color_map = plt.get_cmap(color_map)
+        self._iids = iids
 
     @property
     def clip_filename(self) -> str:
@@ -43,7 +51,16 @@ class ThreadMappingClip(ResultClip):
         trace_provider = result_wrapper.get_trace_provider()
         
         instances = trace_provider.get_instance_ids()
-        instance_count = len(instances)
+
+        if len(instances) == 0:
+            raise ValueError("No instances found in the trace.")
+
+        if self._iids is not None:
+            instances = instances.intersection(self._iids)
+            if len(instances) == 0:
+                raise ValueError(f"No instances found for the specified instance IDs. Available instances: {trace_provider.get_instance_ids()}")
+            
+        instance_count = len(instances)        
         thread_to_affinity_ranges = self._get_thread_affinity_ranges(trace_provider)
         
         # Determine amount of coluns and rows
