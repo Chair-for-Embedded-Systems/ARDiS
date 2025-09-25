@@ -12,8 +12,10 @@ class ResultClip(ABC):
     @property
     @abstractmethod
     def clip_filename(self) -> str:
+        """Filename (without extension) for saving the clip."""
         raise NotImplementedError()
 
     @property
     def style(self) -> dict[str, Any] | None:
+        """Optional style dictionary for matplotlib styling."""
         return None
