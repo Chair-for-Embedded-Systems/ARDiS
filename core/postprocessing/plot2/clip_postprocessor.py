@@ -40,21 +40,25 @@ class ClipPostProcessor:
 if __name__ == "__main__":
     from core.postprocessing.plot2.clips.multi_metric_clip import MultiMetricClip
     from core.postprocessing.plot2.clips.execution_range_clips import AppLifeTimeClip, ThreadExecutionClip
+    from core.postprocessing.plot2.clips.app_mapping_clip import AppMappingClip
+    
     mixexperiment = "/home/uhqql/ARDIS/results/2025-09-24_16-13-54_Simple_Experiment_with_Specific_Applications"
     multiple_instance_experiment = "/home/uhqql/ARDIS/results/2025-09-24_15-16-33_Experiment_with_multiple_instances"
     multi_threaded_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
 
     spec_tid_experiment= "/home/uhqql/ARDIS/results/2025-09-24_22-18-25_Simple_Experiment_with_Specific_Applications"
+    random_migration_and_dvfs_experiment = "/home/uhqql/ARDIS/results/2025-09-25_10-33-29_Simple_Experiment_with_random_dvfs_and_app_migration"
 
     post_processor = ClipPostProcessor(
         clips=[
-            MultiMetricClip(["instructions"]),
+            #MultiMetricClip(["instructions"]),
             #MultiMetricClip(["instructions", "cycles"]),
-            AppLifeTimeClip(),
-            ThreadExecutionClip()
+            #AppLifeTimeClip(),
+            #ThreadExecutionClip(),
+            AppMappingClip()
         ],
         verbose=True
     )
-    post_processor.process(experiment_folder=spec_tid_experiment)
+    post_processor.process(experiment_folder=random_migration_and_dvfs_experiment)
     #post_processor.process(experiment_folder=multiple_instance_experiment)
     #post_processor.process(experiment_folder=multi_threaded_experiment)
