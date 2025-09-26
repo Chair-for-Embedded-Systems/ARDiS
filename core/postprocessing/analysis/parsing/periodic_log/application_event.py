@@ -53,7 +53,12 @@ class ApplicationEvent:
             elif event_name == "TID":
                 tid = int(event_value)
             elif event_name == "frequency":
-                frequency_mhz = float(event_value)
+                # There is a configuration in which the frequency field has the value <not available> 
+                # (PID_MONITORING, with an application that is assigned to multiple cores)
+                try:
+                    frequency_mhz = float(event_value)
+                except ValueError:
+                    frequency_mhz = None
             else:
                 # Assumes, that perf events are typically integers
                 perf_events[event_name] = int(event_value)
