@@ -13,6 +13,7 @@ from core.migration import *
 from core.policies.intel_motivational_mapping import *
 from core.postprocessing.postprocessor import PostProcessor
 from core.postprocessing.clip_postprocessor import ClipPostProcessor
+from core.postprocessing.simple_clip_postprocessor import SimpleClipPostProcessor, Clips
 from core.postprocessing.clips import *
 
 from benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
@@ -33,11 +34,11 @@ class Experiment:
         dvfs_policy: DVFSPolicy | None = None, # No default to avoid multiple instances of a frequency manager
         migration_policy: MigrationPolicy | None = None, 
         monitoring_mode: MonitoringMode = MonitoringMode.PERIODIC_ON_CORE,
-        results_folder: str = RESULTS_FOLDER
+        results_folder: str = RESULTS_FOLDER,
+        postprocessor: PostProcessor | None = None,
     ):   
         self.__name = name
         self.__applications = applications
-        self.__postprocessor: PostProcessor | None = None
         self.__engine = Engine(self.__name, 
                        mapping_policy=mapping_policy, 
                        scheduler=scheduler, 
@@ -45,6 +46,7 @@ class Experiment:
                        migration_policy=migration_policy, 
                        monitoring_mode=monitoring_mode,
                        results_folder=results_folder)
+        self.__postprocessor = postprocessor
 
     # Generate a random list of N unique applications to execute
     def generateRandomApps(self, N_apps):
@@ -70,6 +72,10 @@ class Experiment:
             return
     
     def setPostProcessor(self, postprocessor: PostProcessor):
+        """
+        Set a postprocessor to be used after the experiment is finished. 
+        If a postprocessor was already set, it will be replaced.
+        """
         self.__postprocessor = postprocessor
 
     def getWorkingDirectory(self):
@@ -219,23 +225,22 @@ def run_parsec_characterization_experiments():
 def run_example_with_result_plotting():
     
     exp = Experiment("Experiment with result plotting", 
-                     mapping_policy=ExplicitMapping.from_list([3, 6, 19]),
+                     mapping_policy=ExplicitMapping.from_list([3, 6, 17, 21]),
                      scheduler=ConsecutiveScheduler(0),
                      dvfs_policy=StaticDVFS({core: 3000 for core in range(system_cores)}),
                      monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
     
     exp.setApplications([
         ParsecApplication('parsec.blackscholes'),
+        ParsecApplication('parsec.bodytrack'),
         ParsecApplication('splash2x.radix'),
-        ParsecApplication('parsec.bodytrack')
+        ParsecApplication('splash2x.radiosity'),
+        
     ])
     exp.setPostProcessor(
-        ClipPostProcessor(
-            clips=[
-                SystemFrequencyClip(),
-                AppMultiMetricClip(["instructions"]),
-                AppMappingClip()
-            ]
+        SimpleClipPostProcessor(
+            clips=[Clips.APP_METRICS_ALL, Clips.APP_EXECUTION_OVERVIEW, Clips.SYSTEM_CORE_FREQUENCY],
+            verbose=True,
         )
     )
     exp.executeExperiment()
@@ -245,16 +250,18 @@ def run_example_with_TID_monitoring():
         name="Experiment_with_tid_monitoring",
         applications=[
             ParsecApplication("parsec.dedup", 4),
-            ParsecApplication("splash2x.radix", 1),
         ],
-        mapping_policy=ExplicitMapping([{2, 4, 6, 8}, {16}]),
+        mapping_policy=ExplicitMapping([{2, 4, 6, 8}]),
         scheduler=ConsecutiveScheduler(0),
         dvfs_policy=StaticDVFS({core: 3500 for core in range(system_cores)}),
-        monitoring_mode=MonitoringMode.PERIODIC_ON_TID
-    )
-    exp.setPostProcessor(
-        ClipPostProcessor(
-            clips=[AppExecutionClip(), AppMultiMetricClip(["instructions"]), AppMappingClip(), SystemFrequencyClip()]
+        monitoring_mode=MonitoringMode.PERIODIC_ON_TID,
+        postprocessor=SimpleClipPostProcessor(
+            clips=[
+                Clips.APP_METRICS_ALL,
+                Clips.THREAD_EXECUTION_OVERVIEW, Clips.THREAD_MAPPING,
+                Clips.SYSTEM_METRICS_ALL
+            ],
+            verbose=True,
         )
     )
     exp.executeExperiment()
@@ -263,7 +270,7 @@ def run_example_with_random_migration_and_random_dvfs():
     # Create an experiment object
     exp = Experiment(
         name="Simple Experiment with random dvfs and app migration", 
-        mapping_policy=ExplicitMapping.from_list([6, 16]),
+        mapping_policy=ExplicitMapping.from_list([2, 16]),
         scheduler=ConsecutiveScheduler(delay=0),
         migration_policy=MigrationForTraining(
             migrate_within_cluster=True,
@@ -277,9 +284,23 @@ def run_example_with_random_migration_and_random_dvfs():
             ParsecApplication('parsec.blackscholes'),
             ParsecApplication('parsec.dedup')
         ],
-        monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+        monitoring_mode=MonitoringMode.PERIODIC_ON_PID,
     )
-    exp.setPostProcessor(ClipPostProcessor(clips=[AppMappingClip(), SystemFrequencyClip()]))
+    # The default FrequencyClip uses line plots to visualize frequencies, which can be misleading if the data is sparse
+    # (e.g due to frequent migrations). Here we want to use a scatter plot instead.
+    # Therefore we use ClipPostProcessor instead of SimpleClipPostProcessor to customize the clip.
+    exp.setPostProcessor(ClipPostProcessor(
+        clips=[
+            AppMappingClip(),
+            SystemFrequencyClip(
+                use_scatter=True,  # Use scatter plot instead of line plot
+                cores={2, 4, 16, 18}, # Only show frequencies for these cores
+                skip_unavailable_cores=True # Disable check, since a bit of randomness is involved
+                )
+            ],
+        verbose=True
+    ))
+
     exp.executeExperiment()
 
 def run_example_with_multiple_instances():
@@ -299,9 +320,12 @@ def run_example_with_multiple_instances():
         applications=list(apps),
         mapping_policy=ExplicitMapping.from_list(list(cores)),
         dvfs_policy=StaticDVFS(core_to_freq, base_frequency_mhz=2200),
-        monitoring_mode=MonitoringMode.PERIODIC_ON_PID
+        monitoring_mode=MonitoringMode.PERIODIC_ON_PID,
+        postprocessor=SimpleClipPostProcessor(
+            clips=[Clips.APP_MAPPING, Clips.SYSTEM_CORE_FREQUENCY],
+            verbose=True
+        )
     )
-    exp.setPostProcessor(ClipPostProcessor(clips=[AppMappingClip(), SystemFrequencyClip()]))
     exp.executeExperiment()
 
 def run_example_with_custom_binary():
@@ -340,7 +364,7 @@ if __name__ == "__main__":
     #run_parsec_characterization_experiments()
     #run_example_with_result_plotting()
     #run_example_with_TID_monitoring()
-    #run_example_with_random_migration_and_random_dvfs()
-    run_example_with_multiple_instances()
-    run_example_with_custom_binary()
+    run_example_with_random_migration_and_random_dvfs()
+    #run_example_with_multiple_instances()
+    #run_example_with_custom_binary()
     #run_all_spec2006_benchmarks()
