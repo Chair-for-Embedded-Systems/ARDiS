@@ -5,7 +5,7 @@ from .thread_mapping_clip import ThreadMappingClip
 from .thread_execution_range_clip import ThreadExecutionClip
 from .system_metric_clip import SystemMetricClip
 from .system_frequency_clip import SystemFrequencyClip
-from .result_clip import ResultClip
+from .result_clip import ResultClip, ResultClipUtils
 
 __all__ = [
     "AppMappingClip",
@@ -16,4 +16,5 @@ __all__ = [
     "SystemMetricClip",
     "SystemFrequencyClip",
     "ResultClip",
+    "ResultClipUtils",
 ]

@@ -2,7 +2,7 @@ from typing import Any
 from matplotlib.axes import Axes 
 from matplotlib import pyplot as plt
 
-from .result_clip import ResultClip, ExperimentResultWrapper, Figure
+from .result_clip import ResultClip, ExperimentResultWrapper, Figure, ResultClipUtils
 from core.postprocessing.analysis.trace_provider import TraceProvider 
 
 class AppExecutionClip(ResultClip):
@@ -60,14 +60,15 @@ class AppExecutionClip(ResultClip):
         bar_position = 0
         x_ticks: list[int] = []
         x_labels: list[str] = []
-        for app_id, instance_ids in trace_provider.get_app_index().items():
+        for app_name, instance_ids in trace_provider.get_app_index().items():
+            short_app_name = ResultClipUtils.strip_application_label(app_name)
             for iid in instance_ids:
                 start, end = trace_provider.get_execution_range(instance_id=iid)
                 if not start and not end:
                     continue
 
                 start_time, end_time = start, end
-                app_label = f"{app_id} ({iid})" if len(instance_ids) > 1 else app_id
+                app_label = f"{short_app_name} ({iid})" if len(instance_ids) > 1 else short_app_name
                 x_ticks.append(bar_position)
                 x_labels.append(app_label)
                 ax.barh(

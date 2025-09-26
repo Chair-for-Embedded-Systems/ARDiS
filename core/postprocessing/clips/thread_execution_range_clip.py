@@ -2,7 +2,7 @@ from typing import Any
 from matplotlib.axes import Axes 
 from matplotlib import pyplot as plt
 
-from .result_clip import ResultClip, ExperimentResultWrapper, Figure
+from .result_clip import ResultClip, ExperimentResultWrapper, Figure, ResultClipUtils
 from core.postprocessing.analysis.trace_provider import TraceProvider 
 
 
@@ -71,7 +71,8 @@ class ThreadExecutionClip(ResultClip):
         y_ticks: list[int] = []
         y_labels: list[str] = []
 
-        for app_id, instance_ids in (trace_provider.get_app_index().items()):
+        for app_name, instance_ids in (trace_provider.get_app_index().items()):
+            short_app_name = ResultClipUtils.strip_application_label(app_name)
             for iid in instance_ids:
                 # Skip instance if not in the selected set
                 if self._iids is not None and iid not in self._iids:
@@ -89,7 +90,7 @@ class ThreadExecutionClip(ResultClip):
                     start_time, end_time = trace_provider.get_execution_range(instance_id=iid, thread_id=tid)
                     
                     is_main_thread = (thread_index == 0)
-                    app_label = f"{app_id}" if is_main_thread else f"t-{thread_index}"
+                    app_label = f"{short_app_name}" if is_main_thread else f"t-{thread_index}"
 
                     y_ticks.append(bar_position)
                     y_labels.append(app_label)
@@ -108,7 +109,7 @@ class ThreadExecutionClip(ResultClip):
                 if len(threads) == 0:
                     # No threads found, just plot the instance
                     start_time, end_time = trace_provider.get_execution_range(instance_id=iid)
-                    app_label = f"{app_id} ({iid})" if len(instance_ids) > 1 else app_id
+                    app_label = f"{app_name} ({iid})" if len(instance_ids) > 1 else app_name
                     y_ticks.append(bar_position)
                     y_labels.append(app_label)
                     ax.barh(

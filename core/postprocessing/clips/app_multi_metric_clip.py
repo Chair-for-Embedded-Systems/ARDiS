@@ -2,7 +2,7 @@ from typing import Any
 from matplotlib.axes import Axes 
 from matplotlib import pyplot as plt
 
-from .result_clip import ResultClip, ExperimentResultWrapper, Figure
+from .result_clip import ResultClip, ExperimentResultWrapper, Figure, ResultClipUtils
 from core.postprocessing.analysis.trace_provider import TraceProvider 
 
 
@@ -105,8 +105,9 @@ class AppMultiMetricClip(ResultClip):
             # Capitalize first letter and keep the rest as is
             fancy_metric = metric[0].upper() + metric[1:]
             for app_name, instance_ids in trace_provider.get_app_index().items():
+                short_app_name = ResultClipUtils.strip_application_label(app_name)
                 for iid in instance_ids:
-                    app_label = f"{app_name} ({iid})" if len(instance_ids) > 1 else app_name
+                    app_label = f"{short_app_name} ({iid})" if len(instance_ids) > 1 else short_app_name
                     (x, y) = trace_provider.get_app_metric_trace(metric=metric, instance_id=iid)
                     ax.plot(x, y, label=app_label, color=instance_to_color[iid])
                     ax.set_xlabel(xlabel="Time (s)")

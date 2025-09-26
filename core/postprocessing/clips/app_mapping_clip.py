@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Any
 from matplotlib import pyplot as plt
 
-from core.postprocessing.clips.result_clip import ResultClip, ExperimentResultWrapper, Figure
+from core.postprocessing.clips.result_clip import ResultClip, ExperimentResultWrapper, Figure, ResultClipUtils
 from core.postprocessing.analysis.trace_provider import TraceProvider
 
 class AppMappingClip(ResultClip):
@@ -58,14 +58,14 @@ class AppMappingClip(ResultClip):
 
         # Plot bars for each instance's affinity ranges
         for app_name, instances in trace_provider.get_app_index().items():
-            app_name = app_name.replace("splash2x.", "").replace("parsec.","").replace("-1","")
+            short_app_name = ResultClipUtils.strip_application_label(app_name)
             for iid in instances:
                 if iid not in instance_to_affinity_ranges:
                     continue
                 
                 affinity_ranges = instance_to_affinity_ranges[iid]
                 bar_color = instance_to_color[iid]
-                label = f"{app_name} ({iid})" if len(instances) > 1 else app_name
+                label = f"{short_app_name} ({iid})" if len(instances) > 1 else short_app_name
 
                 label_once = label  # To only label the first bar for the legend
                 for core, time_ranges in affinity_ranges.items():

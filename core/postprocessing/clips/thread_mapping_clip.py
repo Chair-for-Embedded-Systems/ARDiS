@@ -4,7 +4,7 @@ from typing import Any
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
-from core.postprocessing.clips.result_clip import ResultClip, ExperimentResultWrapper, Figure
+from core.postprocessing.clips.result_clip import ResultClip, ExperimentResultWrapper, Figure, ResultClipUtils
 from core.postprocessing.analysis.trace_provider import TraceProvider
 
 class ThreadMappingClip(ResultClip):
@@ -75,6 +75,7 @@ class ThreadMappingClip(ResultClip):
         axs: list[Axes] = axs.flatten() if instance_count > 1 else [axs]
         axis_counter = 0
         for app_name, instance_ids in trace_provider.get_app_index().items():
+            short_app_name = ResultClipUtils.strip_application_label(app_name)
             for iid in instance_ids:
                 if iid not in instances:
                     continue
@@ -89,7 +90,7 @@ class ThreadMappingClip(ResultClip):
                 relevant_threads = {tid: ranges for tid, ranges in thread_to_affinity_ranges.items() if tid in instance_threads}
 
                 self._plot_thread_mapping(ax, relevant_threads)
-                title = f"{app_name} ({iid})" if len(instance_ids) > 1 else f"{app_name}"
+                title = f"{short_app_name} ({iid})" if len(instance_ids) > 1 else f"{short_app_name}"
                 ax.set_title(title)
                 axis_counter += 1
             
