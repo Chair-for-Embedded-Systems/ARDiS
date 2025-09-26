@@ -3,9 +3,11 @@ from typing import Any
 
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.colors import Colormap
 
 from core.postprocessing.clips.result_clip import ResultClip, ExperimentResultWrapper, Figure, ResultClipUtils
 from core.postprocessing.analysis.trace_provider import TraceProvider
+from core.postprocessing.clips.app_mapping_clip import AppMappingClip
 
 class ThreadMappingClip(ResultClip):
     """
@@ -28,11 +30,11 @@ class ThreadMappingClip(ResultClip):
             raise ValueError("If provided, the set of instance IDs must not be empty.")
         
         self._color_map = plt.get_cmap(color_map)
-        self._iids = iids
+        self._selected_iids = iids
 
     @property
     def clip_filename(self) -> str:
-        iid_part = "_iids_" + "_".join(map(str, sorted(self._iids))) if self._iids else ""
+        iid_part = "_iids_" + "_".join(map(str, sorted(self._selected_iids))) if self._selected_iids else ""
         return f"thread_mapping_plot{iid_part}"
     
     @property
@@ -51,59 +53,71 @@ class ThreadMappingClip(ResultClip):
     def create_plot(self, result_wrapper: ExperimentResultWrapper) -> Figure:
         trace_provider = result_wrapper.get_trace_provider()
         
-        instances = trace_provider.get_instance_ids()
+        # Check if experiment contains valid data
+        if len(trace_provider.get_thread_ids()) == 0:
+            raise ValueError(
+                "No threads found in the trace data. "
+                "Ensure that the monitoring mode includes thread information."
+            )
 
-        if len(instances) == 0:
-            raise ValueError("No instances found in the trace.")
+        # Determine which instances should be plotted
+        available_iids = trace_provider.get_instance_ids()
+        if self._selected_iids is not None:
+            instance_to_plot = available_iids.intersection(self._selected_iids)
+            if instance_to_plot != self._selected_iids:
+                raise ValueError(
+                    f"Some specified instance IDs are not available: "
+                    f"{self._selected_iids - available_iids}. "
+                    f"Available instances: {available_iids}"
+                )
+        else:
+            instance_to_plot = available_iids
 
-        if self._iids is not None:
-            instances = instances.intersection(self._iids)
-            if len(instances) == 0:
-                raise ValueError(f"No instances found for the specified instance IDs. Available instances: {trace_provider.get_instance_ids()}")
-            
-        instance_count = len(instances)        
         thread_to_affinity_ranges = self._get_thread_affinity_ranges(trace_provider)
         
-        # Determine amount of coluns and rows
-        columns = min(3, instance_count)
-        rows = (instance_count + columns - 1) // columns
+        # Determine amount of columns and rows for the subplot grid
+        instance_count = len(instance_to_plot)
+        subplot_columns = min(3, instance_count)
+        subplot_rows = (instance_count + subplot_columns - 1) // subplot_columns
 
         # Create figure
-        fig_width = 8*columns
-        fig_height = max(5, rows * 3)
-        fig, axs = plt.subplots(rows, columns, figsize=(fig_width, fig_height), layout='constrained')
-        axs: list[Axes] = axs.flatten() if instance_count > 1 else [axs]
-        axis_counter = 0
+        fig, axs = plt.subplots(  # type: ignore
+            figsize=(8 * subplot_columns, max(5, subplot_rows * 3)), 
+            nrows=subplot_rows, ncols=subplot_columns, layout='constrained'
+        )
+        axs: list[Axes] = axs.flatten() if instance_count > 1 else [axs]  # type: ignore
+
+        axis_iter = iter(axs)
         for app_name, instance_ids in trace_provider.get_app_index().items():
             short_app_name = ResultClipUtils.strip_application_label(app_name)
             for iid in instance_ids:
-                if iid not in instances:
+                # Skip instance that are not selected
+                if iid not in instance_to_plot:
                     continue
-                instance_threads = trace_provider.get_threads(iid)
-                ax = axs[axis_counter]
-
-                if len(instance_threads) == 0:
-                    ax.text(0.5, 0.5, f"No threads for instance {iid}", ha='center', va='center')
-                    ax.set_title(f"Instance {iid}")
-                    continue
-            
-                relevant_threads = {tid: ranges for tid, ranges in thread_to_affinity_ranges.items() if tid in instance_threads}
-
-                self._plot_thread_mapping(ax, relevant_threads)
-                title = f"{short_app_name} ({iid})" if len(instance_ids) > 1 else f"{short_app_name}"
-                ax.set_title(title)
-                axis_counter += 1
+                
+                # Select threads that belong to this instance
+                relevant_threads = {
+                    tid: ranges for tid, ranges in thread_to_affinity_ranges.items() 
+                    if tid in trace_provider.get_threads(iid)
+                }
+                # Plot thread mapping for this instance
+                ax: Axes = next(axis_iter)
+                self._plot_thread_mapping(
+                    ax=ax,
+                    thread_to_affinity_ranges=relevant_threads
+                    ,cmap=self._color_map)
+                ax.set_title(f"{short_app_name} ({iid})" if len(instance_ids) > 1 else f"{short_app_name}")
             
         return fig
     
+    @staticmethod
     def _plot_thread_mapping(
-        self,
         ax: Axes,
-        thread_to_affinity_ranges: dict[int, dict[int, list[tuple[float, float]]]]
+        thread_to_affinity_ranges: dict[int, dict[int, list[tuple[float, float]]]],
+        cmap: Colormap
     ) -> None:
         
         # Calculate colors and positions
-        cmap = self._color_map
         thread_ids = sorted(thread_to_affinity_ranges.keys())
         thread_to_color = {tid: cmap(i / len(thread_ids)) for i, tid in enumerate(thread_ids)}
         utilized_cores = sorted({core for ranges in thread_to_affinity_ranges.values() for core in ranges.keys()})
@@ -182,7 +196,8 @@ class ThreadMappingClip(ResultClip):
         legend_columns = min(6, len(thread_ids))
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=legend_columns)
 
-    def _get_thread_affinity_ranges(self, trace_provider: TraceProvider) -> dict[int, dict[int, list[tuple[float, float]]]]:
+    @staticmethod
+    def _get_thread_affinity_ranges(trace_provider: TraceProvider) -> dict[int, dict[int, list[tuple[float, float]]]]:
         
         instance_to_affinity_ranges: dict[int, dict[int, list[tuple[float, float]]]] = defaultdict(dict)
         
@@ -190,7 +205,7 @@ class ThreadMappingClip(ResultClip):
             for iid in instance_ids:
                 for thread_id in trace_provider.get_threads(iid):
                     timestamps, affinity = trace_provider.get_affinity_trace(iid, thread_id)
-                    affinity_index_ranges = self.find_number_ranges(affinity) # type: ignore
+                    affinity_index_ranges = AppMappingClip.find_contiguous_ranges(affinity) # type: ignore
                     # Map indexed affinity ranges to timestamp ranges
                     affinity_timestamp_ranges = {
                         core: [(timestamps[start], timestamps[min(end + 1, len(timestamps) - 1)]) 
@@ -200,17 +215,3 @@ class ThreadMappingClip(ResultClip):
                     instance_to_affinity_ranges[thread_id] = affinity_timestamp_ranges
         
         return instance_to_affinity_ranges
-
-    def find_number_ranges(self, list_of_sets: list[set[int]]) -> dict[int, list[tuple[int, int]]]:        
-        result: dict[int, list[tuple[int, int]]] = {}
-        for index, current_set in enumerate(list_of_sets):
-            for number in current_set:
-                if number not in result:
-                    result[number] = [(index, index)]
-                else:
-                    last_start, last_end = result[number][-1]
-                    if index == last_end + 1:
-                        result[number][-1] = (last_start, index)
-                    else:
-                        result[number].append((index, index))
-        return result

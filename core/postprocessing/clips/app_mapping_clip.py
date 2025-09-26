@@ -46,15 +46,20 @@ class AppMappingClip(ResultClip):
         
         # Calculate colors and positions
         cmap = self._color_map
-        instance_ids = [iid for iids in trace_provider.get_app_index().values() for iid in iids]
+        instance_ids = trace_provider.get_instance_ids()
         instance_to_color = {iid: cmap(i / len(instance_ids)) for i, iid in enumerate(instance_ids)}
-        utilized_cores = sorted({core for ranges in instance_to_affinity_ranges.values() for core in ranges.keys()})
+        
+        utilized_cores = sorted({
+            core 
+            for ranges in instance_to_affinity_ranges.values() 
+            for core in ranges.keys()
+        })
         core_to_y = {core: -i for i, core in enumerate(utilized_cores)}
 
         # Create figure
-        fig_width = 8
-        fig_height = max(5, len(utilized_cores) * 0.5)
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height), layout='constrained')
+        figure_width = 8
+        figure_height = max(5, len(utilized_cores) * 0.5)
+        fig, ax = plt.subplots(figsize=(figure_width, figure_height), layout='constrained')
 
         # Plot bars for each instance's affinity ranges
         for app_name, instances in trace_provider.get_app_index().items():
@@ -95,7 +100,7 @@ class AppMappingClip(ResultClip):
         for _, instance_ids in trace_provider.get_app_index().items():
             for iid in instance_ids:
                 timestamps, affinity = trace_provider.get_affinity_trace(iid)
-                affinity_index_ranges = self.find_number_ranges(affinity) # type: ignore
+                affinity_index_ranges = self.find_contiguous_ranges(affinity) # type: ignore
                 # Map indexed affinity ranges to timestamp ranges
                 affinity_timestamp_ranges = {
                     core: [(timestamps[start], timestamps[min(end + 1, len(timestamps) - 1)]) 
@@ -106,20 +111,22 @@ class AppMappingClip(ResultClip):
 
         return instance_to_affinity_ranges  
     
-    def find_number_ranges(self, list_of_sets: list[set[int]]) -> dict[int, list[tuple[int, int]]]:
+    @staticmethod
+    def find_contiguous_ranges(list_of_sets: list[set[int]]) -> dict[int, list[tuple[int, int]]]:
         """
-        Finds the contiguous ranges for each number in a list of sets.
-
-        >>>Example:
-            Input: [{1, 2}, {1, 2}, {2}, {3}, {3}, {1, 3}]
-            Output: {
-                1: [(0, 1), (5, 5)],
-                2: [(0, 2)],
-                3: [(3, 4), (5, 5)]
-            }
+        Finds contiguous ranges of indices for each number appearing in the list of sets.
+        
+        Examples
+        --------
+        >>> list_of_sets = [{1, 2}, {1, 2}, {2}, {3}, {3}, {1, 3}]
+        >>> find_contiguous_ranges(list_of_sets)
+        {
+            1: [(0, 1), (5, 5)],
+            2: [(0, 2)],
+            3: [(3, 5)]
+        }
         """
         result: dict[int, list[tuple[int, int]]] = {}
-
         for index, current_set in enumerate(list_of_sets):
             for number in current_set:
                 # Check if this is the first occurrence of the number

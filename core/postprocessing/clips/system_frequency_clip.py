@@ -21,6 +21,8 @@ class SystemFrequencyClip(ResultClip):
         This is useful if the underlying data is sparse (e.g due to an active migration policy).
     skip_unavailable_cores: bool
         If True, skip cores that are not available in the trace data without raising an error.
+    frequency_range_mhz: tuple[float, float]
+        The frequency range (min, max) to display on the y-axis. If None, the default range will be used.
     color_map: str
         The name of the matplotlib colormap to use for coloring different CPU cores.
         See https://matplotlib.org/stable/tutorials/colors/colormaps.html for available colormaps.
@@ -30,6 +32,7 @@ class SystemFrequencyClip(ResultClip):
         cores: set[int] | None = None,
         use_scatter: bool = False,
         skip_unavailable_cores: bool = False,
+        frequency_range_mhz: tuple[float, float] | None = (700, 5200),
         color_map: str = "CMRmap"
     ) -> None:
         if cores and len(cores) == 0:
@@ -37,6 +40,7 @@ class SystemFrequencyClip(ResultClip):
         self._cores = cores
         self._use_scatter = use_scatter
         self._skip_unavailable_cores = skip_unavailable_cores
+        self._frequency_range = frequency_range_mhz
         self._color_map = plt.get_cmap(color_map)
 
     @property
@@ -91,6 +95,9 @@ class SystemFrequencyClip(ResultClip):
         axes.set_ylabel("Frequency (MHz)")
         axes.grid(True, axis='both', which='both', linestyle='-', linewidth=0.8, color='#000', alpha=0.2)
         axes.set_axisbelow(True)
+
+        if self._frequency_range:
+            axes.set_ylim(bottom=self._frequency_range[0], top=self._frequency_range[1])
 
         handles, labels = axes.get_legend_handles_labels()
         axes.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.5, 1), ncol=5)

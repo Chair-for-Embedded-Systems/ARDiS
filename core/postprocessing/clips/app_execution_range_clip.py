@@ -41,25 +41,19 @@ class AppExecutionClip(ResultClip):
         
         trace_provider = result_wrapper.get_trace_provider()
         
-        instance_count = len([iid for iids in trace_provider.get_app_index().values() for iid in iids])
-        fig_height = min(4, instance_count * 0.4)
-        fig, ax = plt.subplots(figsize=(6, fig_height))
+        fig_width = 6
+        fig_height = 1 + len(trace_provider.get_instance_ids()) * 0.5
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height), layout='constrained')
 
-        self._plot_app_lifetimes(trace_provider, ax)
+        # Determine colors for each instance
+        instance_ids = trace_provider.get_instance_ids()
+        instance_to_color = {iid: self._color_map(i / len(instance_ids)) for i, iid in enumerate(instance_ids)}
 
-        return fig
-        
-    def _plot_app_lifetimes(self, trace_provider: TraceProvider, ax: Axes) -> None:
-        
-        # Amount of instances to plot
-        cmap = self._color_map
-        instance_ids = [iid for iids in trace_provider.get_app_index().values() for iid in iids]
-        instance_to_color = {iid: cmap(i / len(instance_ids)) for i, iid in enumerate(instance_ids)}
-
-        # Plot lifetimes
+        # Plot execution ranges
         bar_position = 0
         x_ticks: list[int] = []
         x_labels: list[str] = []
+        
         for app_name, instance_ids in trace_provider.get_app_index().items():
             short_app_name = ResultClipUtils.strip_application_label(app_name)
             for iid in instance_ids:
@@ -87,3 +81,6 @@ class AppExecutionClip(ResultClip):
         ax.set_yticklabels(x_labels)
         ax.set_axisbelow(True)
         ax.grid(True, which='both', axis='y', linestyle='--', linewidth=0.5)
+
+        return fig
+        

@@ -42,25 +42,26 @@ class SystemMetricClip(ResultClip):
 
         # Get trace provider
         trace_provider: TraceProvider = result_wrapper.get_trace_provider()
-        available_metrics = trace_provider.available_sys_metrics
+        available_metrics = set(trace_provider.available_sys_metrics)
         metrics = self._sys_metrics_to_plot or available_metrics
 
         # Check for unavailable metrics
-        unavailable_metrics = [m for m in metrics if m not in available_metrics]
+        unavailable_metrics = metrics - available_metrics
         if unavailable_metrics:
-            raise ValueError(f"Some specified system metrics are not available: {unavailable_metrics}. Available metrics: {available_metrics}")
-
+            raise ValueError(
+                f"Some specified system metrics are not available: {unavailable_metrics}. "
+                f"Available metrics: {available_metrics}"
+            )
         # Determine plot parameters
-        column_count = min(4, len(available_metrics))
-        row_count = (len(available_metrics) + column_count - 1) // column_count
-        fig_size = (3 * column_count, 2.5 * row_count)
+        subplot_columns = min(4, len(available_metrics))
+        subplot_rows = (len(available_metrics) + subplot_columns - 1) // subplot_columns
+        figure_size = (3 * subplot_columns, 2.5 * subplot_rows)
 
-        fig, axes = plt.subplots(figsize=fig_size, ncols=column_count, nrows=row_count, constrained_layout=True)
+        fig, axes = plt.subplots(figsize=figure_size, ncols=subplot_columns, nrows=subplot_rows, constrained_layout=True)
         axs: list[Axes] = axes.flatten() if len(available_metrics) > 1 else [axes]
 
         # Plot each metric
-        for i, metric in enumerate(sorted(metrics)):
-            ax = axs[i]
+        for ax, metric in zip(axs, sorted(metrics)):
             x, y = trace_provider.get_sys_metric_trace(metric)
             ax.plot(x, y, label=metric)
             ax.set_xlabel("Time (s)")
