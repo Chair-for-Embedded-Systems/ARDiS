@@ -161,34 +161,3 @@ class TraceProvider:
     def get_thread_ids(self) -> set[int]:
         """ Returns a set of all thread IDs across all application instances."""
         return {tid for tids in self._instance_to_threads.values() for tid in tids}
-
-if __name__ == "__main__":
-    core_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-54-09_Simple_Experiment_with_Specific_Applications"
-    pid_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-55-37_Simple_Experiment_with_Specific_Applications"
-    tid_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
-    
-    experiment_folders = [core_experiment, pid_experiment, tid_experiment]
-    from core.postprocessing.analysis.result_wrapper import ExperimentResultWrapper
-    for experiment in experiment_folders:
-        print(f"\nAnalyzing experiment folder: {experiment}")
-        wrapper = ExperimentResultWrapper(experiment)
-        trace_provider = TraceProvider(wrapper.get_periodic_log())
-
-        trace_provider.get_core_frequency_traces()
-        continue
-        for app_name, instance_ids in trace_provider.get_app_index().items():
-            print(f"Application '{app_name}' has instances: {instance_ids}")
-            for iid in instance_ids:
-                print(f"  Instance ID {iid} execution range: {trace_provider.get_execution_range(iid)}")
-                
-                instruction_trace = trace_provider.get_app_metric_trace("instructions", iid)
-                time, metric = instruction_trace
-                print(f"    Instructions trace (first 5 entries):")
-                for t, m in zip(time.head(5), metric.head(5)):
-                    print(f"      Time: {t:.2f}s, Instructions: {m}")
-                
-                threads = trace_provider.get_threads(iid)
-                continue
-                for tid in threads:
-                    print(f"      Thread ID {tid} execution range: {trace_provider.get_execution_range(iid, tid)}")
-

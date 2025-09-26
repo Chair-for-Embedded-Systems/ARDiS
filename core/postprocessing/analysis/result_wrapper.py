@@ -33,22 +33,3 @@ class ExperimentResultWrapper:
         self.__trace_provider = TraceProvider(self.get_periodic_log(), verbose=verbose)
         return self.__trace_provider
     
-    
-
-if __name__ == "__main__":
-    core_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-54-09_Simple_Experiment_with_Specific_Applications"
-    pid_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-55-37_Simple_Experiment_with_Specific_Applications"
-    tid_experiment = "/home/uhqql/ARDIS/results/2025-09-23_17-56-51_Experiment_with_tid_monitoring"
-    
-    analyser = ExperimentResultWrapper(tid_experiment)
-    pcl = analyser.get_periodic_log()
-    print("Application events count:", len(pcl.app_events))
-    print("System events count:", len(pcl.sys_events))
-    print("Periodic application events labels:", pcl.periodic_application_events_labels)
-    print("Periodic system events labels:", pcl.periodic_system_events_labels)
-    app_index = pcl.get_application_index()
-    for app_name, instance_ids in app_index.items():
-        print(f"Application '{app_name}' has instances: {instance_ids}")
-        for iid in instance_ids:
-            tids = pcl.get_threads(iid)
-            print(f"  Instance ID {iid} has threads: {tids}")

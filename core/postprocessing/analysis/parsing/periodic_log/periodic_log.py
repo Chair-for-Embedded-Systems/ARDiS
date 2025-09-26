@@ -75,7 +75,3 @@ class PeriodicLog:
             if app_event.instance_id == instance_id and (thread_id is None or app_event.tid == thread_id):
                 events.append(app_event)
         return events
-
-if __name__ == "__main__":
-    log = PeriodicLog.from_log_file("/home/uhqql/ARDIS/results/2025-09-23_17-54-09_Simple_Experiment_with_Specific_Applications/periodic_counters.log")
-    print(len(log.app_events))

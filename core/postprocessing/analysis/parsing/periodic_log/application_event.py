@@ -68,12 +68,3 @@ class ApplicationEvent:
             frequency_mhz=frequency_mhz,
             perf_events=perf_events
         )
-
-if __name__ == "__main__":
-    line_core = "[2.75s] Core 3: app = parsec.blackscholes-1 | IID = 0 | frequency = 2999.969 | instructions = 1432382127 | LLC-loads = 116772 | LLC-load-misses = 107529 | LLC-stores = 53187 | LLC-store-misses = 50430 | cycles = 321992809 | branch-misses = 619706 | branches = 300850716"
-    line_pid = "[61.71s] Core 6: app = parsec.blackscholes-1 | IID = 3 | PID = 2804523 | frequency = 3000.03 | instructions = 694944219 | LLC-loads = 15762 | LLC-load-misses = 9730 | LLC-stores = 1339 | LLC-store-misses = 0 | cycles = 301948876 | branch-misses = 126681 | branches = 82195320"
-    line_tid = "[1.69s] Core 6: app = parsec.dedup-4 | IID = 5 | TID = 2810808 | frequency = 3499.964 | instructions = 272909433 | LLC-loads = 16721 | LLC-load-misses = 4743 | LLC-stores = 2871 | LLC-store-misses = 147 | cycles = 58924430 | branch-misses = 17468 | branches = 810653"
-    event = ApplicationEvent.from_periodic_log_line(line_tid)
-    print(event)
-
-# <When> | <Where> | app = <AppName> | IID = <InstanceID> | [PID = <PID> |] [TID = <TID> |] frequency = <FrequencyMHz> | <PerfEvent1> = <Value1> | ... | <PerfEventN> = <ValueN>

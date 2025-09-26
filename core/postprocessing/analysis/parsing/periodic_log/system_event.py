@@ -29,7 +29,3 @@ class SystemEvent:
             perf_events=events
         )
     
-if __name__ == "__main__":
-    example = "[4.85s] SYSTEM: power/energy-pkg/ = 5.22 | power/energy-cores/ = 4.10 | power/energy-psys/ = 8.93"
-    ev = SystemEvent.from_log_line(example)
-    print(ev)
