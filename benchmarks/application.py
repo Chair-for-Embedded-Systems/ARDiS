@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 class Application(ABC):
+    __INSTANCE_COUNTER: int = 0
     def __init__(self, labels: list[str]) -> None:
         """
         Parameters
@@ -13,6 +14,8 @@ class Application(ABC):
         self._running: bool = False
         self._pid: int | None = None
         self._start_affinity: set[int] | None = None
+        self._instance_id: int = Application.__INSTANCE_COUNTER
+        Application.__INSTANCE_COUNTER += 1
 
     def execute(self, cores: set[int] | None):
         """
@@ -62,5 +65,12 @@ class Application(ABC):
         """
         return self._labels
     
+    def get_instance_id(self) -> int:
+        """
+        Returns the instance id of this application.
+        This is a unique id that is assigned to each instance of an application.
+        """
+        return self._instance_id
+
     def __str__(self) -> str:
         return self.get_display_name()

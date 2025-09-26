@@ -75,12 +75,13 @@ class PeriodicPIDResult(ReportableResult):
                 continue
 
             app_name = f"app = {self.app_events.get_app_name(pid) if self.use_name_from_perf else self.pid_to_app[pid].get_display_name()}"
+            instance_label = f"IID = {self.pid_to_app[pid].get_instance_id()}"
             one_affinity = len(cores) == 1
             core_label = f"Core {cores[0]}" if one_affinity else f"Cores {cores}"
             pid_label = f"PID = {pid}"
             frequency_label = f"frequency = {self.core_to_freq[cores[0]]}" if one_affinity else f"frequency = not-available"
 
-            periodic_app_event = f"{timestamp} {core_label}: {app_name} | {pid_label} | {frequency_label} | {flatt_app_events}"
+            periodic_app_event = f"{timestamp} {core_label}: {app_name} | {instance_label} | {pid_label} | {frequency_label} | {flatt_app_events}"
             reporter.logPeriodicCounters(periodic_app_event)
     
     def __log_tid_events(self, reporter: Reporter, timestamp: str, append_tid_to_name: bool = False) -> None:
@@ -99,12 +100,12 @@ class PeriodicPIDResult(ReportableResult):
                 app_name+=f"_{tid}"
 
             app_field = f"app = {app_name}"
-            pid_field = f"PID = {pid}"
+            instance_field = f"IID = {self.pid_to_app[pid].get_instance_id()}"
             tid_field = f"TID = {tid}"
             core_field = f"Core {core}"
             freq_field = f"frequency = {self.core_to_freq[core]}"
-            
-            periodic_app_event = f"{timestamp} {core_field}: {app_field} | {pid_field} | {tid_field} | {freq_field} | {flatt_app_events}"
+
+            periodic_app_event = f"{timestamp} {core_field}: {app_field} | {instance_field} | {tid_field} | {freq_field} | {flatt_app_events}"
             reporter.logPeriodicCounters(periodic_app_event)
 
 @dataclass
@@ -134,10 +135,11 @@ class PeriodicCoreResult(ReportableResult):
         for core, events in self.app_events.get_events().items():
             flatt_app_events = " | ".join([f"{event_name} = {value}" for event_name, value in events.items()])
             app_name_label = f"app = {self.core_to_app[core].get_display_name()}"
+            instance_label = f"IID = {self.core_to_app[core].get_instance_id()}"
             core_label = f"Core {core}"
             frequency_label = f"frequency = {self.core_to_freq[core]}"
 
-            periodic_app_event = f"{timestamp} {core_label}: {app_name_label} | {frequency_label} | {flatt_app_events}"
+            periodic_app_event = f"{timestamp} {core_label}: {app_name_label} | {instance_label} | {frequency_label} | {flatt_app_events}"
             reporter.logPeriodicCounters(periodic_app_event)
         
         # Log system event multiplexing (optional)
