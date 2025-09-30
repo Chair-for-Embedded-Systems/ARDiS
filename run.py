@@ -1,22 +1,22 @@
-from config import *
-from core.engine import *
-from core.policies.explicit_mapping import *
-from core.policies.migrate_following_schedule import *
-from core.policies.dvfs_for_training import *
-from core.policies.migrate_for_training import *
-from core.policies.consecutive_schedule import *
-from core.policies.intel_static_dvfs import *
-from core.policies.static_dvfs import StaticDVFS, StaticGovernorDVFS
-from core.dvfs import *
-from core.monitoringmode import *
-from core.migration import *
-from core.policies.intel_motivational_mapping import *
-from core.postprocessing.postprocessor import PostProcessor
-from core.postprocessing.clip_postprocessor import ClipPostProcessor
-from core.postprocessing.simple_clip_postprocessor import SimpleClipPostProcessor, Clips
-from core.postprocessing.clips import *
+from ardis.config import *
+from ardis.core.engine import *
+from ardis.core.policies.explicit_mapping import *
+from ardis.core.policies.migrate_following_schedule import *
+from ardis.core.policies.dvfs_for_training import *
+from ardis.core.policies.migrate_for_training import *
+from ardis.core.policies.consecutive_schedule import *
+from ardis.core.policies.intel_static_dvfs import *
+from ardis.core.policies.static_dvfs import StaticDVFS, StaticGovernorDVFS
+from ardis.core.dvfs import *
+from ardis.core.monitoringmode import *
+from ardis.core.migration import *
+from ardis.core.policies.intel_motivational_mapping import *
+from ardis.core.postprocessing.postprocessor import PostProcessor
+from ardis.core.postprocessing.clip_postprocessor import ClipPostProcessor
+from ardis.core.postprocessing.simple_clip_postprocessor import SimpleClipPostProcessor, Clips
+from ardis.core.postprocessing.clips import *
 
-from benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
+from ardis.benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
 from random import randrange
 import os
 import sys
