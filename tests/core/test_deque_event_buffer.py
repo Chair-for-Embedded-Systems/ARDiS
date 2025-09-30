@@ -1,7 +1,23 @@
 import unittest
 
 from ardis.core.buffering.deque_based_event_buffer import DequeBasedEventBuffer
+from ardis.benchmarks.application import Application
 
+class DummyApplication(Application):
+    def __init__(self, name: str):
+        self.name = name
+    
+    def _execute(self, cores: set[int] | None) -> None:
+        pass
+
+    def terminate(self) -> None:
+        pass
+
+    def get_pid(self) -> int | None:
+        pass
+
+    def get_display_name(self) -> str:
+        return self.name
 
 class TestDequeBasedEventBuffer(unittest.TestCase):
     
@@ -15,7 +31,7 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
             system_events={ "power_system" : 100, "power_core": 10, "power_package": 20},
             frequencies={},
             relative_sample_duration=1.0,
-            core_to_application={}
+            core_to_application={1: DummyApplication("App1"), 2: DummyApplication("App2")}
         )
         # Check if basic insertion works (app events)
         self.assertEqual(buffer.get_metrics_for_core(core_id=1,n=1)[-1]["inst"], 10)
@@ -42,7 +58,10 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
             system_events={ "power_system" : 100, "power_core": 10, "power_package": 20},
             frequencies={},
             relative_sample_duration=1.0,
-            pid_to_application={}
+            pid_to_application={
+                1: DummyApplication("App1"), 
+                42: DummyApplication("App2")
+            }
         )
         # Check basic insertion (application events)
         self.assertEqual(buffer.get_metrics_for_pid(pid=1,n=1)[-1]["inst"], 10)
@@ -61,6 +80,7 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
 
     def test_multi_insertion(self):
         buffer = DequeBasedEventBuffer(10)
+        core_to_application: dict[int, Application] = {0: DummyApplication("App1"), 2: DummyApplication("App2")}
         buffer.push_core_and_sys_events(
             app_events={
                 0: {"instructions": 0},
@@ -69,7 +89,8 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
             system_events={},
             frequencies={},
             relative_sample_duration=1.0,
-            core_to_application={}
+            core_to_application=core_to_application
+            
         )
         buffer.push_core_and_sys_events(
             app_events={
@@ -79,7 +100,7 @@ class TestDequeBasedEventBuffer(unittest.TestCase):
             system_events={},
             frequencies={},
             relative_sample_duration=1.0,
-            core_to_application={}
+            core_to_application=core_to_application
         )
         core_event_trace = buffer.get_metrics_for_core(core_id=0, n=2)
         instructions = [events["instructions"] for events in core_event_trace]
