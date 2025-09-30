@@ -1,4 +1,4 @@
-from core.postprocessing.analysis.parsing.periodic_log import PeriodicLog
+from ardis.core.postprocessing.analysis.parsing.periodic_log import PeriodicLog
 from typing import Any
 
 from pandas import DataFrame, Series
