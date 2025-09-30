@@ -6,13 +6,6 @@ VENV_NAME=".venv"
 # Define the path to the pyproject.toml file
 PYPROJECT_TOML_PATH="./pyproject.toml"
 
-# Check if the script is being sourced or executed
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    IS_SOURCED=false
-else
-    IS_SOURCED=true
-fi
-
 # --- Check for venv installation ---
 echo "Checking for 'venv' module..."
 # Run a simple command that should succeed if venv is available
@@ -59,11 +52,9 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+deactivate 2> /dev/null
+
 # --- Completion Message ---
 echo ""
 echo "Setup is complete!"
-if [ "$IS_SOURCED" = true ]; then
-    echo "The virtual environment is now active in your shell."
-else
-    echo "To activate the virtual environment in your shell, run: source ./$VENV_NAME/bin/activate"
-fi
+echo "To activate the virtual environment in your shell, run: source env.sh"
