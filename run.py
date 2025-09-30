@@ -1,3 +1,5 @@
+import os
+
 from ardis.config import *
 from ardis.core.engine import *
 from ardis.core.policies.explicit_mapping import *
@@ -6,113 +8,17 @@ from ardis.core.policies.dvfs_for_training import *
 from ardis.core.policies.migrate_for_training import *
 from ardis.core.policies.consecutive_schedule import *
 from ardis.core.policies.intel_static_dvfs import *
-from ardis.core.policies.static_dvfs import StaticDVFS, StaticGovernorDVFS
+from ardis.core.policies.static_dvfs import StaticDVFS
 from ardis.core.dvfs import *
 from ardis.core.monitoringmode import *
 from ardis.core.migration import *
 from ardis.core.policies.intel_motivational_mapping import *
-from ardis.core.postprocessing.postprocessor import PostProcessor
 from ardis.core.postprocessing.clip_postprocessor import ClipPostProcessor
 from ardis.core.postprocessing.simple_clip_postprocessor import SimpleClipPostProcessor, Clips
 from ardis.core.postprocessing.clips import *
 
 from ardis.benchmarks import Application, ParsecApplication, BinaryApplication, SpecApplication
-from random import randrange
-import os
-import sys
-
-
-
-
-class Experiment:
-    def __init__(
-        self, 
-        name: str="", 
-        applications: list[Application] = [],
-        mapping_policy: MappingPolicy = MappingPolicy(),
-        scheduler: Scheduler = Scheduler(), 
-        dvfs_policy: DVFSPolicy | None = None, # No default to avoid multiple instances of a frequency manager
-        migration_policy: MigrationPolicy | None = None, 
-        monitoring_mode: MonitoringMode = MonitoringMode.PERIODIC_ON_CORE,
-        results_folder: str = RESULTS_FOLDER,
-        postprocessor: PostProcessor | None = None,
-    ):   
-        self.__name = name
-        self.__applications = applications
-        self.__engine = Engine(self.__name, 
-                       mapping_policy=mapping_policy, 
-                       scheduler=scheduler, 
-                       dvfs_policy=dvfs_policy, 
-                       migration_policy=migration_policy, 
-                       monitoring_mode=monitoring_mode,
-                       results_folder=results_folder)
-        self.__postprocessor = postprocessor
-
-    # Generate a random list of N unique applications to execute
-    def generateRandomApps(self, N_apps):
-        
-        while len(self.__applications) < N_apps:
-            candidate = parsec_apps[randrange(len(parsec_apps))]
-            if candidate not in self.__applications:
-                self.__applications.append(ParsecApplication(candidate))
-    
-    def setApplications(self, applications: list[Application]):
-        self.__applications = applications
-   
-    # Execute the experiment and wait for it to finish
-    def executeExperiment(self):
-        try:
-            self.__engine.executeWorkload(self.__applications)
-            if self.__postprocessor:
-                self.__postprocessor.process(self.getWorkingDirectory())
-        except KeyboardInterrupt:
-            print("Experiment interrupted by user")
-            self.__engine.interrupt()
-            sys.exit()
-            return
-    
-    def setPostProcessor(self, postprocessor: PostProcessor):
-        """
-        Set a postprocessor to be used after the experiment is finished. 
-        If a postprocessor was already set, it will be replaced.
-        """
-        self.__postprocessor = postprocessor
-
-    def getWorkingDirectory(self):
-        return self.__engine.reporter.workdir
-
-    def __str__(self):
-        return f"Experiment {self.__name} with applications {self.__applications} and engine {self.__engine}"
-    
-    def __repr__(self):
-        return self.__str__()
-    
-    
-
-class DefaultLinuxExperiment:
-    def __init__(self, name="", applications=[], scheduler=Scheduler(), governor="performance", min_frequency=1500, max_frequency=3500, monitoring_mode=MonitoringMode.PERIODIC_ON_PID, mapping_policy=MappingPolicy()):
-        self.__name = name
-        self.__applications = applications
-        self.__engine = Engine(self.__name, 
-                       mapping_policy=mapping_policy, 
-                       scheduler=scheduler, 
-                       dvfs_policy=StaticGovernorDVFS(governor=governor, min_frequency=min_frequency, max_frequency=max_frequency), 
-                       migration_policy=None, 
-                       monitoring_mode=monitoring_mode)
-    
-    def setApplications(self, applications: list[Application]):
-        self.__applications = applications
-   
-    # Execute the experiment and wait for it to finish
-    def executeExperiment(self):
-        self.__engine.executeWorkload(self.__applications)
-    
-    def __str__(self):
-        return f"Experiment {self.__name} with applications {self.__applications} and engine {self.__engine}"
-    
-    def __repr__(self):
-        return self.__str__()
-
+from ardis.experiments import Experiment, DefaultLinuxExperiment
 
 def run_example_with_core_monitoring():
    # Create an experiment object
@@ -157,8 +63,8 @@ def run_parsec_default_linux_governor_simple():
                     scheduler=scheduler,
                     mapping_policy=ExplicitMapping.from_list([6, 19]),
                     governor=governor,
-                    min_frequency=1500,
-                    max_frequency=3500,
+                    min_frequency_mhz=1500,
+                    max_frequency_mhz=3500,
                     monitoring_mode=MonitoringMode.PERIODIC_ON_PID)
                     
     exp.setApplications([app])
@@ -178,8 +84,8 @@ def run_parsec_default_linux_governor():
                 exp = DefaultLinuxExperiment(exp_name, 
                                 scheduler=scheduler, 
                                 governor=governor,
-                                min_frequency=1500,
-                                max_frequency=3500,
+                                min_frequency_mhz=1500,
+                                max_frequency_mhz=3500,
                                 monitoring_mode=MonitoringMode.PERIODIC_ON_CORE)
                                 
                 exp.setApplications([ParsecApplication(app)])
