@@ -9,9 +9,9 @@ SINGLE_RESULTS_FOLDER="./results/singles"
 UTILS_DIR="./utils"
 PLOTS_FOLDER="./plots"
 
-PARSECBASE = "/home/kg3813/Subjects/RealHardware/parsec-3.0/"
-SPECPBASE = "/home/kg3813/Subjects/RealHardware/cpu2006/"
-SPEC_CONFIGFILE = "mytest.cfg"
+PARSECBASE = "/home/uhqql/parsec-3.0/"
+SPECPBASE = "/home/uhqql/benchmarks/cpu2006/"
+SPEC_CONFIGFILE = "ardis.cfg"
 
 ROOTPATH=os.getcwd()
 RUNTIME_TEMP = "/tmp/ardis_runtime_data"
