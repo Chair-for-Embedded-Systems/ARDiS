@@ -6,7 +6,7 @@ import numpy as np
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-import config
+import ardis.config as config
 
 # Function to parse log file and accumulate instructions and energy
 def parse_log_file(log_file, energy_type):

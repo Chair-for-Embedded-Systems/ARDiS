@@ -6,7 +6,7 @@ import sys
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-import config
+import ardis.config as config
 
 # Function to parse log file and get periodic instructions
 def parse_periodic_instructions(log_file):

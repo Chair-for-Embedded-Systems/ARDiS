@@ -8,7 +8,7 @@ import json
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-import config
+import ardis.config as config
 
 def parse_log_file(log_file):
     time_points = []

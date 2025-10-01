@@ -8,7 +8,7 @@ import matplotlib.cm as cm
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-import config
+import ardis.config as config
 
 SHIFT_RANGE = 5  # Set the range up to which we look ahead for percentage changes
 

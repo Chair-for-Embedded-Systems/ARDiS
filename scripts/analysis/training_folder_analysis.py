@@ -18,7 +18,7 @@ import matplotlib.cm as cm
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-import config
+import ardis.config as config
 
 def parse_execution_log(file_path):
     """Extracts total execution time and energy consumption from execution.log."""

@@ -12,7 +12,7 @@ import sys
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-import config
+import ardis.config as config
 
 # Enable LaTeX rendering in Matplotlib (if needed)
 plt.rcParams.update({

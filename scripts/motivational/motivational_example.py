@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-import config
+import ardis.config as config
 
 # Function to parse the log file and extract execution time and energy
 def parse_result_file(file_path, target_application="omnetpp"):

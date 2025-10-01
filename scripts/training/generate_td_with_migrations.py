@@ -10,7 +10,7 @@ import sys
 import numpy as np
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from config import *
+from ardis.config import *
 
 
 # Map each core to its cluster type

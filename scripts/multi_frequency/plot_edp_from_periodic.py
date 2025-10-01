@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-import config
+import ardis.config as config
 
 # Function to parse periodic log and accumulate instructions, energy, and capture execution time
 def parse_periodic_log(log_file):

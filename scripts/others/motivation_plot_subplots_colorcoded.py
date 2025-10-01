@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-from config import *
+from ardis.config import *
 
 # Enable LaTeX rendering in Matplotlib (if needed)
 plt.rcParams.update({

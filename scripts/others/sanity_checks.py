@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 # Import the configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-import config
+import ardis.config as config
 
 def parse_execution_log(log_file):
     last_cumulative_instructions = None
