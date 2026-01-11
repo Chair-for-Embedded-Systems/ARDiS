@@ -26,7 +26,7 @@ class ARDISConfigParser:
         if env_path:
             return env_path
         
-        # Get potential configurations from the default location
+        # Check for default config file in configs directory
         config_folder = ARDISConfigParser._CONFIG_FOLDER
         config_name = ARDISConfigParser._DEFAULT_CONFIG_NAME
         potential_configs = os.listdir(ARDISConfigParser._CONFIG_FOLDER)
@@ -35,7 +35,7 @@ class ARDISConfigParser:
         
         raise ConfigLoadError(
             "No configuration file specified!\n"
-            f"Either set the ARDIS_CONFIG_FILE environment variable or place a configuration file named '{default_config_name}' in the 'configs' directory."
+            f"Either set the ARDIS_CONFIG_FILE environment variable or place a configuration file named '{config_name}' in the 'configs' directory."
         )
 
     def __init__(self, config_file: str | None = None) -> None:
@@ -52,9 +52,9 @@ class ARDISConfigParser:
         except Exception as e:
             raise Exception(f"An error occurred while reading the configuration file: {e}")
         
-        self.config = self.__parse_config()
+        self.__parse_config()
     
-    def __parse_config(self) -> ConfigParser:
+    def __parse_config(self) -> None:
         config = ConfigParser()
         config.read_string(self.config_data)
 
@@ -63,8 +63,6 @@ class ARDISConfigParser:
         self.__parse_parsec_section(config)
         self.__parse_spec2006_section(config)
         self.__parse_experiment_section(config)
-
-        return config
     
     def __parse_hardware_section(self, config: ConfigParser) -> None:
         section = "Hardware"
@@ -73,6 +71,7 @@ class ARDISConfigParser:
             raise ConfigOptionError(f"Missing '{section}' section in configuration file.")
         
         self.core_count = config.getint(section, "core_count")
+        
         clock_domains_raw = config.get(section, "clock_domains")
         self.clock_domains: list[set[int]] = ast.literal_eval(clock_domains_raw)
 
@@ -97,7 +96,7 @@ class ARDISConfigParser:
         self.parsec_available_packages: list[str] = self.parsec_available_packages_raw.strip().split()
 
     def __parse_spec2006_section(self, config: ConfigParser) -> None:
-        section = "Spec2006Benchmark"
+        section = "Spec2006_Benchmark"
         if not config.has_section(section):
             raise ConfigOptionError(f"Missing '{section}' section in configuration file.")
         
@@ -120,7 +119,7 @@ class ARDISConfigParser:
         if not config.has_section(section):
             raise ConfigOptionError(f"Missing '{section}' section in configuration file.")
         
-        self.action_interval_ms = config.getint(section, "action_interval_ms")
+        self.action_interval_sec = config.getfloat(section, "action_interval_sec")
         self.sampling_interval_ms = config.getint(section, "sampling_interval_ms")
         
         periodic_app_level_events_raw = config.get(section, "periodic_app_level_events")
@@ -140,7 +139,7 @@ class ARDISConfigParser:
         print(f"SPEC2006 Base Directory: {self.spec2006_base_dir}")
         print(f"SPEC2006 Config Name: {self.spec2006_config_name}")
         print(f"Temporary Data Directory: {self.temp_data_dir}")
-        print(f"Action Interval (ms): {self.action_interval_ms}")
+        print(f"Action Interval (sec): {self.action_interval_sec}")
         print(f"Sampling Interval (ms): {self.sampling_interval_ms}")
         print(f"Periodic App Level Events: {self.periodic_app_level_events}")
         print(f"Periodic System Wide Events: {self.periodic_system_wide_events}")

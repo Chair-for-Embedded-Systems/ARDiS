@@ -3,7 +3,7 @@ from ardis.utils.config_parser import ARDISConfigParser
 
 # Load the configuration 
 # Precenedence in descending order:
-#   1. Parameter to ARDISConfigParser
+#   1. File parameter to ARDISConfigParser constructor
 #   2. Environment variable ARDIS_CONFIG_FILE
 #   3. Default config file in `configs/ardis-config.ini` directory
 ac = ARDISConfigParser()
@@ -40,7 +40,7 @@ parsec_network_apps: list[str] = [
 #################################
 
 # Interval in seconds to perform actions in the experiment
-action_interval_sec: float = ac.action_interval_ms / 1000
+action_interval_sec: float = ac.action_interval_sec
 
 # Monitoring parameters
 sampling_rate_ms: int = ac.sampling_interval_ms

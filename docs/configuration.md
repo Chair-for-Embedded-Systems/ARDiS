@@ -69,16 +69,16 @@ This section contains the default parameters for experiments.
 
 - Examples:
     - Intel Core i9 12900
-        - Heterogeneous 16 Core CPU 
+        - Heterogeneous 16 Core CPU with SMT
         - 1 x P-Cluster with 8 P-Cores and 2 x E-Cluster with 4 E-Cores
         - Frequency Doamin:  `[{0,1}, {2,3}, {4,5}, {6,7}, {8,9}, {10,11}, {12,13}, {14,15}, {16,17,18,19}, {20,21,22,23}]`
     
     - AMD Ryzen 7 2700X
         - Homogeneous 8 Core CPU with SMT
-        - 1 CCD (with 2 CCX)
+        - 1 CCD (with 2 CCX, 4 Cores per CCX)
         - Frequency Domain: `[{0,1,2,3,8,9,10,11}, {4,5,6,7,12,13,14,15}]` 
-        
+
     - AMD Ryzen 9 3900X
         - Homogeneous 12 Core CPU with SMT
-        - 2 CCDs (2 CCX per CCD)
-        - Frequency Domains: `{0,1,2,12,13,14}, {3,4,5,15,16,17}, {6,7,8,18,19,20}, {9,10,11,21,22,23}`
+        - 2 CCDs (2 CCX per CCD, 3 Cores per CCX)
+        - Frequency Domains: `[{0,1,2,12,13,14}, {3,4,5,15,16,17}, {6,7,8,18,19,20}, {9,10,11,21,22,23}]`
