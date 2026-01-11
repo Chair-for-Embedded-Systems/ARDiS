@@ -1,18 +1,67 @@
 import os
 
-from ardis.utils.autoconfig.configure_hardware import configure_hardware
-from ardis.utils.autoconfig.configure_parsec import configure_parsec_benchmark
-from ardis.utils.autoconfig.configure_spec import configure_spec2006_benchmark
-from ardis.utils.autoconfig.configure_defaults import configure_exp_defaults
+from ardis.utils.autoconfig.flows import *
+from ardis.utils.autoconfig.writer import ConfigWriter
 
 CONFIG_FOLDER = os.path.join(os.path.dirname(__file__), '../../../configs/')
 
+
+def _prompt_config_file_name() -> str:
+    
+    default_file_name = "ardis-config.ini"
+
+    while True:
+        print("\033c", end="")
+        print("Config - ARDIS Configuration File\n")
+        
+        config_file_name = input(f"Enter the name of the configuration file to use (or press Enter for {default_file_name}): ").strip()
+        if config_file_name == "":
+            config_file_name = default_file_name
+        
+        # Warn if file does exist and ask for confirmation to overwrite
+        if os.path.isfile(os.path.join(CONFIG_FOLDER, config_file_name)):
+            while True:
+                confirm = input(f"Configuration file '{config_file_name}' already exists. Overwrite? (y/n): ").strip().lower()
+                if confirm == 'y':
+                    return config_file_name
+                if confirm == 'n':
+                    break
+        else:
+            return config_file_name
+
+
 def main():
-    # List config foles in the configs directory
-    config_files = [f for f in os.listdir(CONFIG_FOLDER) if f.endswith('.ini')]
-    print("Available configuration files:")
-    for idx, cfg in enumerate(config_files, start=1):
-        print(f"{idx}. {cfg}")
+    
+    # Welcome message and explain flow
+    print("\033c", end="")
+    print("ARDIS Auto-Configuration Utility\n\n")
+    print(
+        "This utility will guide you through configuring the ARDIS framework for your system.\n"
+        "This setup includes the following steps:\n"
+        "   1. Hardware Configuration\n"
+        "   2. Benchmark Configuration (PARSEC and SPEC2006)\n"
+        "   3. Experiment Default Parameters\n"
+    )
+    input("Press any key to begin the configuration...")
+        
+    # Run configuration flows
+    hardware_config = configure_hardware()
+    parsec_config = configure_parsec_benchmark()
+    spec2006_config = configure_spec2006_benchmark()
+    default_config = configure_exp_defaults()
+
+    # Write configuration to file
+    config_name = _prompt_config_file_name()
+
+    writer = ConfigWriter(
+        filepath=os.path.join(CONFIG_FOLDER, config_name),
+        hardware_config=hardware_config,
+        parsec_config=parsec_config,
+         spec2006_config=spec2006_config,
+        default_config=default_config
+    )
+    writer.write()
+
 
 if __name__ == "__main__":
     main()

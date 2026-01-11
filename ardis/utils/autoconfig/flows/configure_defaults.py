@@ -23,14 +23,14 @@ def _prompt_action_interval(default: float = 0.1) -> float:
         except ValueError:
             error_msg = "Invalid input. Please enter a numeric value."
 
-def _prompt_sampling_interval() -> int:
+def _prompt_sampling_interval(default: int = 100) -> int:
     error_msg = ""
     while True:
         print("\033c", end="")
         if len(error_msg) > 0:
             print(f"Error: {error_msg}\n")
         try:
-            interval = int(input("Enter the sampling interval in milliseconds (e.g., 100): "))
+            interval = int(input(f"Enter the sampling interval in milliseconds (default {default}): "))
             if interval <= 0:
                 error_msg = "Please enter a positive integer."
                 continue

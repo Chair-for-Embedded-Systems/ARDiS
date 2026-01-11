@@ -45,7 +45,14 @@ def _prompt_spec2006_home() -> str:
         print("Config - SPEC2006 Benchmark")
         spec_home = input("Enter the path to your SPEC2006 installation directory: ").strip()
         if os.path.isdir(spec_home):
-            print(f"Valid SPEC2006 installacdtion found at: {spec_home}")
+
+            # Check for 'benchspec' directory
+            benchspec_path = os.path.join(spec_home, "benchspec")
+            if not os.path.isdir(benchspec_path):
+                print("\033c", end="")
+                print(f"Warning: The directory '{spec_home}' does not seem to be a valid SPEC2006 installation (missing 'benchspec' directory). Please try again.")
+                continue
+            
             return spec_home
         else:
             print(f"Directory '{spec_home}' does not exist. Please try again.")
