@@ -159,7 +159,7 @@ class Engine:
         # Start the monitoring thread
         if self.__monitoring_mode != MonitoringMode.OFF:
             self.__monitor = Monitor(
-                sampling_rate_sec=config.sampling_rate/1000,
+                sampling_rate_sec=config.sampling_rate_ms/1000,
                 periodic_app_level_events=config.periodic_app_level_events,
                 periodic_system_level_events=config.periodic_system_wide_events,
                 one_shot_system_level_events=config.one_shot_system_wide_events,
@@ -276,7 +276,7 @@ class Engine:
             # Increment the epoch counter and sleep for the action interval
             #print("Epoch: ", self.__epochs)
             self.__epoch += 1
-            time.sleep(action_interval)
+            time.sleep(action_interval_sec)
     
     def interrupt(self):
         """Interrupt the engine and terminate all running applications."""
@@ -336,10 +336,10 @@ class Engine:
             print(f"Failed to drop caches: {e}")
 
     def __clear_runtime_data(self):
-        if os.path.exists(config.RUNTIME_TEMP):
-            shutil.rmtree(config.RUNTIME_TEMP, ignore_errors=True)
+        if os.path.exists(config.RUNTIME_TEMP_DIR):
+            shutil.rmtree(config.RUNTIME_TEMP_DIR, ignore_errors=True)
         
-        os.makedirs(config.RUNTIME_TEMP, exist_ok=True)
+        os.makedirs(config.RUNTIME_TEMP_DIR, exist_ok=True)
 
     def __str__(self):
             return f"Engine with mapping {self.__mapping_policy} and DVFS policy {self.__dvfs_policy}"
