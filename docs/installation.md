@@ -24,7 +24,8 @@ source env.sh
 > While the installation of ARDiS may not require root privileges, running ARDiS certainly does. Be aware that environment variables are generally not passed when calling `sudo`.
 
 ## Automatic Configuration
-<mark>TODO: How to use the automatic configuration</mark>
+After the installation, you need to create a machine-specific configuration file.
+See [here](configuration.md#creating-a-configuration-file) for more information.
 
 ## Benchmarks
 

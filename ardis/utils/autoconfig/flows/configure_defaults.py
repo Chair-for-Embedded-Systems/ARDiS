@@ -59,7 +59,7 @@ def _prompt_sampling_interval(default: int = 100) -> int:
 def _prompt_periodic_app_level_events() -> list[str]:
 
     option_one = ["instructions", "cycles", "branches", "branch-misses"]
-    option_two = ["instuctions", "cycles", "LLC-loads", "LLC-load-misses", "LLC-stores", "LLC-store-misses", "branches", "branch-misses"]
+    option_two = ["instructions", "cycles", "LLC-loads", "LLC-load-misses", "LLC-stores", "LLC-store-misses", "branches", "branch-misses"]
     
     while True:
         print("\033c", end="")

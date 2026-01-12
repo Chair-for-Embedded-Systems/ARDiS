@@ -7,7 +7,7 @@ A new configuration file can be created using one of the following methods:
 
 - Manual: Copy and adjust the `ardis-config-example.ini` file, which can be found in the `configs` folder in the root directory.
 
-- Automated: Use the Autoconfig generator script (`python3 ardis/utils/autoconfig/run.py`), which is a guided generation script that assists in creating a valid configuration.
+- Automated: Use the Autoconfig generator script (`python3 -m ardis.utils.autoconfig.run`), which is a guided generation script that assists in creating a valid configuration.
 
 ## Selecting a Configuration File
 
