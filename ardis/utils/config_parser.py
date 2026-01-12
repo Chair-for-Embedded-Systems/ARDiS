@@ -1,7 +1,9 @@
 import ast
+import json
 import os
 
 from configparser import ConfigParser
+import subprocess
 
 class ConfigLoadError(Exception):
     """Something went wrong when loading the configuration file."""
@@ -131,6 +133,37 @@ class ARDISConfigParser:
         one_shot_system_wide_events_raw = config.get(section, "one_shot_system_wide_events")
         self.one_shot_system_wide_events: list[str] = one_shot_system_wide_events_raw.strip().split()
 
+        # Validate perf events (optional, can be expanded later)
+        all_events = self.periodic_app_level_events + \
+                     self.periodic_system_wide_events + \
+                     self.one_shot_system_wide_events
+        
+        self.__validate_perf_events(all_events)
+
+    def __validate_perf_events(self, events: list[str]) -> None:
+        # Obtain list of valid perf events (run `perf list -j` command)
+        process = subprocess.Popen(['perf', 'list', '-j'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout, stderr = process.communicate()
+        if process.returncode != 0:
+            raise Exception(f"Failed to retrieve perf events: {stderr.strip()}")
+        
+        # Convert output to json and extract event names
+        valid_events: set[str] = set()
+        try:
+            json_data = json.loads(stdout)
+            for event in json_data:
+                if event.get('EventName'):
+                    valid_events.add(event['EventName'])
+                if event.get('EventAlias'):
+                    valid_events.add(event['EventAlias'])
+        except json.JSONDecodeError:
+            raise Exception("Failed to parse perf list output as JSON.")
+
+        # Check if provided events are valid
+        invalid_events : set[str] = {event for event in events if event not in valid_events}
+        if invalid_events:
+            raise ConfigOptionError(f"The following perf events are invalid or not supported on this system: {invalid_events}")
+
     def print_config(self) -> None:
         print("ARDIS Configuration:")
         print(f"Core Count: {self.core_count}")
@@ -146,6 +179,6 @@ class ARDISConfigParser:
         print(f"One Shot System Wide Events: {self.one_shot_system_wide_events}")
 
 if __name__ == "__main__":
-    CONFIG_PATH = "/home/uhqql/ARDIS/configs/example-config.ini"
+    CONFIG_PATH = "./configs/ardis-config.ini"
     parser = ARDISConfigParser(CONFIG_PATH)
     print(parser.parsec_available_packages)
