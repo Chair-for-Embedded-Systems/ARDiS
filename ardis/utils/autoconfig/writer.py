@@ -127,37 +127,3 @@ class ConfigWriter:
             one_shot_events,
             "",
         ])
-
-
-if __name__ == "__main__":
-    hw_config = HardwareConfiguration(
-        logical_cores=24,
-        frequency_domains=[{0, 1}, {2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}, {16, 17, 18, 19}, {20, 21, 22, 23}],
-    )
-    parsec_config = ParsecConfiguration(
-        parsec_base_dir="/path/to/your/parsec/installation",
-        enabled_packages={"parsec.blackscholes", "parsec.bodytrack"},
-        disabled_packages={"parsec.canneal", "parsec.dedup", "parsec.facesim"},
-    )
-    spec2006_config = Spec2006Configuration(
-        spec_base_dir="/path/to/your/spec2006/installation",
-        spec_config_file="ardis.cfg",
-        enabled_packages=["400.perlbench", "401.bzip2"],
-        disabled_packages=["456.hmmer", "458.sjeng"],
-    )
-    default_config = DefaultConfigurations(
-        sampling_interval_ms=100,
-        action_interval_sec=5.0,
-        periodic_app_level_events=["cycles", "instructions"],
-        periodic_system_wide_events=["power/energy-pkg/", "power/energy-cores/"],
-        one_shot_system_wide_events=["power/energy-pkg/", "instructions"],
-    )
-
-    writer = ConfigWriter(
-        filepath="configs/ardis-config.ini.tmp",
-        hardware_config=hw_config,
-        parsec_config=parsec_config,
-        spec2006_config=spec2006_config,
-        default_config=default_config,
-    )
-    writer.write()
