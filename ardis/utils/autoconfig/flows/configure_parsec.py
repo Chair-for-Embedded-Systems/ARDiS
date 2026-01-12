@@ -1,6 +1,13 @@
 from dataclasses import dataclass
 import os
 
+# Interactive prompt flow to configure PARSEC benchmark settings. This includes:
+#     - setting the PARSEC installation directory
+#     - detecting installed PARSEC packages
+#     - allowing the user to enable/disable specific packages
+# 
+# Use `python3 -m ardis.utils.autoconfig.flows.configure_parsec` to run this script directly.
+
 @dataclass
 class ParsecConfiguration:
     parsec_base_dir: str

@@ -2,6 +2,12 @@ import glob
 import os
 from dataclasses import dataclass
 
+
+# Interactive prompt flow to configure hardware-related settings. This includes:
+#     - detecting logical cores
+#     - separating the cores into frequency domains
+# Use `python3 -m ardis.utils.autoconfig.flows.configure_hardware` to run this script directly.
+
 @dataclass
 class HardwareConfiguration:
     logical_cores: int

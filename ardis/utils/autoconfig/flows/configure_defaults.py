@@ -1,5 +1,13 @@
 from dataclasses import dataclass
 
+# Interactive prompt flow to configure some default values for experiments. This includes:
+#     - action interval
+#     - sampling rate
+#     - periodic events (app-level and system-wide)
+#     - one-shot events (system-wide)
+
+# Use `python3 -m ardis.utils.autoconfig.flows.configure_defaults` to run this script directly.
+
 @dataclass
 class DefaultConfigurations:
     action_interval_sec: float

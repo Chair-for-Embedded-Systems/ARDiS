@@ -1,6 +1,14 @@
 from dataclasses import dataclass
 import os
 
+# Interactive prompt flow to configure SPEC2006 benchmark settings. This includes:
+#     - setting the SPEC2006 installation directory
+#     - setting the SPEC2006 configuration file
+#     - detecting installed SPEC2006 packages
+#     - allowing the user to enable/disable specific packages
+# 
+# Use `python3 -m ardis.utils.autoconfig.flows.configure_spec` to run this script directly.
+
 @dataclass
 class Spec2006Configuration:
     spec_base_dir: str
