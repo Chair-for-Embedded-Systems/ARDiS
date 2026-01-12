@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class DefaultConfiurattions:
+class DefaultConfigurations:
     action_interval_sec: float
     sampling_interval_ms: int
     periodic_app_level_events: list[str]
@@ -118,9 +118,9 @@ def _prompt_one_shot_system_wide_events() -> list[str]:
         elif choice == "":
             return option_one
         
-def configure_exp_defaults() -> DefaultConfiurattions:
+def configure_exp_defaults() -> DefaultConfigurations:
     
-    return DefaultConfiurattions(
+    return DefaultConfigurations(
         action_interval_sec=_prompt_action_interval(),
         sampling_interval_ms=_prompt_sampling_interval(),
         periodic_app_level_events=_prompt_periodic_app_level_events(),
