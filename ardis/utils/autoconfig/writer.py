@@ -71,6 +71,8 @@ class ConfigWriter:
         enabled_pkgs = self.spec2006_config.enabled_packages
         disabled_pkgs = self.spec2006_config.disabled_packages
         all_pkgs = enabled_pkgs + disabled_pkgs
+        # Remove leading numbers from package name
+        all_pkgs = [pkg.split('.')[1] for pkg in all_pkgs]
 
         for pkg in sorted(all_pkgs):
             if pkg in enabled_pkgs:
