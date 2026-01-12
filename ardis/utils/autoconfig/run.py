@@ -3,8 +3,9 @@ import os
 from ardis.utils.autoconfig.flows import *
 from ardis.utils.autoconfig.writer import ConfigWriter
 
-CONFIG_FOLDER = os.path.join(os.path.dirname(__file__), '../../../configs/')
+# ARDiS auto-configuration utility
 
+CONFIG_FOLDER = os.path.join(os.path.dirname(__file__), '../../../configs/')
 
 def _prompt_config_file_name() -> str:
     
@@ -52,7 +53,6 @@ def main():
 
     # Write configuration to file
     config_name = _prompt_config_file_name()
-
     writer = ConfigWriter(
         filepath=os.path.join(CONFIG_FOLDER, config_name),
         hardware_config=hardware_config,

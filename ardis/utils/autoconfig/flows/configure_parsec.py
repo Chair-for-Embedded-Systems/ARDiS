@@ -39,6 +39,18 @@ splash2x_apps = [
 splash2x_kernels = ["cholesky", "fft", "lu_cb", "lu_ncb", "radix"]
 parsec_networking_apps = ["netstreamcluster", "netdedup", "netferret"]
 
+all_packages = parsec_apps + parsec_kernels + splash2x_apps + splash2x_kernels + parsec_networking_apps
+
+def _prompt_proceed_setup() -> bool:
+    while True:
+        print("\033c", end="")
+        print("Config - PARSEC Benchmark")
+        choice = input("Proceed with PARSEC benchmark configuration? (y/n): ").strip().lower()
+        if choice == 'y':
+            return True
+        elif choice == 'n':
+            return False
+
 def _prompt_parsec_home() -> str:
     print("\033c", end="")
     while True:
@@ -138,6 +150,13 @@ def _adjust_package_selection(
 
 def configure_parsec_benchmark() -> ParsecConfiguration:
     
+    if not _prompt_proceed_setup():
+        return ParsecConfiguration(
+            parsec_base_dir="</path/to/parsec>",
+            enabled_packages=set(),
+            disabled_packages=set(all_packages)
+        )
+
     parsec_home = _prompt_parsec_home()
     installed_packages, non_installed_packages = _discover_parsec_packages(parsec_home)
     

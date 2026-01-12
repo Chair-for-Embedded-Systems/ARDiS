@@ -47,6 +47,16 @@ spec_apps = [
     '482.sphinx3',
 ]
 
+def _prompt_proceed_setup() -> bool:
+    while True:
+        print("\033c", end="")
+        print("Config - SPEC2006 Benchmark")
+        choice = input("Proceed with SPEC2006 benchmark configuration? (y/n): ").strip().lower()
+        if choice == 'y':
+            return True
+        elif choice == 'n':
+            return False
+
 def _prompt_spec2006_home() -> str:
     while True:
         print("\033c", end="")
@@ -128,6 +138,15 @@ def _adjust_package_selection(installed_apps: list[str], non_installed_apps: lis
     return final_installed, final_non_installed
 
 def configure_spec2006_benchmark() -> Spec2006Configuration:
+    
+    if not _prompt_proceed_setup():
+        return Spec2006Configuration(
+            spec_base_dir="</path/to/spec2006>",
+            spec_config_file="my_config.cfg",
+            enabled_packages=[],
+            disabled_packages=spec_apps
+        )
+    
     spec_base = _prompt_spec2006_home()
     spec_config_file = _prompt_config_file(spec_base)
     
@@ -159,4 +178,5 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
 if __name__ == "__main__":
     config = configure_spec2006_benchmark()
     print("SPEC2006 Home:", config.spec_base_dir)
+    print("Config File:", config.spec_config_file)
     print("Selected Applications:", config.enabled_packages)
