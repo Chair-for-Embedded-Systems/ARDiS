@@ -15,7 +15,12 @@ def _prompt_action_interval(default: float = 0.1) -> float:
         if len(error_msg) > 0:
             print(f"Error: {error_msg}\n")
         try:
-            interval = float(input(f"Enter the action interval in seconds (default {default}): "))
+            print("Set the action interval in seconds which determines how frequent the main control loop gets invoked.")
+            print("Leave empty for default value (0.1)")
+            value = input(f"\nEnter action interval in seconds: ")
+            if value.strip() == "":
+                return default
+            interval = float(value)
             if interval <= 0:
                 error_msg = "Please enter a positive number."
                 continue
@@ -30,7 +35,12 @@ def _prompt_sampling_interval(default: int = 100) -> int:
         if len(error_msg) > 0:
             print(f"Error: {error_msg}\n")
         try:
-            interval = int(input(f"Enter the sampling interval in milliseconds (default {default}): "))
+            print("Set the sampling interval in milliseconds which determines the duration of the periodic samples.")
+            print(f"Leave empty for default value ({default})")
+            value = input(f"\nEnter sampling interval in milliseconds: ")
+            if value.strip() == "":
+                return default
+            interval = int(value)
             if interval <= 0:
                 error_msg = "Please enter a positive integer."
                 continue
@@ -42,15 +52,15 @@ def _prompt_periodic_app_level_events() -> list[str]:
 
     option_one = ["instructions", "cycles", "branches", "branch-misses"]
     option_two = ["instuctions", "cycles", "LLC-loads", "LLC-load-misses", "LLC-stores", "LLC-store-misses", "branches", "branch-misses"]
-
+    
     while True:
         print("\033c", end="")
         print("Select a preset for periodic app-level events to monitor:\n")
-        print("1. Basic Events (instructions, cycles, branches, branch-misses)")
-        print("2. Detailed Cache Events (instructions, cycles, LLC-loads, LLC-load-misses, LLC-stores, LLC-store-misses, branches, branch-misses)")
+        print(f"1. Basic Events ({', '.join(option_one)})")
+        print(f"2. Detailed Cache Events ({', '.join(option_two)})")
         print("3. Custom Selection (use perf list to view available events)")
         print("4. No Events")
-        choice = input("Enter option (1, 2, or 3): ").strip()
+        choice = input("\nEnter option (1, 2, 3, or 4) or leave empty for default (1): ").strip()
         if choice == "1":
             return option_one
         elif choice == "2":
@@ -60,6 +70,8 @@ def _prompt_periodic_app_level_events() -> list[str]:
             return events.strip().split() if events.strip() else []
         elif choice == "4":
             return []
+        elif choice == "":
+            return option_one
 
 def _prompt_periodic_system_wide_events() -> list[str]:
     
@@ -73,7 +85,7 @@ def _prompt_periodic_system_wide_events() -> list[str]:
         print("2. Detailed Power (power/energy-pkg/, power/energy-cores/, power/energy-psys/)")
         print("3. Custom Selection (use perf list to view available events)")
         print("4. No Events")
-        choice = input("\nEnter option (1, 2, 3, or 4): ").strip()
+        choice = input("\nEnter option (1, 2, 3, or 4) or leave empty for default (1): ").strip()
         if choice == "1":
             return option_one
         elif choice == "2":
@@ -83,6 +95,8 @@ def _prompt_periodic_system_wide_events() -> list[str]:
             return events.strip().split() if events.strip() else []
         elif choice == "4":
             return []
+        elif choice == "":
+            return option_one
 
 def _prompt_one_shot_system_wide_events() -> list[str]:
     
@@ -93,7 +107,7 @@ def _prompt_one_shot_system_wide_events() -> list[str]:
         print("1. Power and Instructions (power/energy-pkg/, power/energy-cores/, power/energy-psys/, instructions)")
         print("2. Custom Selection (use perf list to view available events)")
         print("3. No Events")
-        choice = input("\nEnter option (1, 2, or 3): ").strip()
+        choice = input("\nEnter option (1, 2, or 3) or leave empty for default (1): ").strip()
         if choice == "1":
             return option_one
         elif choice == "2":
@@ -101,7 +115,9 @@ def _prompt_one_shot_system_wide_events() -> list[str]:
             return events.strip().split() if events.strip() else []
         elif choice == "3":
             return []
-
+        elif choice == "":
+            return option_one
+        
 def configure_exp_defaults() -> DefaultConfiurattions:
     
     return DefaultConfiurattions(
