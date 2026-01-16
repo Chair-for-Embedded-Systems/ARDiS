@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from .prompts import SimplePrompts
 import os
 
 # Interactive prompt flow to configure PARSEC benchmark settings. This includes:
@@ -14,30 +15,11 @@ class ParsecConfiguration:
     enabled_packages: set[str]
     disabled_packages: set[str]
 
-parsec_apps = [
-    "blackscholes",
-    "bodytrack",
-    "facesim",
-    "ferret",
-    "fluidanimate",
-    "freqmine",
-    "swaptions",
-    "vips",
-    "x264"
-]
+parsec_apps = ["blackscholes", "bodytrack", "facesim", "ferret", "fluidanimate", "freqmine", "swaptions", "vips", "x264"]
 parsec_kernels = ["canneal", "dedup", "streamcluster"]
-
-splash2x_apps = [
-    "barnes",
-    "fmm",
-    "ocean_cp",
-    "ocean_ncp",
-    "radiosity",
-    "water_nsquared",
-    "water_spatial",
-]
-splash2x_kernels = ["cholesky", "fft", "lu_cb", "lu_ncb", "radix"]
 parsec_networking_apps = ["netstreamcluster", "netdedup", "netferret"]
+splash2x_apps = ["barnes", "fmm", "ocean_cp", "ocean_ncp", "radiosity", "water_nsquared", "water_spatial"]
+splash2x_kernels = ["cholesky", "fft", "lu_cb", "lu_ncb", "radix"]
 
 all_packages = parsec_apps + parsec_kernels + splash2x_apps + splash2x_kernels + parsec_networking_apps
 
@@ -127,30 +109,18 @@ def _adjust_package_selection(
 
     while True:
         print("\033c", end="")
-        print("Config - PARSEC Benchmark")
-        print("Select available PARSEC applications on this system:\n")
-        for idx, app in enumerate(all_packages, start=1):
-            mark = "[X]" if app in selected_apps else "[ ]"
-            print(f"{idx:2}. {mark} {app.split('.')[1]}")
-        
-        print("\n[x] = Selected, [ ] = Not Selected")
-        print("\nEnter application numbers separated by spaces to toggle selection.")
-        print("Enter 'done' when finished.")
-
-        user_input = input("Your choice: ").strip()
-        if user_input.lower() == 'done':
-            break
-
-        indices = user_input.split()
-        for index_str in indices:
-            if index_str.isdigit():
-                index = int(index_str) - 1
-                if 0 <= index < len(all_packages):
-                    app = all_packages[index]
-                    if app in selected_apps:
-                        selected_apps.remove(app)
-                    else:
-                        selected_apps.add(app)
+        header = (
+            "Config - PARSEC Benchmark\n\n"
+            "Adjust the selection of enabled PARSEC packages below."
+        )
+        selected_apps = SimplePrompts.multi_choice_prompt(
+            header_prompt=header,
+            choices=sorted(all_packages),
+            initial_index_selection=set(),
+            max_items_per_page=24,
+            max_columns=3
+        )
+        break
 
     disabled_apps = set(all_packages) - selected_apps
 
@@ -175,18 +145,25 @@ def configure_parsec_benchmark() -> ParsecConfiguration:
     # Print discovered packages and ask for adjustments
     while True:
         print("\033c", end="")
-        print("Config - PARSEC Benchmark")
-        print("Base folder:", parsec_home)
-        print("Detected the following PARSEC packages installed on this system:\n")
-        for idx, package in enumerate(sorted(installed_packages), start=1):
-            print(f"{idx:2}. {package}")
-        print("\nWould you like to adjust the packages that should be enabled?")
-        choice = input("Enter 'a' to adjust selected packages, or 'c' to continue: ").strip().lower()
+        print(
+            "Config - PARSEC Benchmark\n\n"
+            "Detected the following PARSEC packages installed on this system:\n"
+        )
+        SimplePrompts.print_item_grid(
+            items=sorted(installed_packages),
+            columns=4, 
+            enable_index=False,
+            padding_left=2
+        )      
+        print(
+            "\nWould you like to adjust the packages that should be enabled?\n" +
+            "Enter 'a' to adjust selected packages\n" +
+            "Enter 'c' to continue with the current selection."
+        )
+
+        choice = input("\n>>> ").strip().lower()
         if choice == 'a':
-            enabled_packages, disabled_packages = _adjust_package_selection(
-                installed_packages,
-                non_installed_packages
-            )
+            enabled_packages, disabled_packages = _adjust_package_selection(installed_packages, non_installed_packages)
             installed_packages = enabled_packages
             non_installed_packages = disabled_packages
             break

@@ -60,7 +60,6 @@ def _prompt_proceed_setup() -> bool:
 
 def _get_spec_home_from_env() -> str | None:
     spec_home = os.getenv("SPEC")
-    
     if spec_home and os.path.isdir(spec_home):
         return spec_home
     else:
@@ -69,8 +68,11 @@ def _get_spec_home_from_env() -> str | None:
 def _prompt_spec2006_home() -> str:
     print("\033c", end="")
     while True:
-        print("Config - SPEC2006 Benchmark")
-        spec_home = input("Enter the path to your SPEC2006 installation directory: ").strip()
+        print(
+            "Config - SPEC2006 Benchmark\n\n"
+            "Enter the path to your SPEC2006 installation directory: "
+        )
+        spec_home = input(">>> ").strip()
         if os.path.isdir(spec_home):
 
             # Check for 'benchspec' directory
@@ -87,16 +89,12 @@ def _prompt_spec2006_home() -> str:
 def _prompt_config_file(spec_base: str) -> str:
     
     prompt_header = (
-        "Config - SPEC2006 Benchmark\n\n" +
-        f"SPEC_HOME: {spec_base}\n" +
+        "Config - SPEC2006 Benchmark\n\n"
+        f"SPEC_HOME: {spec_base}\n"
         "Select a SPEC2006 configuration file from the list below:"
     )
-
-    print("\033c", end="")
-    while True:
-        print("Config - SPEC2006 Benchmark")
-        
-        # Load available configs
+    while True:        
+        # Load available configs thii is inside the loop to reload on retry
         available_configs = []
         config_dir = os.path.join(spec_base, "config")
         if os.path.isdir(config_dir):
@@ -136,39 +134,21 @@ def _discover_spec2006_packages(spec_base: str) -> tuple[list[str], list[str]]:
                 non_installed_packages.append(app) 
     return installed_packages, non_installed_packages
 
-def _adjust_package_selection(installed_apps: list[str], non_installed_apps: list[str]) -> tuple[list[str], list[str]]:
-    selected_apps = set(installed_apps)
-
-    while True:
-        print("\033c", end="")
-        print("Config - SPEC2006 Benchmark")
-        print("Select available SPEC2006 applications on this system:\n")
-        all_packages = installed_apps + non_installed_apps
-        for idx, app in enumerate(all_packages, start=1):
-            mark = "[X]" if app in selected_apps else "[ ]"
-            print(f"{idx:2}. {mark} {app.split('.')[1]}")
-        print("\nEnter application numbers separated by spaces to toggle selection.")
-        print("Enter 'done' when finished.")
-
-        user_input = input("Your choice: ").strip()
-        if user_input.lower() == 'done':
-            break
-
-        selections = user_input.split()
-        for sel in selections:
-            if sel.isdigit():
-                idx = int(sel) - 1
-                if 0 <= idx < len(all_packages):
-                    app = all_packages[idx]
-                    if app in selected_apps:
-                        selected_apps.remove(app)
-                    else:
-                        selected_apps.add(app)
-
-    final_installed = [app for app in installed_apps if app in selected_apps]
-    final_non_installed = [app for app in non_installed_apps if app in selected_apps]
-
-    return final_installed, final_non_installed
+def _adjust_package_selection(installed_apps: list[str], non_installed_apps: list[str]) -> tuple[set[str], set[str]]:
+    header = (
+        "Config - SPEC2006 Benchmark\n\n"
+        "Adjust the selection of enabled SPEC2006 packages below."
+    )
+    all_packages = installed_apps + non_installed_apps
+    selected_apps = SimplePrompts.multi_choice_prompt(
+        header_prompt=header,
+        choices=all_packages,
+        initial_index_selection={idx for idx, app in enumerate(all_packages) if app in installed_apps},
+        max_items_per_page=24,
+        max_columns=3
+    )
+    non_selected_apps = set(all_packages) - selected_apps
+    return selected_apps, non_selected_apps
 
 def configure_spec2006_benchmark() -> Spec2006Configuration:
     
@@ -193,17 +173,19 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
 
     while True:
         print("\033c", end="")
-        print("Config - SPEC2006 Benchmark\n")
-        print("Detected the following SPEC2006 packages installed on this system:\n")
-        
-        SimplePrompts.print_item_grid(installed_apps, columns=4, enable_index=False, padding_left=2)
-        
-        print("\nWould you like to adjust which packages should be enabled?")
-        print("Enter 'a' to adjust the select packages")
-        print("Enter 'c' to continue with the current selection.")
+        print(
+            "Config - SPEC2006 Benchmark\n"
+            "Detected the following SPEC2006 packages installed on this system:\n"
+        )
+        SimplePrompts.print_item_grid(items=installed_apps, columns=4, enable_index=False, padding_left=2)
+        print(
+            "\nWould you like to adjust which packages should be enabled?\n"
+            "Enter 'a' to adjust the select packages\n"
+            "Enter 'c' to continue with the current selection."
+        )
         choice = input("\n>>> ").strip().lower()
         
-        # Handle user choice
+        # Ask user for adjustments
         if choice == 'a':
             installed_apps, non_installed_apps = _adjust_package_selection(installed_apps, non_installed_apps)
             break   
@@ -213,8 +195,8 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
     conf = Spec2006Configuration(
         spec_base_dir=spec_base,
         spec_config_file=spec_config_file,
-        enabled_packages=installed_apps,
-        disabled_packages=non_installed_apps
+        enabled_packages=list(installed_apps),
+        disabled_packages=list(non_installed_apps)
     )
     return conf
 
@@ -222,4 +204,5 @@ if __name__ == "__main__":
     config = configure_spec2006_benchmark()
     print("SPEC2006 Home:", config.spec_base_dir)
     print("Config File:", config.spec_config_file)
-    print("Selected Applications:", config.enabled_packages)
+    print("Enabled Applications:", config.enabled_packages)
+    print("Disabled Applications:", config.disabled_packages)

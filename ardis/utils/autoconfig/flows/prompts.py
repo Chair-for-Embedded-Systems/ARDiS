@@ -48,13 +48,14 @@ class SimplePrompts():
     def multi_choice_prompt(
         header_prompt: str,
         choices: list[str],
+        initial_index_selection: set[int],
         max_items_per_page: int,
         max_columns: int
-    ):
+    ) -> set[str]:
         current_page = 0
         total_pages = len(choices) // max_items_per_page + (1 if len(choices) == 0 else 0)
         
-        selected_indices = set()
+        selected_indices = initial_index_selection.copy()
         while True:
             print("\033c", end="")
             print(header_prompt)
@@ -74,6 +75,7 @@ class SimplePrompts():
             SimplePrompts.print_item_grid(items, max_columns, column_offset=3, enable_index=False)
 
             # Print page navigation info
+            print(f"\n  [X] = Selected, [ ] = Not Selected")
             print("\nEnter indices separated by spaces to toggle selection.")
             print("Enter 'n' for next page, 'p' for previous page.")
             print("Enter 'done' when finished.")
@@ -99,8 +101,8 @@ class SimplePrompts():
                             else:
                                 selected_indices.add(index)
         
-        return [choices[i] for i in selected_indices]
-    
+        return {choices[i] for i in selected_indices}
+
     @staticmethod
     def print_item_grid(
         items: list[str],
@@ -142,23 +144,31 @@ class SimplePrompts():
             for idx, item in enumerate(items):
                 print(f"{idx + 1:>{column_offset}}) {item}")
 
-if __name__ == "__main__":
+def __test_single_choice_prompt():
+    
+    test_options = [f"Option {i}" for i in range(1, 101)]
+    
+    item = SimplePrompts.single_choice_prompt(
+        header_prompt="Select an option:",
+        choices=test_options,
+        max_items_per_page=16,
+        max_columns=3,
+    )
+    print(f"Selected option: {item}")
+
+def __test_multi_choice_prompt():
     
     test_options = [f"Option {i}" for i in range(1, 101)]
     
     items = SimplePrompts.multi_choice_prompt(
         header_prompt="Select multiple options:",
         choices=test_options,
+        initial_index_selection=set(),
         max_items_per_page=16,
         max_columns=3,
     )
     print(f"Selected items: {items}")
-    
-    
-    #item = SimplePrompts.single_choice_prompt(
-    #    header_prompt="Select an option:",
-    #    choices=test_options,
-    #    max_items_per_page=16,
-    #    max_columns=3,
-    #)
-    #print(f"Selected option: {item}")
+
+if __name__ == "__main__":
+    __test_single_choice_prompt()
+    __test_multi_choice_prompt()
