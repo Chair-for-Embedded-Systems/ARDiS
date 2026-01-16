@@ -63,7 +63,7 @@ def configure_hardware() -> HardwareConfiguration:
     while True:
         # Clear screen
         print("\033c", end="")
-        print("Config - Hardware")
+        print("Config - Hardware\n")
 
         # Option 1
         print("Option 1 - Split on L2 Cache (Modern Intel CPUs):")
@@ -80,15 +80,18 @@ def configure_hardware() -> HardwareConfiguration:
         all_cores = sorted(core_to_cache_ids.keys())
         print(f"  Domain 0: {all_cores}")
 
-        print()
-        option = input("Enter option (1, 2, or 3): ").strip()
+        print(
+            "\nEnter option (1, 2, or 3)\n"
+            "Leave empty for default (Option 3)\n"
+        )
+        option = input(">>> ").strip()
         if option == "1":
             frequency_domains = [set(cores) for cores in l2_cache_to_cores.values()]
             break
         elif option == "2":
             frequency_domains = [set(cores) for cores in l3_cache_to_cores.values()]
             break
-        elif option == "3":
+        elif option == "3" or option == "":
             frequency_domains = [{core for core in core_to_cache_ids.keys()}]
             break
         else:

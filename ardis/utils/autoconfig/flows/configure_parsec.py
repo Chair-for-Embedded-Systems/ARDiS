@@ -44,8 +44,12 @@ def _get_parsec_home_from_env() -> str | None:
 def _prompt_parsec_home() -> str:
     print("\033c", end="")
     while True:
-        print("Config - PARSEC Benchmark\n")
-        parsec_home = input("Enter the path to your PARSEC installation directory: ").strip()
+        print(
+            "Config - PARSEC Benchmark\n\n"
+            "Enter the path to your PARSEC installation directory: "
+        )
+        print()
+        parsec_home = input(">>> ").strip()
         
         if os.path.isdir(parsec_home):
             print(f"Valid PARSEC installation found at: {parsec_home}")
