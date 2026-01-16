@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from .prompts import SimplePrompts
 import os
 
 # Interactive prompt flow to configure SPEC2006 benchmark settings. This includes:
@@ -84,17 +85,40 @@ def _prompt_spec2006_home() -> str:
             print(f"Directory '{spec_home}' does not exist. Please try again.")
 
 def _prompt_config_file(spec_base: str) -> str:
+    
+    prompt_header = (
+        "Config - SPEC2006 Benchmark\n\n" +
+        f"SPEC_HOME: {spec_base}\n" +
+        "Select a SPEC2006 configuration file from the list below:"
+    )
+
     print("\033c", end="")
     while True:
         print("Config - SPEC2006 Benchmark")
-        config_file = input("Enter the name of the SPEC2006 configuration file (e.g., 'speccpu2006.cfg'): ").strip()
-        config_path = os.path.join(spec_base, "config", config_file)
-        if os.path.isfile(config_path):
-            print(f"Found configuration file at: {config_path}")
-            return config_file
-        else:
-            print("\033c", end="")
-            print(f"Configuration file '{config_path}' does not exist. Please try again.")
+        
+        # Load available configs
+        available_configs = []
+        config_dir = os.path.join(spec_base, "config")
+        if os.path.isdir(config_dir):
+            for file in os.listdir(config_dir):
+                if file.endswith(".cfg"):
+                    available_configs.append(file)
+
+        # Warn if no configs found
+        if not available_configs:
+            print(f"No configuration files found in '{config_dir}'. Please create a config file and try again.")
+            print("Press any key to retry...")
+            input()
+            continue
+        
+        # Prompt user to select config
+        return SimplePrompts.single_choice_prompt(
+            header_prompt=prompt_header,
+            choices=available_configs,
+            max_items_per_page=12,
+            max_columns=2
+        )
+        
 
 def _discover_spec2006_packages(spec_base: str) -> tuple[list[str], list[str]]:
     installed_packages: list[str] = []
@@ -148,6 +172,7 @@ def _adjust_package_selection(installed_apps: list[str], non_installed_apps: lis
 
 def configure_spec2006_benchmark() -> Spec2006Configuration:
     
+    # Ask user if they want to proceed with setup
     if not _prompt_proceed_setup():
         return Spec2006Configuration(
             spec_base_dir="</path/to/spec2006>",
@@ -156,23 +181,29 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
             disabled_packages=spec_apps
         )
     
+    # Automatically detect SPEC home from environment variable or prompt user
     spec_base = _get_spec_home_from_env()
     if spec_base is None:
         spec_base = _prompt_spec2006_home()
 
+    # Prompt for config file
     spec_config_file = _prompt_config_file(spec_base)
     
     installed_apps, non_installed_apps = _discover_spec2006_packages(spec_base)
 
     while True:
         print("\033c", end="")
-        print("Config - SPEC2006 Benchmark")
+        print("Config - SPEC2006 Benchmark\n")
         print("Detected the following SPEC2006 packages installed on this system:\n")
-        for idx, app in enumerate(installed_apps, start=1):
-            print(f"{idx:2}. {app}")
+        
+        SimplePrompts.print_item_grid(installed_apps, columns=4, enable_index=False, padding_left=2)
         
         print("\nWould you like to adjust which packages should be enabled?")
-        choice = input("Enter 'a' to adjust the select packages, or 'c' to continue: ").strip().lower()
+        print("Enter 'a' to adjust the select packages")
+        print("Enter 'c' to continue with the current selection.")
+        choice = input("\n>>> ").strip().lower()
+        
+        # Handle user choice
         if choice == 'a':
             installed_apps, non_installed_apps = _adjust_package_selection(installed_apps, non_installed_apps)
             break   
