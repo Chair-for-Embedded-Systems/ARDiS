@@ -52,7 +52,7 @@ def _prompt_action_interval(default: float = 0.1) -> float:
             print(
                 "Config - Experiment Default Settings\n\n"
                 "Set the action interval in seconds which determines how frequent the main control loop gets invoked.\n\n"
-                "Enter a positive float value to set the action interval.\n"
+                "Enter a positive float value to set the action interval\n"
                 "Leave empty for default value (0.1)"
             )
             value = input(f"\n>>> ")
@@ -76,7 +76,7 @@ def _prompt_sampling_interval(default: int = 100) -> int:
             print(
                 "Config - Experiment Default Settings\n\n"
                 "Set the sampling interval in milliseconds which determines the duration of the periodic samples.\n\n"
-                "Enter a positive integer value to set the sampling interval.\n"
+                "Enter a positive integer value to set the sampling interval\n"
                 "Leave empty for default value (100)"
             )
             value = input(f"\n>>> ")
@@ -103,9 +103,11 @@ def _prompt_periodic_app_level_events() -> list[str]:
             f"  1. Basic Events [{', '.join(preset_one)}]\n"
             f"  2. Detailed Cache Events [{', '.join(preset_two)}]\n"
             f"  3. Custom Selection (select from perf event list)\n"
-            f"  4. No Events"
+            f"  4. No Events\n\n"
+            f"Enter option (1, 2, 3, or 4)\n"
+            "Leave empty for default option (1)"
         )
-        choice = input("\nEnter option (1, 2, 3, or 4) or leave empty for default (1): ").strip()
+        choice = input("\n>>> ").strip()
         if choice == "1":
             return preset_one
         elif choice == "2":
@@ -141,9 +143,11 @@ def _prompt_periodic_system_wide_events() -> list[str]:
             f"  1. System Power [{', '.join(preset_one)}]\n"
             f"  2. Detailed Power [{', '.join(preset_two)}]\n"
             f"  3. Custom Selection (select from perf event list)\n"
-            f"  4. No Events"
+            f"  4. No Events\n\n"
+            "Enter option (1, 2, 3, or 4)\n"
+            "Leave empty for default option (1)"
         )
-        choice = input("\nEnter option (1, 2, 3, or 4) or leave empty for default (1): ").strip()
+        choice = input("\n>>> ").strip()
         if choice == "1":
             return preset_one
         elif choice == "2":
@@ -177,9 +181,11 @@ def _prompt_one_shot_system_wide_events() -> list[str]:
             f"  1. Power and Instructions [{', '.join(preset_one)}]\n"
             f"  2. System Power Only [{', '.join(preset_two)}]\n"
             f"  3. Custom Selection (select from perf event list)\n"
-            f"  4. No Events"
+            f"  4. No Events\n\n"
+            "Enter option (1, 2, or 3)\n"
+            "Leave empty for default option (1)"
         )
-        choice = input("\nEnter option (1, 2, or 3) or leave empty for default (1): ").strip()
+        choice = input("\n>>> ").strip()
         if choice == "1":
             return preset_one
         elif choice == "2":

@@ -13,9 +13,13 @@ def _prompt_config_file_name() -> str:
 
     while True:
         print("\033c", end="")
-        print("Config - ARDiS Configuration File\n")
+        print(
+            "Config - ARDiS Configuration File\n\n"
+            "Enter the name of the configuration file to save the generated configuration\n"
+            f"Press Enter to use the default name ({default_file_name})"
+        )
         
-        config_file_name = input(f"Enter the name of the configuration file to use (or press Enter for {default_file_name}): ").strip()
+        config_file_name = input("\n>>> ").strip()
         if config_file_name == "":
             config_file_name = default_file_name
         else:
@@ -47,7 +51,7 @@ def main():
         "  3. Experiment Default Parameters\n"
         "  4. Nameing and saving the configuration file\n\n"
         "Tip: You can load the environments for PARSEC and SPEC2006 for a quicker setup.\n\n"
-        "Press any key to begin the configuration, you can exit at any time by pressing Ctrl+C"
+        "Press enter to begin the configuration, you can exit at any time by pressing Ctrl+C"
     )
     input()
         

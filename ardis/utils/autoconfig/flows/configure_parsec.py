@@ -120,7 +120,7 @@ def _adjust_package_selection(
         selected_apps = SimplePrompts.multi_choice_prompt(
             header_prompt=header,
             choices=sorted(all_packages),
-            initial_index_selection=set(),
+            initial_index_selection={idx for idx, app in enumerate(all_packages) if app in selected_apps},
             max_items_per_page=24,
             max_columns=3
         )
