@@ -18,6 +18,9 @@ def _prompt_config_file_name() -> str:
         config_file_name = input(f"Enter the name of the configuration file to use (or press Enter for {default_file_name}): ").strip()
         if config_file_name == "":
             config_file_name = default_file_name
+        else:
+            if not config_file_name.endswith(".ini"):
+                config_file_name += ".ini"
         
         # Warn if file does exist and ask for confirmation to overwrite
         if os.path.isfile(os.path.join(CONFIG_FOLDER, config_file_name)):

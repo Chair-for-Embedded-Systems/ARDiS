@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import time
 from ardis.utils.autoconfig.flows import HardwareConfiguration, ParsecConfiguration, Spec2006Configuration, DefaultConfigurations
@@ -26,7 +27,7 @@ class ConfigWriter:
             config_content = self._create_config()
             self.filepath.parent.mkdir(parents=True, exist_ok=True)  # Ensure the directory exists
             self.filepath.write_text(config_content)
-            print(f"Configuration file written to: {self.filepath}")
+            print(f"Configuration file written to: {os.path.abspath(self.filepath)}")
         except Exception as e:
             raise IOError(f"Failed to write configuration file: {e}")
 
