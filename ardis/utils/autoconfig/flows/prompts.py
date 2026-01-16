@@ -22,14 +22,16 @@ class SimplePrompts():
             # Items on this page
             page_items = choices[current_page * max_items_per_page:min((current_page + 1) * max_items_per_page, len(choices))]
 
-            print(f"\n----------- Page {current_page + 1} of {total_pages} -----------\n")
+            if total_pages > 1:
+                print(f"\n< Page {current_page + 1} of {total_pages} >\n")
 
             # Print items in a grid if max_columns > 1 the index should be per column
             SimplePrompts.print_item_grid(page_items, max_columns, column_offset=3, enable_index=True)
 
             # Print page navigation info
             print("\nEnter the index of your choice to select it.")
-            print("Enter 'n' for next page, 'p' for previous page.")
+            if total_pages > 1:
+                print("Enter 'n' for next page, 'p' for previous page.")
             input_str = input(f"\n>>> ").strip()
 
             # Handle navigation
@@ -62,7 +64,8 @@ class SimplePrompts():
             # Items on this page
             page_items = choices[current_page * max_items_per_page:min((current_page + 1) * max_items_per_page, len(choices))]
 
-            print(f"\n----------- Page {current_page + 1} of {total_pages} -----------\n")
+            if total_pages > 1:
+                print(f"\n< Page {current_page + 1} of {total_pages} >\n")
 
             # Print items in a grid if max_columns > 1 the index should be per column
             items = []
@@ -77,8 +80,10 @@ class SimplePrompts():
             # Print page navigation info
             print(f"\n  [X] = Selected, [ ] = Not Selected")
             print("\nEnter indices separated by spaces to toggle selection.")
-            print("Enter 'n' for next page, 'p' for previous page.")
+            if total_pages > 1:
+                print("Enter 'n' for next page, 'p' for previous page.")
             print("Enter 'done' when finished.")
+            
             input_str = input(f"\n>>> ").strip()
 
             # Handle navigation

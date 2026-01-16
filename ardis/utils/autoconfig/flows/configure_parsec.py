@@ -26,7 +26,7 @@ all_packages = parsec_apps + parsec_kernels + splash2x_apps + splash2x_kernels +
 def _prompt_proceed_setup() -> bool:
     while True:
         print("\033c", end="")
-        print("Config - PARSEC Benchmark")
+        print("Config - PARSEC Benchmark\n")
         choice = input("Proceed with PARSEC benchmark configuration? (y/n): ").strip().lower()
         if choice == 'y':
             return True
@@ -44,7 +44,7 @@ def _get_parsec_home_from_env() -> str | None:
 def _prompt_parsec_home() -> str:
     print("\033c", end="")
     while True:
-        print("Config - PARSEC Benchmark")
+        print("Config - PARSEC Benchmark\n")
         parsec_home = input("Enter the path to your PARSEC installation directory: ").strip()
         
         if os.path.isdir(parsec_home):
@@ -111,7 +111,7 @@ def _adjust_package_selection(
         print("\033c", end="")
         header = (
             "Config - PARSEC Benchmark\n\n"
-            "Adjust the selection of enabled PARSEC packages below."
+            "Adjust the selection of enabled PARSEC packages below.\n"
         )
         selected_apps = SimplePrompts.multi_choice_prompt(
             header_prompt=header,

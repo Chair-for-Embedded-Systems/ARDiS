@@ -51,7 +51,7 @@ spec_apps = [
 def _prompt_proceed_setup() -> bool:
     while True:
         print("\033c", end="")
-        print("Config - SPEC2006 Benchmark")
+        print("Config - SPEC2006 Benchmark\n")
         choice = input("Proceed with SPEC2006 benchmark configuration? (y/n): ").strip().lower()
         if choice == 'y':
             return True
@@ -137,7 +137,7 @@ def _discover_spec2006_packages(spec_base: str) -> tuple[list[str], list[str]]:
 def _adjust_package_selection(installed_apps: list[str], non_installed_apps: list[str]) -> tuple[set[str], set[str]]:
     header = (
         "Config - SPEC2006 Benchmark\n\n"
-        "Adjust the selection of enabled SPEC2006 packages below."
+        "Adjust the selection of enabled SPEC2006 packages below.\n"
     )
     all_packages = installed_apps + non_installed_apps
     selected_apps = SimplePrompts.multi_choice_prompt(
@@ -174,8 +174,8 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
     while True:
         print("\033c", end="")
         print(
-            "Config - SPEC2006 Benchmark\n"
-            "Detected the following SPEC2006 packages installed on this system:\n"
+            "Config - SPEC2006 Benchmark\n\n"
+            "The following packages where detected on this system and automatically marked as enabled:\n"
         )
         SimplePrompts.print_item_grid(items=installed_apps, columns=4, enable_index=False, padding_left=2)
         print(
