@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+import json
+import subprocess
+from .prompts import SimplePrompts
 
 # Interactive prompt flow to configure some default values for experiments. This includes:
 #     - action interval
@@ -16,6 +19,29 @@ class DefaultConfigurations:
     periodic_system_wide_events: list[str]
     one_shot_system_wide_events: list[str]
 
+def __fetch_perf_event_list() -> list[str]:
+    # Obtain list of valid perf events (run `perf list -j` command)
+    process = subprocess.Popen(['perf', 'list', '-j'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    stdout, stderr = process.communicate()
+    if process.returncode != 0:
+        raise Exception(f"Failed to retrieve perf events: {stderr.strip()}")
+    
+    # Convert output to json and extract event names
+    valid_events: list[str] = []
+    try:
+        json_data = json.loads(stdout)
+        for event in json_data:
+            if event.get('EventName'):
+                valid_events.append(event['EventName'])
+            if event.get('EventAlias'):
+                valid_events.append(event['EventAlias'])
+    except json.JSONDecodeError:
+        raise Exception("Failed to parse perf list output as JSON.")
+    
+    # Remove duplicates and preserve order 
+    valid_events = list(dict.fromkeys(valid_events))
+    return valid_events
+
 def _prompt_action_interval(default: float = 0.1) -> float:
     error_msg = ""
     while True:
@@ -23,9 +49,13 @@ def _prompt_action_interval(default: float = 0.1) -> float:
         if len(error_msg) > 0:
             print(f"Error: {error_msg}\n")
         try:
-            print("Set the action interval in seconds which determines how frequent the main control loop gets invoked.")
-            print("Leave empty for default value (0.1)")
-            value = input(f"\nEnter action interval in seconds: ")
+            print(
+                "Config - Experiment Default Settings\n\n"
+                "Set the action interval in seconds which determines how frequent the main control loop gets invoked.\n\n"
+                "Enter a positive float value to set the action interval.\n"
+                "Leave empty for default value (0.1)"
+            )
+            value = input(f"\n>>> ")
             if value.strip() == "":
                 return default
             interval = float(value)
@@ -43,9 +73,13 @@ def _prompt_sampling_interval(default: int = 100) -> int:
         if len(error_msg) > 0:
             print(f"Error: {error_msg}\n")
         try:
-            print("Set the sampling interval in milliseconds which determines the duration of the periodic samples.")
-            print(f"Leave empty for default value ({default})")
-            value = input(f"\nEnter sampling interval in milliseconds: ")
+            print(
+                "Config - Experiment Default Settings\n\n"
+                "Set the sampling interval in milliseconds which determines the duration of the periodic samples.\n\n"
+                "Enter a positive integer value to set the sampling interval.\n"
+                "Leave empty for default value (100)"
+            )
+            value = input(f"\n>>> ")
             if value.strip() == "":
                 return default
             interval = int(value)
@@ -58,73 +92,115 @@ def _prompt_sampling_interval(default: int = 100) -> int:
 
 def _prompt_periodic_app_level_events() -> list[str]:
 
-    option_one = ["instructions", "cycles", "branches", "branch-misses"]
-    option_two = ["instructions", "cycles", "LLC-loads", "LLC-load-misses", "LLC-stores", "LLC-store-misses", "branches", "branch-misses"]
+    preset_one = ["instructions", "cycles", "branches", "branch-misses"]
+    preset_two = ["instructions", "cycles", "LLC-loads", "LLC-load-misses", "LLC-stores", "LLC-store-misses", "branches", "branch-misses"]
     
     while True:
         print("\033c", end="")
-        print("Select a preset for periodic app-level events to monitor:\n")
-        print(f"1. Basic Events ({', '.join(option_one)})")
-        print(f"2. Detailed Cache Events ({', '.join(option_two)})")
-        print("3. Custom Selection (use perf list to view available events)")
-        print("4. No Events")
+        print(
+            "Config - App-Level Events Monitoring\n\n"
+            "Select an option for periodic app-level events to monitor.\n\n"
+            f"  1. Basic Events [{', '.join(preset_one)}]\n"
+            f"  2. Detailed Cache Events [{', '.join(preset_two)}]\n"
+            f"  3. Custom Selection (select from perf event list)\n"
+            f"  4. No Events"
+        )
         choice = input("\nEnter option (1, 2, 3, or 4) or leave empty for default (1): ").strip()
         if choice == "1":
-            return option_one
+            return preset_one
         elif choice == "2":
-            return option_two
+            return preset_two
         elif choice == "3":
-            events = input("Enter periodic app-level events separated by spaces (or leave blank for none): ")
-            return events.strip().split() if events.strip() else []
+            available_events = __fetch_perf_event_list()
+            events = SimplePrompts.multi_choice_prompt(
+                header_prompt=(
+                    "Config - App-Level Events Monitoring\n\n"
+                    "Select periodic app-level events to monitor:"
+                ),
+                choices=available_events,
+                initial_index_selection=set(),
+                max_items_per_page=20,
+                max_columns=2
+            )
+            return list(events)
         elif choice == "4":
             return []
         elif choice == "":
-            return option_one
+            return preset_one
 
 def _prompt_periodic_system_wide_events() -> list[str]:
     
-    option_one = ["power/energy-psys/"]
-    option_two = ["power/energy-pkg/", "power/energy-cores/", "power/energy-psys/"]
+    preset_one = ["power/energy-psys/"]
+    preset_two = ["power/energy-pkg/", "power/energy-cores/", "power/energy-psys/"]
     
     while True:
         print("\033c", end="")
-        print("Select a preset for periodic system-wide events to monitor:\n")
-        print("1. System Power (power/energy-psys/)")
-        print("2. Detailed Power (power/energy-pkg/, power/energy-cores/, power/energy-psys/)")
-        print("3. Custom Selection (use perf list to view available events)")
-        print("4. No Events")
+        print(
+            "Config - System-Wide Events Monitoring\n\n"
+            "Select a preset for periodic system-wide events to monitor:\n\n"
+            f"  1. System Power [{', '.join(preset_one)}]\n"
+            f"  2. Detailed Power [{', '.join(preset_two)}]\n"
+            f"  3. Custom Selection (select from perf event list)\n"
+            f"  4. No Events"
+        )
         choice = input("\nEnter option (1, 2, 3, or 4) or leave empty for default (1): ").strip()
         if choice == "1":
-            return option_one
+            return preset_one
         elif choice == "2":
-            return option_two
+            return preset_two
         elif choice == "3":
-            events = input("Enter periodic system-wide events separated by spaces (or leave blank for none): ")
-            return events.strip().split() if events.strip() else []
+            available_events = __fetch_perf_event_list()
+            events = SimplePrompts.multi_choice_prompt(
+                header_prompt=(
+                    "Config - System-Wide Events Monitoring\n\n"
+                    "Select periodic system-wide events to monitor:"
+                ),
+                choices=available_events,
+                initial_index_selection=set(),
+                max_items_per_page=20,
+                max_columns=2
+            )
+            return list(events)
         elif choice == "4":
             return []
         elif choice == "":
-            return option_one
+            return preset_one
 
 def _prompt_one_shot_system_wide_events() -> list[str]:
-    
-    option_one = ["power/energy-pkg/", "power/energy-cores/", "power/energy-psys/", "instructions"]
+    preset_one = ["power/energy-pkg/", "power/energy-cores/", "power/energy-psys/", "instructions"]
+    preset_two = ["power/energy-psys/"]
     while True:
         print("\033c", end="")
-        print("Select a preset for one-shot system-wide events to monitor:\n")
-        print("1. Power and Instructions (power/energy-pkg/, power/energy-cores/, power/energy-psys/, instructions)")
-        print("2. Custom Selection (use perf list to view available events)")
-        print("3. No Events")
+        print(
+            "Config - One-Shot System-Wide Events Monitoring\n\n"
+            "Select a preset for one-shot system-wide events to monitor:\n\n"
+            f"  1. Power and Instructions [{', '.join(preset_one)}]\n"
+            f"  2. System Power Only [{', '.join(preset_two)}]\n"
+            f"  3. Custom Selection (select from perf event list)\n"
+            f"  4. No Events"
+        )
         choice = input("\nEnter option (1, 2, or 3) or leave empty for default (1): ").strip()
         if choice == "1":
-            return option_one
+            return preset_one
         elif choice == "2":
-            events = input("Enter one-shot system-wide events separated by spaces (or leave blank for none): ")
-            return events.strip().split() if events.strip() else []
+            return preset_two
         elif choice == "3":
+            available_events = __fetch_perf_event_list()
+            events = SimplePrompts.multi_choice_prompt(
+                header_prompt=(
+                    "Config - App-Level Events Monitoring\n\n"
+                    "Select periodic app-level events to monitor:"
+                ),
+                choices=available_events,
+                initial_index_selection=set(),
+                max_items_per_page=20,
+                max_columns=2
+            )
+            return list(events)
+        elif choice == "4":
             return []
         elif choice == "":
-            return option_one
+            return preset_one
         
 def configure_exp_defaults() -> DefaultConfigurations:
     
