@@ -162,7 +162,11 @@ class ARDISConfigParser:
         # Check if provided events are valid
         invalid_events : set[str] = {event for event in events if event not in valid_events}
         if invalid_events:
-            raise ConfigOptionError(f"The following perf events are invalid or not supported on this system: {invalid_events}")
+            raise ConfigOptionError(
+                f"The following perf events are invalid or not supported on this system: {invalid_events}\n"
+                "Some events may not be available because they require root privileges\n"
+                "Please check 'perf list' output for valid events and update the configuration file accordingly."
+            )
 
     def print_config(self) -> None:
         print("ARDIS Configuration:")
