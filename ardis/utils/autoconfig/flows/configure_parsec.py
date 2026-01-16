@@ -51,6 +51,14 @@ def _prompt_proceed_setup() -> bool:
         elif choice == 'n':
             return False
 
+def _get_parsec_home_from_env() -> str | None:
+    parsec_home = os.getenv("xxPARSECDIRxx")
+    
+    if parsec_home and os.path.isdir(parsec_home):
+        return parsec_home
+    else:
+        return None
+
 def _prompt_parsec_home() -> str:
     print("\033c", end="")
     while True:
@@ -156,14 +164,19 @@ def configure_parsec_benchmark() -> ParsecConfiguration:
             enabled_packages=set(),
             disabled_packages=set(all_packages)
         )
+    
+    # Automatically detect PARSEC home from environment variable or prompt user
+    parsec_home = _get_parsec_home_from_env()
+    if parsec_home is None:
+        parsec_home = _prompt_parsec_home()
 
-    parsec_home = _prompt_parsec_home()
     installed_packages, non_installed_packages = _discover_parsec_packages(parsec_home)
     
     # Print discovered packages and ask for adjustments
     while True:
         print("\033c", end="")
         print("Config - PARSEC Benchmark")
+        print("Base folder:", parsec_home)
         print("Detected the following PARSEC packages installed on this system:\n")
         for idx, package in enumerate(sorted(installed_packages), start=1):
             print(f"{idx:2}. {package}")

@@ -57,9 +57,17 @@ def _prompt_proceed_setup() -> bool:
         elif choice == 'n':
             return False
 
+def _get_spec_home_from_env() -> str | None:
+    spec_home = os.getenv("SPEC")
+    
+    if spec_home and os.path.isdir(spec_home):
+        return spec_home
+    else:
+        return None
+
 def _prompt_spec2006_home() -> str:
+    print("\033c", end="")
     while True:
-        print("\033c", end="")
         print("Config - SPEC2006 Benchmark")
         spec_home = input("Enter the path to your SPEC2006 installation directory: ").strip()
         if os.path.isdir(spec_home):
@@ -76,8 +84,8 @@ def _prompt_spec2006_home() -> str:
             print(f"Directory '{spec_home}' does not exist. Please try again.")
 
 def _prompt_config_file(spec_base: str) -> str:
+    print("\033c", end="")
     while True:
-        print("\033c", end="")
         print("Config - SPEC2006 Benchmark")
         config_file = input("Enter the name of the SPEC2006 configuration file (e.g., 'speccpu2006.cfg'): ").strip()
         config_path = os.path.join(spec_base, "config", config_file)
@@ -85,6 +93,7 @@ def _prompt_config_file(spec_base: str) -> str:
             print(f"Found configuration file at: {config_path}")
             return config_file
         else:
+            print("\033c", end="")
             print(f"Configuration file '{config_path}' does not exist. Please try again.")
 
 def _discover_spec2006_packages(spec_base: str) -> tuple[list[str], list[str]]:
@@ -147,7 +156,10 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
             disabled_packages=spec_apps
         )
     
-    spec_base = _prompt_spec2006_home()
+    spec_base = _get_spec_home_from_env()
+    if spec_base is None:
+        spec_base = _prompt_spec2006_home()
+
     spec_config_file = _prompt_config_file(spec_base)
     
     installed_apps, non_installed_apps = _discover_spec2006_packages(spec_base)
