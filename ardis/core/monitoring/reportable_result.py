@@ -159,8 +159,15 @@ class OneShotSystemResult(ReportableResult):
 
     def report(self, reporter: Reporter) -> None:
         events = self.sys_events.events
-        reporter.logEvent(f"Total energy consumed (perf) =  {events['power/energy-psys/']}")
-        reporter.logEvent(f"Total instructions executed = {int(events['instructions'])}")
+        # List one shot events (special treatment for energy and instructions is currently kept for compatibility)
+        for event_name, value in events.items():
+            if event_name == "power/energy-psys/":
+                reporter.logEvent(f"Total energy consumed (perf) =  {events['power/energy-psys/']}")
+            elif event_name == "instructions":
+                reporter.logEvent(f"Total instructions executed = {int(value)}")
+            else:                   
+                reporter.logEvent(f"Total {event_name} = {value}")
+        
         reporter.logEvent(f"Total time elapsed (perf) = {self.elapsed_time_sec:.2f} seconds")
         
         flat_multiplexed_events = " | ".join([f"{event} = {pct/100} " for event, pct in self.sys_events.pct_running.items()])

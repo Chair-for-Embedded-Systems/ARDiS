@@ -1,3 +1,4 @@
+from math import ceil
 from typing import Any
 from matplotlib.axes import Axes 
 from matplotlib import pyplot as plt
@@ -90,7 +91,7 @@ class AppMultiMetricClip(ResultClip):
         num_cols = 4
         num_metrics = len(metrics)
         num_cols = num_metrics if num_metrics < num_cols else num_cols
-        num_rows = (num_metrics + 1) // num_cols
+        num_rows = ceil(num_metrics  / num_cols)
 
         # Create subplots
         fig, axes = plt.subplots(  # type: ignore
