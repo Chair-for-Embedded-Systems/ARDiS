@@ -212,17 +212,18 @@ class Engine:
             else:  
                 with system_state_lock:
                 
-                    # Update pid of (active) apps.
-                    # Once the PID of an parsec-app has been detected (app_to_pid[app] != -1), it does not change.
-                    # However apparently there where some cases (maybe with other benchmarks), where a change of the PID was observed.
-                    # Therefore this optimization is not applied.
+                    # Update pid of (active) apps. This is necessary as there are some benchmark applications
+                    # which change their PID during execution.
+                    # All PARSEC applications keep their PIDs,
+                    # Some SPEC2006 applications change their PIDs (e.g. bzip2, ...),
                     for app in self.__active_threads:
-                        # This call is very expensive, since it invokes a subprocess that runs pgrep in a loop until the PID is found or max_tries is exceeded. 
-                        # Each failed try introduces an addtional delay of 5ms.
-                        # if self.__app_to_pid[app] != -1:
-                        #     continue
-                        PID = app.get_pid()
-                        self.__app_to_pid[app] = PID if PID else -1 #getPIDOfApp(app, max_tries=1)
+                        if PID := app.get_pid():
+                            # Check if PID has changed (exclude first detection) and reapply affinity if necessary
+                            if self.__app_to_pid[app] != -1 and self.__app_to_pid[app] != PID:
+                                MigrationPolicy._setAffinity(PID, self.__app_to_cores[app])
+                            self.__app_to_pid[app] = PID
+                        else:
+                            self.__app_to_pid[app] = -1
                             
                     # Construct system state object, which gets passed to the individual policies
                     system_state: SystemState = SystemState(
