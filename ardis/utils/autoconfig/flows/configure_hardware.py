@@ -63,7 +63,12 @@ def configure_hardware() -> HardwareConfiguration:
     while True:
         # Clear screen
         print("\033c", end="")
-        print("Config - Hardware\n")
+        print(
+            "Config - Hardware\n\n"
+            "Choose a DVFS domain partitioning (cores in the same domain have a common frequency).\n"
+            "This is adjustable later via the configuration file.\n"
+            "Refer to the “configuration.md” in the documentation for more info\n"
+        )
 
         # Option 1
         print("Option 1 - Split on L2 Cache (Modern Intel CPUs):")
