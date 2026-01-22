@@ -1,8 +1,9 @@
-# Setup
+# Getting started
 
 ## 1. Installing ARDiS
 
 ### Prerequisites
+* Python >= 3.10
 * Make sure you have installed **pip3** and **python3-venv**.
 * No root privileges are required.
 
