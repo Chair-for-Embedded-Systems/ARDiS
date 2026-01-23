@@ -107,13 +107,13 @@ run_build_container_interactive() {
 
 verify_parsec_setup() {
     if [ -d ${PARSEC_BASE_DIR} ]; then
-        echo "Verifying Parsec setup..."
+        echo "Verifying PARSEC setup..."
         cd ${PARSEC_BASE_DIR}
         . env.sh
         parsecmgmt -a status
         cd -
     else
-        echo "Parsec base directory does not exist. Please run the setup first."
+        echo "PARSEC base directory does not exist. Please run the setup first."
     fi
 }
 
@@ -127,8 +127,6 @@ run_setup() {
     verify_parsec_setup
 }
 
-apply_patches_parsec
-exit 0
 # Uncomment to open an interactive shell in the build container
 # run_build_container_interactive
 
