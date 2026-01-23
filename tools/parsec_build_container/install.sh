@@ -28,15 +28,20 @@ download_parsec() {
 }
 
 extract_parsec() {
-    # Check if PARSEC is already extracted
-    if [ ! -d ${PARSEC_BASE_DIR} ]; then
+    # Check if PARSEC is already extracted and contains the .parsec_unique_file
+    if [ ! -d ${PARSEC_BASE_DIR} ] || [ ! -f ${PARSEC_BASE_DIR}/.parsec_unique_file ]; then
         echo "Extracting PARSEC benchmark suite..."
-        tar -xzf ${PARSEC_ARCHIVE_FILE}
+
+        # Create base directory if it does not exist
+        mkdir -p ${PARSEC_BASE_DIR}
+
+        tar -xzvf ${PARSEC_ARCHIVE_NAME} -C $(dirname ${PARSEC_BASE_DIR})
+
         if [ ${REMOVE_DOWNLOADED_ARCHIVE_AFTER_EXTRACT} = true ]; then
-            rm ${PARSEC_ARCHIVE_FILE}
+            rm ${PARSEC_ARCHIVE_NAME}
         fi
     else
-        echo "Parsec benchmark suite already extracted. (Skipping extraction!)"
+        echo "PARSEC benchmark suite already extracted. (Skipping extraction!)"
     fi
 }
 
