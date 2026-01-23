@@ -12,6 +12,7 @@ import os
 
 @dataclass
 class Spec2006Configuration:
+    enabled: bool
     spec_base_dir: str
     spec_config_file: str
     enabled_packages: list[str]
@@ -155,6 +156,7 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
     # Ask user if they want to proceed with setup
     if not _prompt_proceed_setup():
         return Spec2006Configuration(
+            enabled=False,
             spec_base_dir="</path/to/spec2006>",
             spec_config_file="my_config.cfg",
             enabled_packages=[],
@@ -193,6 +195,7 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
             break
 
     conf = Spec2006Configuration(
+        enabled=True,
         spec_base_dir=spec_base,
         spec_config_file=spec_config_file,
         enabled_packages=list(installed_apps),
@@ -202,6 +205,7 @@ def configure_spec2006_benchmark() -> Spec2006Configuration:
 
 if __name__ == "__main__":
     config = configure_spec2006_benchmark()
+    print("SPEC2006 Enabled:", config.enabled)
     print("SPEC2006 Home:", config.spec_base_dir)
     print("Config File:", config.spec_config_file)
     print("Enabled Applications:", config.enabled_packages)
