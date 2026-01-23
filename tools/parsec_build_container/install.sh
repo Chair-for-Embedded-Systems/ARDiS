@@ -40,17 +40,26 @@ extract_parsec() {
     fi
 }
 
-apply_patchs_parsec() {
+apply_patches_parsec() {
     echo "Applying patches to PARSEC benchmark suite..."
     
+    # Store current directory
+    CURRENT_DIR=$(pwd)
+
     # Patch some pod files from the ssl library which break the build
     # See https://stackoverflow.com/questions/55451472/building-parsec-dedup-workload-with-parsecmgmt-fails
-    cd ${PARSEC_BASE_DIR}/pkgs/libs/ssl/src/doc/apps
-    sed -i.bak 's/item \([0-9]\+\)/item C<\1>/g' *
-    cd -
-    cd ${PARSEC_BASE_DIR}/pkgs/libs/ssl/src/doc/ssl
-    sed -i.bak 's/item \([0-9]\+\)/item C<\1>/g' *
-    cd -
+    cd ${PARSEC_BASE_DIR}/pkgs/libs/ssl/src/doc/apps \
+        && sed -i.bak 's/item \([0-9]\+\)/item C<\1>/g' *\
+        && cd -\
+        || { echo "Failed to patch apps documentation. (Aborting!)" && exit 1; }
+    
+    cd ${PARSEC_BASE_DIR}/pkgs/libs/ssl/src/doc/ssl \
+        && sed -i.bak 's/item \([0-9]\+\)/item C<\1>/g' *\
+        && cd -\
+        || { echo "Failed to patch ssl documentation. (Aborting!)" && exit 1; }
+
+    # Restore original directory
+    cd ${CURRENT_DIR}
 
     echo "Patches applied!"
 }
@@ -107,13 +116,13 @@ verify_parsec_setup() {
 run_setup() {
     download_parsec
     extract_parsec
-    apply_patchs_parsec
+    apply_patches_parsec
     create_build_container
     run_build_container
     verify_parsec_setup
 }
 
-download_parsec
+apply_patches_parsec
 exit 0
 # Uncomment to open an interactive shell in the build container
 # run_build_container_interactive
