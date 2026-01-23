@@ -1,8 +1,9 @@
 
 PARSEC_DOWNLOAD_URL="https://web.archive.org/web/20230813020110/http://parsec.cs.princeton.edu/download/3.0/parsec-3.0.tar.gz"
-PARSEC_ARCHIVE_NAME="parsec-3.0.tar.gz"
 
-# The location where PARSEC will be installed
+# Location where the PARSEC archive will be stored
+PARSEC_ARCHIVE_FILE=$(pwd)/parsec-3.0.tar.gz
+# The location where PARSEC benchmark suite will be installed
 PARSEC_BASE_DIR=$(pwd)/parsec-3.0
 
 REMOVE_DOWNLOADED_ARCHIVE_AFTER_EXTRACT=false
@@ -11,11 +12,18 @@ DOCKER_CONTAINER_NAME="parsec_build_container"
 
 download_parsec() {
     # Check if PARSEC is already downloaded
-    if [ ! -d ${PARSEC_BASE_DIR} ]; then
-        echo "Downloading Parsec benchmark suite..."
-        wget ${PARSEC_DOWNLOAD_URL} -O ${PARSEC_ARCHIVE_NAME}
+    if [ ! -f ${PARSEC_ARCHIVE_FILE} ]; then
+        echo "Downloading PARSEC benchmark suite..."
+        wget ${PARSEC_DOWNLOAD_URL} -O ${PARSEC_ARCHIVE_FILE}
+        
+        # Ensure that download was successful before proceeding
+        if [ $? -ne 0 ]; then
+            echo "Error downloading PARSEC benchmark suite. (Aborting!)"
+            echo "Please check that the URL is reachable: ${PARSEC_DOWNLOAD_URL}"
+            exit 1
+        fi
     else
-        echo "Parsec benchmark suite already downloaded. (Skipping download!)"
+        echo "PARSEC benchmark suite already downloaded. (Skipping download!)"
     fi
 }
 
@@ -23,9 +31,9 @@ extract_parsec() {
     # Check if PARSEC is already extracted
     if [ ! -d ${PARSEC_BASE_DIR} ]; then
         echo "Extracting PARSEC benchmark suite..."
-        tar -xzf ${PARSEC_ARCHIVE_NAME}
+        tar -xzf ${PARSEC_ARCHIVE_FILE}
         if [ ${REMOVE_DOWNLOADED_ARCHIVE_AFTER_EXTRACT} = true ]; then
-            rm ${PARSEC_ARCHIVE_NAME}
+            rm ${PARSEC_ARCHIVE_FILE}
         fi
     else
         echo "Parsec benchmark suite already extracted. (Skipping extraction!)"
@@ -105,6 +113,8 @@ run_setup() {
     verify_parsec_setup
 }
 
+download_parsec
+exit 0
 # Uncomment to open an interactive shell in the build container
 # run_build_container_interactive
 
