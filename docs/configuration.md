@@ -30,11 +30,13 @@ The configuration is divided into functional blocks. Comments can be added using
 
 ### The `Parsec_Benchmark` section
 All parameter related to the PARSEC benchmark suite
+- `enabled`: Flag to enable or disable PARSEC benchmark integration
 - `benchmark_base_dir`: The base directory of the PARSEC benchmark suite
 - `available_packages`: List of available/compiled packages on the system
 
 ### The `Spec_Benchmark` section
 All parameters related to the SPEC2006 CPU benchmark suite
+- `enabled`: Flag to enable or disable SPEC CPU 2006 benchmark integration
 - `benchmark_base_dir`: The base directory of the SPEC CPU 2006 installation.
 - `config_file`: Name of the SPEC configuration file. This should be located in the `config` folder of the SPEC benchmark installation directory.
 - `available_packages`: List of available/compiled packages on the system
