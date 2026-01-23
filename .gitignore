@@ -2,6 +2,7 @@ __pycache__
 */__pycache__/*
 configs/
 results/
+benchmarks/
 *.log
 *.out
 *DS_Store

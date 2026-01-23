@@ -1,20 +1,39 @@
+#!/bin/bash
 
 PARSEC_DOWNLOAD_URL="https://web.archive.org/web/20230813020110/http://parsec.cs.princeton.edu/download/3.0/parsec-3.0.tar.gz"
-
-# Location where the PARSEC archive will be stored
-PARSEC_ARCHIVE_FILE=$(pwd)/parsec-3.0.tar.gz
-# The location where PARSEC benchmark suite will be installed
-PARSEC_BASE_DIR=$(pwd)/parsec-3.0
 
 REMOVE_DOWNLOADED_ARCHIVE_AFTER_EXTRACT=false
 DOCKER_CONTAINER_NAME="parsec_build_container"
 
 
+prepare_parameters() {
+    # Prepare installation parameters
+    local working_dir=$(pwd)
+    
+    # Update working directory if provided as argument
+    if [ -n "$1" ]; then
+        working_dir=$(realpath "$1")
+    fi
+
+    # Create working directory if it does not exist
+    mkdir -p "${working_dir}"
+
+    # Set global variables
+    PARSEC_ARCHIVE_FILE="${working_dir}/parsec-3.0.tar.gz"
+    PARSEC_BASE_DIR="${working_dir}/parsec-3.0"
+
+    echo "Working directory: ${working_dir}"
+    echo "  PARSEC archive file (location): ${PARSEC_ARCHIVE_FILE}"
+    echo "  PARSEC base directory (location): ${PARSEC_BASE_DIR}"
+}
+
 download_parsec() {
     # Check if PARSEC is already downloaded
     if [ ! -f ${PARSEC_ARCHIVE_FILE} ]; then
         echo "Downloading PARSEC benchmark suite..."
-        wget ${PARSEC_DOWNLOAD_URL} -O ${PARSEC_ARCHIVE_FILE}
+        
+        # Download to temporary file first to avoid incomplete downloads
+        wget ${PARSEC_DOWNLOAD_URL} -O ${PARSEC_ARCHIVE_FILE}.tmp 
         
         # Ensure that download was successful before proceeding
         if [ $? -ne 0 ]; then
@@ -22,6 +41,9 @@ download_parsec() {
             echo "Please check that the URL is reachable: ${PARSEC_DOWNLOAD_URL}"
             exit 1
         fi
+
+        # Rename temporary file to final file name
+        mv ${PARSEC_ARCHIVE_FILE}.tmp ${PARSEC_ARCHIVE_FILE}
     else
         echo "PARSEC benchmark suite already downloaded. (Skipping download!)"
     fi
@@ -29,16 +51,16 @@ download_parsec() {
 
 extract_parsec() {
     # Check if PARSEC is already extracted and contains the .parsec_unique_file
-    if [ ! -d ${PARSEC_BASE_DIR} ] || [ ! -f ${PARSEC_BASE_DIR}/.parsec_unique_file ]; then
+    if [ ! -d ${PARSEC_BASE_DIR} ] || [ ! -f ${PARSEC_BASE_DIR}/.parsec_uniquefile ]; then
         echo "Extracting PARSEC benchmark suite..."
 
         # Create base directory if it does not exist
         mkdir -p ${PARSEC_BASE_DIR}
 
-        tar -xzvf ${PARSEC_ARCHIVE_NAME} -C $(dirname ${PARSEC_BASE_DIR})
+        tar -xzvf ${PARSEC_ARCHIVE_FILE} -C $(dirname ${PARSEC_BASE_DIR})
 
         if [ ${REMOVE_DOWNLOADED_ARCHIVE_AFTER_EXTRACT} = true ]; then
-            rm ${PARSEC_ARCHIVE_NAME}
+            rm ${PARSEC_ARCHIVE_FILE}
         fi
     else
         echo "PARSEC benchmark suite already extracted. (Skipping extraction!)"
@@ -109,7 +131,7 @@ verify_parsec_setup() {
     if [ -d ${PARSEC_BASE_DIR} ]; then
         echo "Verifying PARSEC setup..."
         cd ${PARSEC_BASE_DIR}
-        . env.sh
+        . env.sh || {   echo "Failed to source env.sh. (Aborting!)" && exit 1; }
         parsecmgmt -a status
         cd -
     else
@@ -117,17 +139,17 @@ verify_parsec_setup() {
     fi
 }
 
-
 run_setup() {
     download_parsec
     extract_parsec
     apply_patches_parsec
     create_build_container
     run_build_container
-    verify_parsec_setup
+    verify_parsec_setup    
 }
 
 # Uncomment to open an interactive shell in the build container
 # run_build_container_interactive
 
-run_setup
+prepare_parameters $@
+run_setup 
