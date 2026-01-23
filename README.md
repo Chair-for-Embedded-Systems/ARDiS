@@ -44,9 +44,16 @@ git clone git@github.com:Chair-for-Embedded-Systems/ARDiS.git
 ```
 2. Install ARDiS:
 ``` bash
-./setup.sh
+cd ARDiS && ./setup.sh
 ```
-3. Install benchmark suits (see [Installation](./docs/installation.md#2-installing-benchmark-suites) for more details)
+3. Install benchmark suits (see [Installation](./docs/installation.md#2-installing-benchmark-suites) for more details). This step can be skipped if an existing benchmark installation is to be used:
+``` bash
+# Installs PARSEC benchmark suite in the ./benchmarks directory
+./tools/parsec_build_container/install.sh benchmarks
+
+# Verify that the installation was successful
+cd benchmarks/parsec-3.0/ && . env.sh && cd - && parsecmgmt -a status
+```
 4. Create an ARDiS configuration file using the Automatic Configuration Generator (see [Configuration](./docs/configuration.md) for more details):
 ```
 python3 -m ardis.utils.autoconfig.run
