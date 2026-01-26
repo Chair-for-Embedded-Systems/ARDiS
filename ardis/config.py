@@ -26,6 +26,9 @@ PARSECBASE: str = ac.parsec_base_dir
 SPECPBASE: str = ac.spec2006_base_dir
 SPEC_CONFIGFILE: str = ac.spec2006_config_name
 
+parsec_installed: bool = ac.parsec_enabled
+spec2006_installed: bool = ac.spec2006_enabled
+
 spec_apps: list[str] = ac.spec2006_available_packages
 parsec_apps: list[str] = ac.parsec_available_packages
 parsec_network_apps: list[str] = [

@@ -11,6 +11,7 @@ import os
 
 @dataclass
 class ParsecConfiguration:
+    enabled: bool
     parsec_base_dir: str
     enabled_packages: set[str]
     disabled_packages: set[str]
@@ -134,6 +135,7 @@ def configure_parsec_benchmark() -> ParsecConfiguration:
     
     if not _prompt_proceed_setup():
         return ParsecConfiguration(
+            enabled=False,
             parsec_base_dir="</path/to/parsec>",
             enabled_packages=set(),
             disabled_packages=set(all_packages)
@@ -177,6 +179,7 @@ def configure_parsec_benchmark() -> ParsecConfiguration:
             print("Invalid input. Please enter 'a' or 'c'.")
 
     conf = ParsecConfiguration(
+        enabled=True,
         parsec_base_dir=parsec_home,
         enabled_packages=installed_packages,
         disabled_packages=non_installed_packages
@@ -185,6 +188,7 @@ def configure_parsec_benchmark() -> ParsecConfiguration:
 
 if __name__ == "__main__":
     config = configure_parsec_benchmark()
+    print("PARSEC Enabled:", config.enabled)
     print("Parsec Home:", config.parsec_base_dir)
     print("Enabled Packages:", config.enabled_packages)
     print("Disabled Packages:", config.disabled_packages)

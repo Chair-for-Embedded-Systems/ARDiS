@@ -3,7 +3,7 @@ import os
 import subprocess
 import tempfile
 from ardis.benchmarks.application import Application
-from ardis.config import parsec_apps, system_cores, PARSECBASE, RUNTIME_TEMP_DIR
+from ardis.config import parsec_apps, system_cores, PARSECBASE, RUNTIME_TEMP_DIR, parsec_installed
 from ardis.core.procworker import get_pid_of_app
 
 class ParsecApplication(Application):
@@ -28,6 +28,9 @@ class ParsecApplication(Application):
                 
         """
         super().__init__(labels)
+        
+        if not parsec_installed:
+            raise RuntimeError("PARSEC benchmark suite is not configured in the configuration.")
         
         # Validate parameters (Todo)
         benchmark, application_binary = application_package.split('.')[:2]

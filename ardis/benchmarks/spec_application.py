@@ -4,7 +4,7 @@ import signal
 import subprocess
 from ardis.benchmarks.application import Application
 from ardis.core.procworker import find_binary_in_exec_tree_recursively
-from ardis.config import SPECPBASE, SPEC_CONFIGFILE, spec_apps
+from ardis.config import SPECPBASE, SPEC_CONFIGFILE, spec_apps, spec2006_installed
 
 class SpecApplication(Application):
     
@@ -16,6 +16,9 @@ class SpecApplication(Application):
     def __init__(self, application_package: str, input: InputSize = InputSize.REF, labels: list[str] = []) -> None:
         super().__init__(labels)
         
+        if not spec2006_installed:
+            raise RuntimeError("SPEC2006 benchmark suite is not configured in the configuration.")
+
         if not application_package in spec_apps:
             raise ValueError(f"Unknown SPEC application: {application_package}")
         

@@ -89,6 +89,14 @@ class ARDISConfigParser:
         if not config.has_section(section):
             raise ValueError(f"Missing '{section}' section in configuration file.")
         
+        self.parsec_enabled = config.getboolean(section, "enabled", fallback=False)
+
+        # Initialize with empty values if not enabled
+        if not self.parsec_enabled:
+            self.parsec_base_dir = ""
+            self.parsec_available_packages = []
+            return
+        
         self.parsec_base_dir = config.get(section, "benchmark_base_dir")
         # Check if base_dir exists
         if not os.path.isdir(self.parsec_base_dir):
@@ -101,6 +109,16 @@ class ARDISConfigParser:
         section = "Spec2006_Benchmark"
         if not config.has_section(section):
             raise ConfigOptionError(f"Missing '{section}' section in configuration file.")
+        
+        # Check if SPEC2006 benchmarking is enabled
+        self.spec2006_enabled = config.getboolean(section, "enabled", fallback=False)
+        
+        # Initialize with empty values if not enabled
+        if not self.spec2006_enabled:
+            self.spec2006_base_dir = ""
+            self.spec2006_config_name = ""
+            self.spec2006_available_packages = []
+            return
         
         self.spec2006_base_dir = config.get(section, "benchmark_base_dir")
         # Check if base_dir exists

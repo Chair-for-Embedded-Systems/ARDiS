@@ -82,6 +82,7 @@ class ConfigWriter:
 
         return "\n".join([
             "[Parsec_Benchmark]",
+            f"enabled = {str(self.parsec_config.enabled).lower()}",
             f"benchmark_base_dir = {self.parsec_config.parsec_base_dir}",
             "available_packages =",
             packages,
@@ -100,6 +101,7 @@ class ConfigWriter:
 
         return "\n".join([
             "[Spec2006_Benchmark]",
+            f"enabled = {str(self.spec2006_config.enabled).lower()}",
             f"benchmark_base_dir = {self.spec2006_config.spec_base_dir}",
             f"config_file = {self.spec2006_config.spec_config_file}",
             "available_packages =",
