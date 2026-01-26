@@ -3,6 +3,13 @@ ARDiS: <u>A</u> Po<u>r</u>table and Unifie<u>d</u> Resource Management Framework
 
 This project is a Python-based system workload executor designed to run real application workloads on specific system cores. It not only allows for the execution of real applications but also tracks their execution time and controls and monitors the specific cores on which the applications are running.
 
+## Publication
+Details of the ARDiS Framework can be found in the original paper in TODAES'26 paper.
+
+Please consider citing this paper in your work if you find this tool useful in your research:
+
+> Mohammed Bakr Sikal, Jeferson Gonzalez-Gomez, Andreas Noebel, Heba Khdr, and Joerg Henkel. 2026. **ARDiS: A Portable and Unified Resource Management Framework in Real Hardware Systems**. ACM Trans. Des. Autom. Electron. Syst. Just Accepted (January 2026). https://doi.org/10.1145/3793861
+
 ## Features
 - **Real-world Execution**: Runs actual applications on real hardware rather than relying on simulations.
 
