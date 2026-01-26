@@ -1,48 +1,92 @@
+#!/bin/bash
 
 PARSEC_DOWNLOAD_URL="https://web.archive.org/web/20230813020110/http://parsec.cs.princeton.edu/download/3.0/parsec-3.0.tar.gz"
-PARSEC_ARCHIVE_NAME="parsec-3.0.tar.gz"
-
-# The location where PARSEC will be installed
-PARSEC_BASE_DIR=$(pwd)/parsec-3.0
 
 REMOVE_DOWNLOADED_ARCHIVE_AFTER_EXTRACT=false
 DOCKER_CONTAINER_NAME="parsec_build_container"
 
 
+prepare_parameters() {
+    # Prepare installation parameters
+    local working_dir=$(pwd)
+    
+    # Update working directory if provided as argument
+    if [ -n "$1" ]; then
+        working_dir=$(realpath "$1")
+    fi
+
+    # Create working directory if it does not exist
+    mkdir -p "${working_dir}"
+
+    # Set global variables
+    PARSEC_ARCHIVE_FILE="${working_dir}/parsec-3.0.tar.gz"
+    PARSEC_BASE_DIR="${working_dir}/parsec-3.0"
+
+    echo "Working directory: ${working_dir}"
+    echo "  PARSEC archive file (location): ${PARSEC_ARCHIVE_FILE}"
+    echo "  PARSEC base directory (location): ${PARSEC_BASE_DIR}"
+}
+
 download_parsec() {
     # Check if PARSEC is already downloaded
-    if [ ! -d ${PARSEC_BASE_DIR} ]; then
-        echo "Downloading Parsec benchmark suite..."
-        wget ${PARSEC_DOWNLOAD_URL} -O ${PARSEC_ARCHIVE_NAME}
+    if [ ! -f ${PARSEC_ARCHIVE_FILE} ]; then
+        echo "Downloading PARSEC benchmark suite..."
+        
+        # Download to temporary file first to avoid incomplete downloads
+        wget ${PARSEC_DOWNLOAD_URL} -O ${PARSEC_ARCHIVE_FILE}.tmp 
+        
+        # Ensure that download was successful before proceeding
+        if [ $? -ne 0 ]; then
+            echo "Error downloading PARSEC benchmark suite. (Aborting!)"
+            echo "Please check that the URL is reachable: ${PARSEC_DOWNLOAD_URL}"
+            exit 1
+        fi
+
+        # Rename temporary file to final file name
+        mv ${PARSEC_ARCHIVE_FILE}.tmp ${PARSEC_ARCHIVE_FILE}
     else
-        echo "Parsec benchmark suite already downloaded. (Skipping download!)"
+        echo "PARSEC benchmark suite already downloaded. (Skipping download!)"
     fi
 }
 
 extract_parsec() {
-    # Check if PARSEC is already extracted
-    if [ ! -d ${PARSEC_BASE_DIR} ]; then
+    # Check if PARSEC is already extracted and contains the .parsec_unique_file
+    if [ ! -d ${PARSEC_BASE_DIR} ] || [ ! -f ${PARSEC_BASE_DIR}/.parsec_uniquefile ]; then
         echo "Extracting PARSEC benchmark suite..."
-        tar -xzf ${PARSEC_ARCHIVE_NAME}
+
+        # Create base directory if it does not exist
+        mkdir -p ${PARSEC_BASE_DIR}
+
+        tar -xzvf ${PARSEC_ARCHIVE_FILE} -C $(dirname ${PARSEC_BASE_DIR})
+
         if [ ${REMOVE_DOWNLOADED_ARCHIVE_AFTER_EXTRACT} = true ]; then
-            rm ${PARSEC_ARCHIVE_NAME}
+            rm ${PARSEC_ARCHIVE_FILE}
         fi
     else
-        echo "Parsec benchmark suite already extracted. (Skipping extraction!)"
+        echo "PARSEC benchmark suite already extracted. (Skipping extraction!)"
     fi
 }
 
-apply_patchs_parsec() {
+apply_patches_parsec() {
     echo "Applying patches to PARSEC benchmark suite..."
     
+    # Store current directory
+    CURRENT_DIR=$(pwd)
+
     # Patch some pod files from the ssl library which break the build
     # See https://stackoverflow.com/questions/55451472/building-parsec-dedup-workload-with-parsecmgmt-fails
-    cd ${PARSEC_BASE_DIR}/pkgs/libs/ssl/src/doc/apps
-    sed -i.bak 's/item \([0-9]\+\)/item C<\1>/g' *
-    cd -
-    cd ${PARSEC_BASE_DIR}/pkgs/libs/ssl/src/doc/ssl
-    sed -i.bak 's/item \([0-9]\+\)/item C<\1>/g' *
-    cd -
+    cd ${PARSEC_BASE_DIR}/pkgs/libs/ssl/src/doc/apps \
+        && sed -i.bak 's/item \([0-9]\+\)/item C<\1>/g' *\
+        && cd -\
+        || { echo "Failed to patch apps documentation. (Aborting!)" && exit 1; }
+    
+    cd ${PARSEC_BASE_DIR}/pkgs/libs/ssl/src/doc/ssl \
+        && sed -i.bak 's/item \([0-9]\+\)/item C<\1>/g' *\
+        && cd -\
+        || { echo "Failed to patch ssl documentation. (Aborting!)" && exit 1; }
+
+    # Restore original directory
+    cd ${CURRENT_DIR}
 
     echo "Patches applied!"
 }
@@ -85,27 +129,27 @@ run_build_container_interactive() {
 
 verify_parsec_setup() {
     if [ -d ${PARSEC_BASE_DIR} ]; then
-        echo "Verifying Parsec setup..."
+        echo "Verifying PARSEC setup..."
         cd ${PARSEC_BASE_DIR}
-        . env.sh
+        . env.sh || {   echo "Failed to source env.sh. (Aborting!)" && exit 1; }
         parsecmgmt -a status
         cd -
     else
-        echo "Parsec base directory does not exist. Please run the setup first."
+        echo "PARSEC base directory does not exist. Please run the setup first."
     fi
 }
-
 
 run_setup() {
     download_parsec
     extract_parsec
-    apply_patchs_parsec
+    apply_patches_parsec
     create_build_container
     run_build_container
-    verify_parsec_setup
+    verify_parsec_setup    
 }
 
 # Uncomment to open an interactive shell in the build container
 # run_build_container_interactive
 
-run_setup
+prepare_parameters $@
+run_setup 
