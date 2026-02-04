@@ -31,14 +31,6 @@ Please consider citing this paper in your work if you find this tool useful in y
 
 - **Post-processing Library**: Includes tools to easily analyze and interpret experiment results out of the box.
 
-## Publication
-ARDiS: <u>A</u> Po<u>r</u>table and Unifie<u>d</u> Resource Management Framework <u>i</u>n Real Hardware <u>S</u>ystems
-
-> Sikal, González-Gómez, Nöbel, Khdr and Henkel **"ARDiS: A Portable and Unified Resource Management
-Framework in Real Hardware Systems"** ACM TODAES <mark>Add location in journal<mark>
-
-[ACM Digital Library](<mark>Add link to publication<mark>)
-
 ## Requirements
 
 - Python >= 3.10
