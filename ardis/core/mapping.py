@@ -36,9 +36,9 @@ class MappingPolicy(ABC):
 
 class NextAvailableCoreMapping(MappingPolicy):
     
-    def __init__(self, available_cores: list[int]):
-        super().__init__(set(available_cores))
-        self._prefered_order = list(available_cores)
+    def __init__(self, prefered_cores: list[int]):
+        super().__init__(set(prefered_cores))
+        self._prefered_order = list(prefered_cores)
 
     def register_workload(self, workload: list[Application]) -> None:
         # No precomputation needed for this simple mapping policy

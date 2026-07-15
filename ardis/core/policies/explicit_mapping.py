@@ -28,13 +28,20 @@ class ExplicitMapping(MappingPolicy):
         Constructs the mapping based on the values provided in the configuration.
         """
         return cls([{core} for core in explicit_mapping_cores])
-
-    def executeMapping(self, applications):
+    
+    def register_workload(self, workload: list[Application]) -> None:
         
-        if len(applications) > len(self.__cores):
+        if len(workload) > len(self.__cores):
             raise ValueError("More applications than explicit mappings")
 
-        for i, app in enumerate(applications):
-            self.mapping[app] = self.__cores[i]
-
-        return self.mapping
+        for i, app in enumerate(workload):
+            self._mapping[app] = self.__cores[i]
+    
+    def get_mapping(self, application: Application, system_state: SystemState) -> set[int]:
+        """
+        Return the set of cores to which the application should be mapped.
+        """
+        if application not in self._mapping:
+            raise ValueError(f"Application {application} not found in mapping.")
+        
+        return self._mapping[application]
