@@ -1,8 +1,12 @@
 from ardis.core.mapping import MappingPolicy, Application, SystemState, MappingException
+import ardis.config as config
 
 class NextAvailableCoreMapping(MappingPolicy):
     
-    def __init__(self, prefered_cores: list[int]):
+    def __init__(
+        self,
+        prefered_cores: list[int] = list(range(config.system_cores))
+    ) -> None:
         """
         Parameters:
             - prefered_cores: List of cores to prioritize for mapping applications, in descending order of preference.

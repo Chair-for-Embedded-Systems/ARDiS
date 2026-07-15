@@ -4,7 +4,7 @@ from random import randrange
 from ardis.benchmarks import Application, ParsecApplication
 from ardis.core import Engine, MappingPolicy, Scheduler, DVFSPolicy, MigrationPolicy, MonitoringMode, PostProcessor
 
-from ardis.core.policies import StaticGovernorDVFS, ConsecutiveScheduler, NextAvailableCoreMapping
+from ardis.core.policies import StaticGovernorDVFS, GreedyScheduler, NextAvailableCoreMapping
 
 import ardis.config as config
 
@@ -14,8 +14,8 @@ class Experiment:
         self, 
         name: str="", 
         applications: list[Application] = [],
-        mapping_policy: MappingPolicy = NextAvailableCoreMapping(prefered_cores=list(range(config.system_cores))), # Default mapping policy
-        scheduler: Scheduler = ConsecutiveScheduler(delay_sec=0), # Default scheduler
+        scheduler: Scheduler = GreedyScheduler(),
+        mapping_policy: MappingPolicy = NextAvailableCoreMapping(prefered_cores=list(range(config.system_cores))),
         dvfs_policy: DVFSPolicy | None = None, # No default to avoid multiple instances of a frequency manager
         migration_policy: MigrationPolicy | None = None, 
         monitoring_mode: MonitoringMode = MonitoringMode.PERIODIC_ON_CORE,
@@ -85,7 +85,7 @@ class DefaultLinuxExperiment:
         self,
         name: str = "",
         applications: list[Application] = [],
-        scheduler: Scheduler = ConsecutiveScheduler(delay_sec=0),
+        scheduler: Scheduler = GreedyScheduler(),
         governor: str = "performance",
         min_frequency_mhz: int = 1500,
         max_frequency_mhz: int = 3500,

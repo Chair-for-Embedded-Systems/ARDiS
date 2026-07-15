@@ -1,4 +1,5 @@
 from ardis.core.scheduler import Scheduler, Application, SystemState
+import ardis.config as config
 
 class GreedyScheduler(Scheduler):
     """
@@ -8,7 +9,7 @@ class GreedyScheduler(Scheduler):
     
     def __init__(
         self,
-        available_cores: set[int],
+        available_cores: set[int] = set(range(config.system_cores)),
         task_order: dict[Application, set[Application]] | None = None
     ):
         super().__init__()
