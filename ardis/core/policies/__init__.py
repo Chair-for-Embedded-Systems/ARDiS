@@ -6,12 +6,12 @@ from .mapping.explicit_mapping import ExplicitMapping
 from .mapping.intel_motivational_mapping import IntelMotivationalExample
 
 # Migration Policies
-from .migrate_for_training import MigrationForTraining
+from .migration.migrate_for_training import MigrationForTraining
 
 # DVFS Policies
-from .static_dvfs import StaticDVFS, StaticGovernorDVFS
-from .intel_static_dvfs import IntelStaticDVFSPolicy
-from .dvfs_for_training import DVFSForTraining
+from .dvfs.static_dvfs import StaticDVFS, StaticGovernorDVFS
+from .dvfs.intel_static_dvfs import IntelStaticDVFSPolicy
+from .dvfs.dvfs_for_training import DVFSForTraining
 
 __all__ = [
     'ConsecutiveScheduler',

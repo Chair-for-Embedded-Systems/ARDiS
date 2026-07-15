@@ -1,9 +1,12 @@
-from ardis.core.mapping import *
-from ardis.config import *
+from ardis.core.mapping import MappingPolicy, Application, SystemState
+from ardis.config import explicit_mapping_cores
 
-
-#Let the mapping come from a list of cores
 class ExplicitMapping(MappingPolicy):
+    """
+    A mapping policy where the mapping is explicitly defined by the user.
+    The order of the sets in the list corresponds to the order of applications in the workload.
+    The mapping must be disjunct, meaning that no two applications can share the same core
+    """
     def __init__(self, cores: list[set[int]]):
         super().__init__()
 
