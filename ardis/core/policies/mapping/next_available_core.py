@@ -31,4 +31,4 @@ class NextAvailableCoreMapping(MappingPolicy):
         if len(mapping) < required_core:
             raise MappingException(f"Not enough available cores to map application {application}. Required: {required_core}, Available: {len(self._prefered_order) - len(occupied_cores)}")
 
-        return self._mapping[application]
+        return mapping
