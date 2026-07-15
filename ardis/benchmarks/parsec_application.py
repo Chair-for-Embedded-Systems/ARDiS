@@ -89,4 +89,7 @@ class ParsecApplication(Application):
         
     def get_display_name(self) -> str:
         return self._display_name
+    
+    def get_preffered_core_count(self) -> int:
+        return self._threads
    

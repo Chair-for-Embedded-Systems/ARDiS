@@ -59,6 +59,13 @@ class Application(ABC):
         """
         raise NotImplementedError
     
+    @abstractmethod
+    def get_preffered_core_count(self) -> int:
+        """
+        Returns the number of cores that this application prefers to run on.
+        """
+        raise NotImplementedError
+    
     def get_labels(self) -> list[str]:
         """
         Returns the labels that are assigned to this application

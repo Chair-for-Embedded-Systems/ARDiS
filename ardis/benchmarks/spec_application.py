@@ -84,3 +84,8 @@ class SpecApplication(Application):
         
     def get_display_name(self) -> str:
         return f"{self._binary_name}-{self._input.value}"
+    
+    def get_preffered_core_count(self) -> int:
+        # For now, we assume that each SPEC application requires only one core.
+        # This can be extended in the future.
+        return 1
