@@ -3,8 +3,8 @@ from random import randrange
 
 from ardis.benchmarks import Application, ParsecApplication
 from ardis.core import Engine, MappingPolicy, Scheduler, DVFSPolicy, MigrationPolicy, MonitoringMode, PostProcessor
-from ardis.core.policies import StaticGovernorDVFS, ConsecutiveScheduler
-from ardis.core.mapping import NextAvailableCoreMapping
+
+from ardis.core.policies import StaticGovernorDVFS, ConsecutiveScheduler, NextAvailableCoreMapping
 
 import ardis.config as config
 

@@ -1,25 +1,87 @@
-# Sceduling Policies
-from .schedueling.consecutive_schedule import ConsecutiveScheduler
+# This file serves as a central hub for all policy-related imports.
+# It consolidates the various policy classes from different submodules,
+# making them easily accessible from a single location.
 
-# Mapping Policies
-from .mapping.explicit_mapping import ExplicitMapping
-from .mapping.intel_motivational_mapping import IntelMotivationalExample
+from typing import TYPE_CHECKING
 
-# Migration Policies
-from .migration.migrate_for_training import MigrationForTraining
-
-# DVFS Policies
-from .dvfs.static_dvfs import StaticDVFS, StaticGovernorDVFS
-from .dvfs.intel_static_dvfs import IntelStaticDVFSPolicy
-from .dvfs.dvfs_for_training import DVFSForTraining
+if TYPE_CHECKING:
+    # Scheduling policies
+    from .schedueling.consecutive_schedule import ConsecutiveScheduler
+    from .schedueling.fixed_time_schedule import FixedTimeScheduler
+    
+    # Mapping policies
+    from .mapping.explicit_mapping import ExplicitMapping
+    from .mapping.intel_motivational_mapping import IntelMotivationalExample
+    from .mapping.next_available_core import NextAvailableCoreMapping
+    
+    # Migration policies
+    from .migration.migrate_for_training import MigrationForTraining
+    from .migration.migrate_following_schedule import StaticScheduleMigration
+    
+    # DVFS policies
+    from .dvfs.static_dvfs import StaticDVFS, StaticGovernorDVFS
+    from .dvfs.intel_static_dvfs import IntelStaticDVFSPolicy
+    from .dvfs.dvfs_for_training import DVFSForTraining
 
 __all__ = [
+    # Scheduling policies
     'ConsecutiveScheduler',
+    'FixedTimeScheduler',
+
+    # Mapping policies
     'ExplicitMapping',
+    'NextAvailableCoreMapping',
     'IntelMotivationalExample',
+    
+    # Migration policies
     'MigrationForTraining',
+    'StaticScheduleMigration',
+    
+    # DVFS policies
     'StaticDVFS',
     'StaticGovernorDVFS',
     'IntelStaticDVFSPolicy',
     'DVFSForTraining'
 ]
+
+_LAZY_IMPORTS = {
+    # Scheduling policies
+    'ConsecutiveScheduler': '.schedueling.consecutive_schedule',
+    'FixedTimeScheduler': '.schedueling.fixed_time_schedule',
+    
+    # Mapping policies
+    'ExplicitMapping': '.mapping.explicit_mapping',
+    'NextAvailableCoreMapping': '.mapping.next_available_core',
+    'IntelMotivationalExample': '.mapping.intel_motivational_mapping',
+    
+    # Migration policies
+    'MigrationForTraining': '.migration.migrate_for_training',
+    'StaticScheduleMigration': '.migration.migrate_following_schedule',
+    
+    # DVFS policies
+    'StaticDVFS': '.dvfs.static_dvfs',
+    'StaticGovernorDVFS': '.dvfs.static_dvfs',
+    'IntelStaticDVFSPolicy': '.dvfs.intel_static_dvfs',
+    'DVFSForTraining': '.dvfs.dvfs_for_training',
+}
+
+def __getattr__(name: str):
+    """Dynamically import and return the requested attribute."""
+    if name in _LAZY_IMPORTS:
+        # Perform the import only when the name is accessed
+        import importlib
+        module_path = _LAZY_IMPORTS[name]
+        
+        # importlib.import_module handles relative imports if we pass __package__
+        module = importlib.import_module(module_path, __package__)
+        obj = getattr(module, name)
+        
+        # Cache it in the module's globals so subsequent lookups are instant
+        globals()[name] = obj
+        return obj
+        
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+def __dir__():
+    """Ensure tab-completion in interactive shells still works perfectly."""
+    return sorted(list(globals().keys()) + __all__)
