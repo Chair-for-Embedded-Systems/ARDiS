@@ -1,4 +1,4 @@
-from ardis.core.scheduler import Scheduler, Application
+from ardis.core.scheduler import Scheduler, Application, SystemState
 
 class ConsecutiveScheduler(Scheduler):
     def __init__(self, delay_sec: float):
@@ -12,7 +12,7 @@ class ConsecutiveScheduler(Scheduler):
             self._schedule[app] = relative_start_time_sec
             relative_start_time_sec += self._delay
 
-    def is_time_to_launch(self, application: Application, system_state) -> bool:
+    def is_time_to_launch(self, application: Application, system_state: SystemState) -> bool:
         """
         Check if the application is scheduled to start based on the current system time.
         """

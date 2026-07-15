@@ -1,9 +1,9 @@
 # Sceduling Policies
-from .consecutive_schedule import ConsecutiveScheduler
+from .schedueling.consecutive_schedule import ConsecutiveScheduler
 
 # Mapping Policies
-from .explicit_mapping import ExplicitMapping
-from .intel_motivational_mapping import IntelMotivationalExample
+from .mapping.explicit_mapping import ExplicitMapping
+from .mapping.intel_motivational_mapping import IntelMotivationalExample
 
 # Migration Policies
 from .migrate_for_training import MigrationForTraining

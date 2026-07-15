@@ -10,8 +10,8 @@ class IntelMotivationalExample(MappingPolicy):
         # default mapping: next available core
         for app in applications:
             if "omnetpp" in app:                
-                self.mapping[app] = intel_e_core_ids[0] if self.__e_core_first else intel_p_core_ids[0]
+                self._mapping[app] = intel_e_core_ids[0] if self.__e_core_first else intel_p_core_ids[0]
             else:
-                self.mapping[app] = intel_p_core_ids[next] if self.__e_core_first else intel_e_core_ids[next]
+                self._mapping[app] = intel_p_core_ids[next] if self.__e_core_first else intel_e_core_ids[next]
                 next += 1
-        return self.mapping
+        return self._mapping
