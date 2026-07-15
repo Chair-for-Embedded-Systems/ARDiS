@@ -1,18 +1,16 @@
-import re
+import shutil
 import threading
 import time
-import shutil
 from timeit import default_timer as timer
 
 from ardis.core.procworker import *
-from ardis.core.mapping import *
+from ardis.core.mapping import MappingPolicy
 from ardis.core.monitoring.monitor import Monitor, TrackingConfig
-from ardis.core.postprocessor import *
-from ardis.core.reporter import *
-from ardis.core.dvfs import *
-from ardis.core.scheduler import *
-from ardis.core.migration import *
-from ardis.core.monitoringmode import *
+from ardis.core.reporter import Reporter
+from ardis.core.dvfs import DVFSPolicy
+from ardis.core.scheduler import Scheduler
+from ardis.core.migration import MigrationPolicy
+from ardis.core.monitoringmode import MonitoringMode
 from ardis.core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
 from ardis.core.buffering.action_buffer import ActionBuffer
 from ardis.core.system_state import SystemState
@@ -25,19 +23,19 @@ system_state_lock = threading.Lock()
 class Engine:
     def __init__(self, 
                 experiment_name: str,
-                mapping_policy: MappingPolicy = MappingPolicy(),
-                scheduler: Scheduler = Scheduler(),
+                mapping_policy: MappingPolicy,
+                scheduler: Scheduler,
                 dvfs_policy: DVFSPolicy | None = None,
                 migration_policy: MigrationPolicy | None = None,
                 monitoring_mode: MonitoringMode = MonitoringMode.PERIODIC_ON_CORE,
-                results_folder: str = RESULTS_FOLDER
+                results_folder: str = config.RESULTS_FOLDER
     ) -> None:
         self.running: bool = False
 
         self.__threads: dict[Application, threading.Thread] = {}
         self.__active_threads: list[Application] = []
         self.__waiting_threads: list[Application] = []
-    
+
         self.__mapping_policy = mapping_policy
         self.__scheduler = scheduler 
         self.__dvfs_policy = dvfs_policy
@@ -45,8 +43,6 @@ class Engine:
     
         self.__monitor: Monitor | None = None
         self.__monitoring_mode: MonitoringMode = monitoring_mode
-        
-        self.__total_instructions: dict[Application, int] = {}
         
         self.reporter: Reporter = Reporter(experiment_name, results_folder)
         self.event_buffer: EventBuffer = DequeBasedEventBuffer(capacity=10, collect_total_metrics=True)
@@ -59,18 +55,22 @@ class Engine:
 
         self.__clear_runtime_data()
 
-    def __start(self) -> None:
+    def __start_engine(self) -> None:
         self.running = True
         self.__start_time = timer()
+        
+        # Start the monitoring thread if monitoring is enabled
+        if self.__monitoring_mode != MonitoringMode.OFF and self.__monitor:
+            self.__monitor.start()
 
     def __launchApp(self, app: Application, cores: set[int]) -> None:
         
-        self.__app_to_pid[app] = -1
-        # Build the full application execution command from the corresponding script
-        
+        # Execute and meassure the execution time of the application
         start = timer()
-        app.execute(None if self.__mapping_policy is None else cores)
-        #self.__benchmark_manager.runApplicationOnCore(app, None if self.__mapping_policy is None else cores)
+        try:
+            app.execute(cores)
+        except Exception as e:
+            print(f"Error occurred while executing {app}: {e}")
         end = timer()
         
         # keeping the lock until properly evaluated
@@ -96,23 +96,24 @@ class Engine:
         self.reporter.logEvent(event=f"[Core(s) {core_str}]: {app}'s execution time = {end - start:.2f} s", echo=config.DEBUG)
         self.reporter.logExecutionTime(app.get_display_name(), core_str, end - start)
         
-    # Create a thread for each application in the mapping 
-    def __makeThreads(self) -> None:
-        # Threads are created before the control loop which modifies the system state.
-        # Therefore we dont need locking or dict copying here
-        for app, cores in self.__app_to_cores.items():
-            self.__threads[app] = threading.Thread(target=self.__launchApp, args=(app, cores))
-            if config.DEBUG:
-                self.reporter.logEvent(f"Thread for {app} created!", echo=True)
-    
-    def getProcessID(self, app: Application) -> None:
-        PID = app.get_pid()
-        self.__app_to_pid[app] = PID if PID else -1
-    
-        if config.DEBUG:
-            msg_pid_of_app = f"[{self.getElapsedTime():.2f}s]: PID of {app} is {PID}"
-            self.reporter.logEvent(msg_pid_of_app, echo=True)
-    
+    def getProcessID(self, app: Application, attempts: int = 20, delay: float = 0.005) -> None:
+        """
+        Tries to get the PID of the application by checking multiple times with a delay in between.
+        This allows quick discovery of the PID for fastly starting applications.
+        """
+        for _ in range(attempts):
+            # Try to get the PID of the application
+            if pid := app.get_pid():
+                with system_state_lock:
+                    self.__app_to_pid[app] = pid
+                if config.DEBUG:
+                    msg_pid_of_app = f"[{self.getElapsedTime():.2f}s]: PID of {app} is {pid}"
+                    self.reporter.logEvent(msg_pid_of_app, echo=True)
+                return
+            
+            # Wait for the specified delay before checking again
+            time.sleep(delay)
+        
     def getElapsedTime(self) -> float:
         """Returns the elapsed time in seconds since the workload was started."""
         return timer() - self.__start_time
@@ -130,155 +131,183 @@ class Engine:
             self.reporter.logEvent(msg_thread_started, echo=True)
 
     def executeWorkload(self, applications: list[Application]) -> None:
-        # First set a schedule for the applications
-        self.__total_instructions = {app: 0 for app in applications}
-        self.__scheduler.createSchedule(applications)
+        
         self.__waiting_threads = list(applications)
         
-        # Execute the mapping policy 
-        if self.__mapping_policy is not None:
-            self.__app_to_cores = self.__mapping_policy.executeMapping(applications)
-        else:
-            self.__app_to_cores = {app: {-1} for app in applications}
+        self.__scheduler.register_workload(applications)
+        self.__mapping_policy.register_workload(applications)
 
         # Execute initial DVFS policy (if present)
         if self.__dvfs_policy is not None:
             self.__dvfs_policy.apply_initial_state()
         
-        # Set place holder pids 
-        self.__app_to_pid = {app: -1 for app in applications}
+        # Prepare the monitor if monitoring is enabled
+        self.__inititalize_monitor()
 
-        if config.DEBUG:
-            self.reporter.logEvent(f"Mapping: {self.__app_to_cores}", echo=True)
-            
-        # Create the threads each application.
-        self.__makeThreads()
-        # then start the workload execution
-        self.__start()
-        
-        # Start the monitoring thread
-        if self.__monitoring_mode != MonitoringMode.OFF:
-            self.__monitor = Monitor(
-                sampling_rate_sec=config.sampling_rate_ms/1000,
-                periodic_app_level_events=config.periodic_app_level_events,
-                periodic_system_level_events=config.periodic_system_wide_events,
-                one_shot_system_level_events=config.one_shot_system_wide_events,
-                reporter=self.reporter,
-                event_buffer=self.event_buffer,
-                inital_tracking_config=TrackingConfig(
-                    monitor_mode=self.__monitoring_mode,
-                    app_to_cores=self.__app_to_cores,
-                )
-            )
-            self.__monitor.start()
+        # Then start the workload execution
+        self.__start_engine()
 
         # Control loop
         while self.running:
-            current_time = self.getElapsedTime()
-            
-            # Check if the application is scheduled to start and if the thread is not already running
-            for app in self.__waiting_threads:
-                if self.__scheduler.isTimeToLaunch(app, current_time) and app in self.__waiting_threads:
-                    # Start the thread
-                    self.__startThread(app)
-                    #TODO while very unlikely, we might have a race condition here 
-                    threading.Thread(target=self.getProcessID, args=(app,)).start()
-                    # using the pool executor should avoid race conditions but the performance is a bit worse
-                    # self.__executor.submit(self.getProcessID, app)
-                      
+
             # Check if all threads are done before finishing
-            if not self.__active_threads and not self.__waiting_threads:
-                self.running = False
-                self.endtime = timer()
-                elapsed_time_sec = self.endtime - self.__start_time
+            with thread_queue_lock:
+                if not self.__active_threads and not self.__waiting_threads:
+                    self.__stop_engine()
+                    break
             
-                msg_exp_finished = f"[{self.getElapsedTime():.2f}s]: Experiment Finished!"
-                msg_total_time = f"Total execution time of experiment = {elapsed_time_sec:.2f}s"
-            
-                self.reporter.logEvent(msg_exp_finished, echo=True)
-                self.reporter.logEvent(msg_total_time, echo=True)
+            with system_state_lock:
+                elapsed_time_sec = self.getElapsedTime()
                 
-                # Stop the monitoring thread
-                if self.__monitor:
-                    self.__monitor.stop()
-                
-                # Clear the caches after the experiment is done
-                self.__clearCaches()
-                
-                # Restore initial CPU state
-                if self.__dvfs_policy:
-                    self.__dvfs_policy.cpu_freq_manager.restore_initial_state() 
-                break
-            else:  
-                with system_state_lock:
-                
-                    # Update pid of (active) apps. This is necessary as there are some benchmark applications
-                    # which change their PID during execution.
-                    # All PARSEC applications keep their PIDs,
-                    # Some SPEC2006 applications change their PIDs (e.g. bzip2, ...),
-                    for app in self.__active_threads:
-                        if PID := app.get_pid():
-                            # Check if PID has changed (exclude first detection) and reapply affinity if necessary
-                            if self.__app_to_pid[app] != -1 and self.__app_to_pid[app] != PID:
-                                MigrationPolicy._setAffinity(PID, self.__app_to_cores[app])
-                            self.__app_to_pid[app] = PID
-                        else:
-                            self.__app_to_pid[app] = -1
+                # Get or update the PIDs of the active applications. This is necessary as some applications change their PID during execution.
+                self.__update_pids()
                             
-                    # Construct system state object, which gets passed to the individual policies
-                    system_state: SystemState = SystemState(
-                        start_time=self.__start_time,
-                        app_to_cores=self.__app_to_cores,
-                        app_to_pid=self.__app_to_pid,
-                        epoch=self.__epoch,
-                        event_buffer=self.event_buffer,
-                        action_buffer=self.action_buffer
+                # Construct system state object, which gets passed to the individual policies
+                system_state: SystemState = SystemState(
+                    start_time=self.__start_time,
+                    elapsed_time_sec=elapsed_time_sec,
+                    app_to_cores=self.__app_to_cores,
+                    app_to_pid=self.__app_to_pid,
+                    epoch=self.__epoch,
+                    event_buffer=self.event_buffer,
+                    action_buffer=self.action_buffer
+                )
+
+                # Check scheduler to see if any applications are scheduled to start
+                self.__launch_waiting_threads(system_state)
+
+                # Execute Migration-Policy
+                self.__execute_migration_policy(system_state)
+
+                # Execute DVFS-Policy
+                self.__execute_dvfs_policy(system_state)
+                    
+                # Update tracking config
+                if self.__monitoring_mode != MonitoringMode.OFF and self.__monitor:
+                    self.__monitor.update_tracking_config(
+                        TrackingConfig(self.__monitoring_mode, self.__app_to_cores.copy(), self.__app_to_pid.copy())
                     )
 
-                    # Execute Migration-Policy (if present)
-                    if mig_policy := self.__migration_policy:
-                        mig_actions = mig_policy.get_migration_actions(system_state)
-                        mig_policy.apply_migration_actions(mig_actions, self.__app_to_pid, self.__app_to_cores)
-                        
-                        # Log migration actions if desired
-                        if config.DEBUG:
-                            for action in mig_actions:
-                                msg_app_migrated = f"[{self.getElapsedTime():.2f}s] Migrated {action.app} from core {action.source} to core {action.destination}"
-                                self.reporter.logEvent(msg_app_migrated, echo=True)
-                        
-                        # Writes the migration action to the action buffer. 
-                        # Since this is done here, the dvfs poilcy will have access to this information.
-                        if mig_actions:
-                            self.action_buffer.push_migration_actions(self.__epoch, mig_actions)
-
-                    # Execute DVFS-Policy (if present)
-                    if dvfs_policy := self.__dvfs_policy:
-                        dvfs_actions = dvfs_policy.get_dvfs_actions(system_state)
-                        dvfs_policy.apply_dvfs_actions(dvfs_actions)
-                        
-                        # Log dvfs actions if desired
-                        if config.DEBUG:
-                            for action in dvfs_actions:
-                                msg_app_migrated = f"[{self.getElapsedTime():.2f}s] Changed frequency of core {action.core_id} to {action.frequency_mhz} Mhz"
-                                self.reporter.logEvent(msg_app_migrated, echo=True)
-
-                        # Write dvfs action to action buffer
-                        if dvfs_actions:
-                            self.action_buffer.push_dvfs_actions(self.__epoch, dvfs_actions)
-                    
-                    # Update tracking config
-                    if self.__monitoring_mode != MonitoringMode.OFF and self.__monitor:
-                        self.__monitor.update_tracking_config(
-                            TrackingConfig(self.__monitoring_mode, self.__app_to_cores.copy(), self.__app_to_pid.copy())
-                        )
-
-                    # any other periodic action here
+                # any other periodic action here
            
             # Increment the epoch counter and sleep for the action interval
-            #print("Epoch: ", self.__epochs)
             self.__epoch += 1
-            time.sleep(action_interval_sec)
+            time.sleep(config.action_interval_sec)
     
+    def __inititalize_monitor(self):
+        
+        if self.__monitoring_mode == MonitoringMode.OFF:
+            self.__monitor = None
+            return
+        
+        self.__monitor = Monitor(
+            sampling_rate_sec=config.sampling_rate_ms/1000,
+            periodic_app_level_events=config.periodic_app_level_events,
+            periodic_system_level_events=config.periodic_system_wide_events,
+            one_shot_system_level_events=config.one_shot_system_wide_events,
+            reporter=self.reporter,
+            event_buffer=self.event_buffer,
+            inital_tracking_config=TrackingConfig(
+                monitor_mode=self.__monitoring_mode,
+                app_to_cores=self.__app_to_cores,
+            )
+        )
+
+    def __launch_waiting_threads(self, system_state: SystemState) -> None:
+        # Requires SystemState lock to be held by the caller
+        
+        # Check if the application is scheduled to start and if the thread is not already running
+        for app in list(self.__waiting_threads):
+            
+            if not self.__scheduler.is_time_to_launch(app, system_state):
+                continue
+                
+            # Get the cores assigned to the application
+            cores = self.__mapping_policy.get_mapping(app, system_state)
+            self.__app_to_cores[app] = cores
+            self.__app_to_pid[app] = -1  
+                
+            # Start the application thread
+            self.__threads[app] = threading.Thread(target=self.__launchApp, args=(app, cores))
+            self.__startThread(app)
+
+            # Start a thread to fast discover the PID
+            pid_thread = threading.Thread(target=self.getProcessID, args=(app,))
+            pid_thread.start()
+
+
+    def __execute_migration_policy(self, system_state: SystemState) -> None:
+
+        if self.__migration_policy is None:
+            return
+        
+        mig_actions = self.__migration_policy.get_migration_actions(system_state)
+        self.__migration_policy.apply_migration_actions(mig_actions, self.__app_to_pid, self.__app_to_cores)
+                    
+        # Log migration actions if desired
+        if config.DEBUG:
+            for action in mig_actions:
+                msg_app_migrated = f"[{self.getElapsedTime():.2f}s] Migrated {action.app} from core {action.source} to core {action.destination}"
+                self.reporter.logEvent(msg_app_migrated, echo=True)
+                        
+        # Writes the migration action to the action buffer. 
+        # Since this is done here, the dvfs poilcy will have access to this information.
+        if mig_actions:
+            self.action_buffer.push_migration_actions(self.__epoch, mig_actions)
+
+    def __execute_dvfs_policy(self, system_state: SystemState) -> None:
+        
+        if self.__dvfs_policy is None:
+            return
+        
+        dvfs_actions = self.__dvfs_policy.get_dvfs_actions(system_state)
+        self.__dvfs_policy.apply_dvfs_actions(dvfs_actions)
+                        
+        # Log dvfs actions if desired
+        if config.DEBUG:
+            for action in dvfs_actions:
+                msg_app_migrated = f"[{self.getElapsedTime():.2f}s] Changed frequency of core {action.core_id} to {action.frequency_mhz} Mhz"
+                self.reporter.logEvent(msg_app_migrated, echo=True)
+
+        # Write dvfs action to action buffer
+        if dvfs_actions:
+            self.action_buffer.push_dvfs_actions(self.__epoch, dvfs_actions)
+
+    def __update_pids(self):
+        # Requires SystemState lock to be held by the caller
+        # Update pid of (active) apps. This is necessary as there are some benchmark applications
+        # which change their PID during execution.
+        # All PARSEC applications keep their PIDs,
+        # Some SPEC2006 applications change their PIDs (e.g. bzip2, ...),
+        with thread_queue_lock:
+            for app in self.__active_threads:
+                if pid := app.get_pid():
+                    if self.__app_to_pid[app] != pid:
+                        MigrationPolicy._setAffinity(pid, self.__app_to_cores[app])
+                        self.__app_to_pid[app] = pid
+
+    def __stop_engine(self):
+        self.running = False
+        self.endtime = timer()
+        elapsed_time_sec = self.endtime - self.__start_time
+    
+        msg_exp_finished = f"[{self.getElapsedTime():.2f}s]: Experiment Finished!"
+        msg_total_time = f"Total execution time of experiment = {elapsed_time_sec:.2f}s"
+    
+        self.reporter.logEvent(msg_exp_finished, echo=True)
+        self.reporter.logEvent(msg_total_time, echo=True)
+        
+        # Stop the monitoring thread
+        if self.__monitor:
+            self.__monitor.stop()
+        
+        # Clear the caches after the experiment is done
+        self.__clearCaches()
+        
+        # Restore initial CPU state
+        if self.__dvfs_policy:
+            self.__dvfs_policy.cpu_freq_manager.restore_initial_state() 
+
     def interrupt(self):
         """Interrupt the engine and terminate all running applications."""
         self.running = False
@@ -286,46 +315,6 @@ class Engine:
             self.__monitor.stop()
         for app in self.__active_threads + self.__waiting_threads:
             app.terminate()
-
-    def fetch_perf_data(self, perf_file_path):
-        # Initialize variables to store the energy, time, cpu_core, and cpu_atom instructions
-        energy_psys = None
-        time_elapsed = None
-        cpu_core_instructions = 0  # Initialize to 0 for summing
-        cpu_atom_instructions = 0  # Initialize to 0 for summing
-        
-        # Open and read the perf.out file
-        with open(perf_file_path, 'r') as file:
-            lines = file.readlines()
-        
-        # Iterate through the lines to find energy, time, cpu_core, and cpu_atom instructions
-        for line in lines:
-                      
-            # Search for the energy-psys line using regex
-            energy_psys_match = re.search(r'([\d,\.]+)\s+Joules\s+power/energy-psys/', line)
-            if energy_psys_match:
-                energy_psys = float(energy_psys_match.group(1).replace(',', ''))  # Remove commas and convert to float
-            
-            # Search for the time elapsed line using regex
-            time_match = re.search(r'([\d,\.]+)\s+seconds time elapsed', line)
-            if time_match:
-                time_elapsed = float(time_match.group(1))  # Convert to float
-            
-            # Search for the cpu_core instructions using regex
-            cpu_core_match = re.search(r'([\d,\.]+)\s+cpu_core/instructions/', line)
-            if cpu_core_match:
-                cpu_core_instructions += int(cpu_core_match.group(1).replace(',', ''))  # Remove commas and convert to int
-            
-            # Search for the cpu_atom instructions using regex
-            cpu_atom_match = re.search(r'([\d,\.]+)\s+cpu_atom/instructions/', line)
-            if cpu_atom_match:
-                cpu_atom_instructions += int(cpu_atom_match.group(1).replace(',', ''))  # Remove commas and convert to int
-        
-        # Sum the energy components if available
-        total_energy = energy_psys
-        
-        # Return total energy, time elapsed, and total instructions
-        return total_energy, time_elapsed, cpu_core_instructions + cpu_atom_instructions
 
     def __clearCaches(self):
         try:
