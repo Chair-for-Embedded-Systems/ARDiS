@@ -1,6 +1,11 @@
 from ardis.core.scheduler import Scheduler, Application, SystemState
 
 class ConsecutiveScheduler(Scheduler):
+    """
+    A scheduler that launches the applications in the order they are provided in the workload list, with a fixed delay between each launch.
+    It does not consider the available resources (cpu_cores), so a subsequent `MappingPolicy` might throw an `MappingException`.
+    """
+
     def __init__(self, delay_sec: float):
         super().__init__()
         self._delay = delay_sec

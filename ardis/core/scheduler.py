@@ -14,5 +14,9 @@ class Scheduler(ABC):
 
     @abstractmethod
     def is_time_to_launch(self, application: Application, system_state: SystemState) -> bool:
+        """
+        This method is called by the engine to determine if it is time to launch the given application based on the current system state.
+        The scheduler should return True if the application can be launched, and False otherwise.
+        """
         raise NotImplementedError("Subclasses must implement this method.")
     

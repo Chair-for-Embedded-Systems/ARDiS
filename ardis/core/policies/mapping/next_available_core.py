@@ -1,15 +1,19 @@
-from ardis.core.mapping import MappingPolicy, Application, SystemState, MappingException
 import ardis.config as config
 
+from ardis.core.mapping import MappingPolicy, Application, SystemState, MappingException
+
 class NextAvailableCoreMapping(MappingPolicy):
-    
+    """
+    This mapping policy assigns applications to the next available cores.
+    It prioritizes cores based on the order specified in `prefered_cores`.
+    """
     def __init__(
         self,
         prefered_cores: list[int] = list(range(config.system_cores))
     ) -> None:
         """
         Parameters:
-            - prefered_cores: List of cores to prioritize for mapping applications, in descending order of preference.
+            - prefered_cores: List of cores to prioritize for mapping applications (descending order of preference).
         """
         super().__init__(set(prefered_cores))
         self._prefered_order = list(prefered_cores)
@@ -33,6 +37,9 @@ class NextAvailableCoreMapping(MappingPolicy):
                 break
 
         if len(mapping) < required_core:
-            raise MappingException(f"Not enough available cores to map application {application}. Required: {required_core}, Available: {len(self._prefered_order) - len(occupied_cores)}")
+            raise MappingException(
+                f"Not enough available cores to map application {application}."
+                f"Required: {required_core}, Available: {len(self._prefered_order) - len(occupied_cores)}"
+            )
 
         return mapping

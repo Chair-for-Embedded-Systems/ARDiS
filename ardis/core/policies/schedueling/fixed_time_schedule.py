@@ -1,12 +1,22 @@
 from ardis.core.scheduler import Scheduler, Application, SystemState
 
 class FixedTimeScheduler(Scheduler):
-    
-    def __init__(self, app_to_launchtime_seconds: dict[Application, float]):
-        self.app_to_launchtime_seconds = app_to_launchtime_seconds
+    """
+    A scheduler that launches applications at predefined times.
+    The launch times are specified in seconds relative to the start of the workload.
+    All applications must have a specified launch time in the provided dictionary.
+    """
+    def __init__(self, app_to_launchtime: dict[Application, float]):
+        """
+        Initializes the FixedTimeScheduler with a mapping of applications to their launch times.
+        
+        Parameters:
+            - app_to_launchtime_seconds: Dictionary mapping each `Application` to its launch time in seconds.
+        """
+        self.app_to_launchtime_seconds = app_to_launchtime
 
     def register_workload(self, workload: list[Application]):
-        # Ensure that all applications in the workload have a specified launch time
+        # Validate that all applications in the workload have a specified launch time
         for app in workload:
             if app not in self.app_to_launchtime_seconds:
                 raise ValueError(f"No launch time specified for application {app}.")
