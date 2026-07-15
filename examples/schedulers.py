@@ -38,7 +38,7 @@ def run_example_with_list_scheduler():
     available_cores = {4, 8}
 
     experiment = Experiment(
-        name="List Scheduler Example",
+        name="Greedy Scheduler Example",
         applications=[
             ParsecApplication("parsec.dedup"),
             ParsecApplication("parsec.dedup"),
@@ -66,8 +66,6 @@ def run_example_with_constraint_list_scheduler():
 
     from ardis.core.policies import GreedyScheduler, NextAvailableCoreMapping, StaticDVFS
 
-    
-
     # [Task Order] :
     # 
     #   Task A --+
@@ -86,14 +84,14 @@ def run_example_with_constraint_list_scheduler():
     available_cores = {4, 6, 8}
     
     experiment = Experiment(
-        name="Constraint List Scheduler Example",
+        name="Constrained Greedy Scheduler Example",
         applications=[task_a, task_b, task_c, task_d, task_e],
         scheduler=GreedyScheduler(
             available_cores=available_cores,
             # Task ordering constraints
             task_order={
                 task_c: {task_a, task_b}, # Task C must be completed before Task A and Task B
-                task_e: {task_c, task_d},
+                task_e: {task_c, task_d}, # Task E must be completed before Task C and Task D
             }
         ),
         mapping_policy=NextAvailableCoreMapping(
@@ -112,9 +110,8 @@ def run_example_with_constraint_list_scheduler():
 
     experiment.executeExperiment()
 
-
 # Run command : python3 examples/schedulers.py
 if __name__ == "__main__":
-    #run_example_with_static_scheduler()
-    #run_example_with_list_scheduler()
+    run_example_with_static_scheduler()
+    run_example_with_list_scheduler()
     run_example_with_constraint_list_scheduler()
