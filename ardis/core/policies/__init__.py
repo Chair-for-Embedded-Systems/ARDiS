@@ -8,7 +8,8 @@ if TYPE_CHECKING:
     # Scheduling policies
     from .schedueling.consecutive_schedule import ConsecutiveScheduler
     from .schedueling.fixed_time_schedule import FixedTimeScheduler
-    
+    from .schedueling.greedy_schedule import GreedyScheduler
+
     # Mapping policies
     from .mapping.explicit_mapping import ExplicitMapping
     from .mapping.next_available_core import NextAvailableCoreMapping
@@ -27,7 +28,7 @@ __all__ = [
     # Scheduling policies
     'ConsecutiveScheduler',
     'FixedTimeScheduler',
-
+    'GreedyScheduler',
     # Mapping policies
     'ExplicitMapping',
     'NextAvailableCoreMapping',
@@ -48,6 +49,7 @@ _LAZY_IMPORTS = {
     # Scheduling policies
     'ConsecutiveScheduler': '.schedueling.consecutive_schedule',
     'FixedTimeScheduler': '.schedueling.fixed_time_schedule',
+    'ListScheduler': '.schedueling.list_schedule',
     
     # Mapping policies
     'ExplicitMapping': '.mapping.explicit_mapping',
