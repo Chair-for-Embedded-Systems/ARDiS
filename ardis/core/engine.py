@@ -8,7 +8,7 @@ from ardis.benchmarks.application import Application
 from ardis.core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
 from ardis.core.buffering.action_buffer import ActionBuffer
 from ardis.core.dvfs import DVFSPolicy
-from ardis.core.mapping import MappingPolicy
+from ardis.core.mapping import MappingPolicy, MappingException
 from ardis.core.migration import MigrationPolicy
 from ardis.core.monitoring.monitor import Monitor, TrackingConfig
 from ardis.core.monitoringmode import MonitoringMode
@@ -223,7 +223,11 @@ class Engine:
                 continue
                 
             # Get the cores assigned to the application
-            cores = self.__mapping_policy.get_mapping(app, system_state)
+            try:
+                cores = self.__mapping_policy.get_mapping(app, system_state)
+            except MappingException as e:
+                self.reporter.logEvent(f"[{self.getElapsedTime():.2f}s]: {e.message}", echo=True)
+                continue
             self.__app_to_cores[app] = cores
             self.__app_to_pid[app] = -1  
                 
