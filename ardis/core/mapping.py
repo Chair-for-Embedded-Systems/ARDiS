@@ -1,7 +1,9 @@
-from ardis.config import *
+from abc import ABC, abstractmethod
+from ardis.config import system_cores
+from ardis.core.system_state import SystemState
 from ardis.benchmarks.application import Application
 
-class MappingPolicy():
+class MappingPolicy(ABC):
     def __init__(self):
         self.__used_cores: set[int] = set()
         self.mapping: dict[Application, set[int]] = {}
@@ -15,6 +17,21 @@ class MappingPolicy():
                     self.mapping[app] = {core}
                     break
         return self.mapping
+    
+    @abstractmethod
+    def register_workload(self, workload: list[Application]):
+        """
+        This method is called by the engine before the workload is executed.
+        It allows the mapping policy to prepare for the workload, e.g., by precomputing a mapping.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    @abstractmethod
+    def get_mapping(self, application: Application, system_state: SystemState) -> set[int]:
+        """
+        Return the set of cores to which the application should be mapped.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
 
 
     ##def getShuffledMapping(self, mapping):
