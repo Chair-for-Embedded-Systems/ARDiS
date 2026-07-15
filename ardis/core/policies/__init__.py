@@ -11,17 +11,17 @@ if TYPE_CHECKING:
     
     # Mapping policies
     from .mapping.explicit_mapping import ExplicitMapping
-    from .mapping.intel_motivational_mapping import IntelMotivationalExample
     from .mapping.next_available_core import NextAvailableCoreMapping
+    # from .mapping.intel_motivational_mapping import IntelMotivationalExample # (Leftover)
     
     # Migration policies
     from .migration.migrate_for_training import MigrationForTraining
-    from .migration.migrate_following_schedule import StaticScheduleMigration
+    # from .migration.migrate_following_schedule import StaticScheduleMigration # (Leftover)
     
     # DVFS policies
     from .dvfs.static_dvfs import StaticDVFS, StaticGovernorDVFS
-    from .dvfs.intel_static_dvfs import IntelStaticDVFSPolicy
-    from .dvfs.dvfs_for_training import DVFSForTraining
+    # from .dvfs.intel_static_dvfs import IntelStaticDVFSPolicy # (Leftover)
+    # from .dvfs.dvfs_for_training import DVFSForTraining # (Leftover)
 
 __all__ = [
     # Scheduling policies
@@ -31,17 +31,17 @@ __all__ = [
     # Mapping policies
     'ExplicitMapping',
     'NextAvailableCoreMapping',
-    'IntelMotivationalExample',
+    #'IntelMotivationalExample', # (Leftover)
     
     # Migration policies
     'MigrationForTraining',
-    'StaticScheduleMigration',
+    #'StaticScheduleMigration', # (Leftover)
     
     # DVFS policies
     'StaticDVFS',
     'StaticGovernorDVFS',
-    'IntelStaticDVFSPolicy',
-    'DVFSForTraining'
+    #'IntelStaticDVFSPolicy', # (Leftover)
+    #'DVFSForTraining' # (Leftover)
 ]
 
 _LAZY_IMPORTS = {
@@ -52,17 +52,17 @@ _LAZY_IMPORTS = {
     # Mapping policies
     'ExplicitMapping': '.mapping.explicit_mapping',
     'NextAvailableCoreMapping': '.mapping.next_available_core',
-    'IntelMotivationalExample': '.mapping.intel_motivational_mapping',
+    #'IntelMotivationalExample': '.mapping.intel_motivational_mapping', # (Leftover)
     
     # Migration policies
     'MigrationForTraining': '.migration.migrate_for_training',
-    'StaticScheduleMigration': '.migration.migrate_following_schedule',
+    #'StaticScheduleMigration': '.migration.migrate_following_schedule', # (Leftover)
     
     # DVFS policies
     'StaticDVFS': '.dvfs.static_dvfs',
     'StaticGovernorDVFS': '.dvfs.static_dvfs',
-    'IntelStaticDVFSPolicy': '.dvfs.intel_static_dvfs',
-    'DVFSForTraining': '.dvfs.dvfs_for_training',
+    #'IntelStaticDVFSPolicy': '.dvfs.intel_static_dvfs', # (Leftover)
+    #'DVFSForTraining': '.dvfs.dvfs_for_training', # (Leftover)
 }
 
 def __getattr__(name: str):
