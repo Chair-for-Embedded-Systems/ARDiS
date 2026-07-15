@@ -119,7 +119,7 @@ class Engine:
         return timer() - self.__start_time
     
     def __startThread(self, app: Application) -> None:
-        print(f"Starting thread for {app.get_display_name()}")
+        print(f"[{self.getElapsedTime():.2f}s] Starting thread for {app.get_display_name()}")
         self.__threads[app].start()
         
         with thread_queue_lock:
@@ -127,7 +127,7 @@ class Engine:
             self.__active_threads.append(app)
 
         if config.DEBUG:
-            msg_thread_started = f"[{self.getElapsedTime():.2f}s]: Thread for {app} started!"
+            msg_thread_started = f"[{self.getElapsedTime():.2f}s] Thread for {app.get_display_name()} started!"
             self.reporter.logEvent(msg_thread_started, echo=True)
 
     def executeWorkload(self, applications: list[Application]) -> None:
@@ -245,9 +245,13 @@ class Engine:
         if self.__migration_policy is None:
             return
         
-        mig_actions = self.__migration_policy.get_migration_actions(system_state)
-        self.__migration_policy.apply_migration_actions(mig_actions, self.__app_to_pid, self.__app_to_cores)
-                    
+        try:
+            mig_actions = self.__migration_policy.get_migration_actions(system_state)
+            self.__migration_policy.apply_migration_actions(mig_actions, self.__app_to_pid, self.__app_to_cores)
+        except Exception as e:
+            self.reporter.logEvent(f"[{self.getElapsedTime():.2f}s]: Error occurred while executing migration policy: {e}", echo=True)
+            return
+
         # Log migration actions if desired
         if config.DEBUG:
             for action in mig_actions:
@@ -264,8 +268,12 @@ class Engine:
         if self.__dvfs_policy is None:
             return
         
-        dvfs_actions = self.__dvfs_policy.get_dvfs_actions(system_state)
-        self.__dvfs_policy.apply_dvfs_actions(dvfs_actions)
+        try:
+            dvfs_actions = self.__dvfs_policy.get_dvfs_actions(system_state)
+            self.__dvfs_policy.apply_dvfs_actions(dvfs_actions)
+        except Exception as e:
+            self.reporter.logEvent(f"[{self.getElapsedTime():.2f}s]: Error occurred while executing DVFS policy: {e}", echo=True)
+            return
                         
         # Log dvfs actions if desired
         if config.DEBUG:

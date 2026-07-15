@@ -49,7 +49,7 @@ _LAZY_IMPORTS = {
     # Scheduling policies
     'ConsecutiveScheduler': '.schedueling.consecutive_schedule',
     'FixedTimeScheduler': '.schedueling.fixed_time_schedule',
-    'ListScheduler': '.schedueling.list_schedule',
+    'GreedyScheduler': '.schedueling.greedy_schedule',
     
     # Mapping policies
     'ExplicitMapping': '.mapping.explicit_mapping',

@@ -37,7 +37,7 @@ def get_pid_of_app(binary_name: str, affinity: set[int] | None) -> int | None:
                 pid_matches.append(pid)
                 
     if len(pid_matches) == 0:
-        print(f"{binary_name} has probably not started!")
+        #print(f"{binary_name} has probably not started!")
         return None
         
     if len(pid_matches) > 1:
