@@ -6,24 +6,30 @@ from ardis.experiments import Experiment, MonitoringMode
 
 
 def run_example_with_static_scheduler():
-    from ardis.core.policies import ExplicitMapping, FixedTimeScheduler
+    from ardis.core.policies import ExplicitMapping, FixedTimeScheduler, StaticDVFS
     
     # Create a static scheduler with predefined launch times for applications
     app_to_launch_time_sec : dict[Application, float] = {
-        ParsecApplication("parsec.blackscholes") : 0.0,
-        ParsecApplication("parsec.blackscholes") : 5.0,
-        ParsecApplication("parsec.blackscholes") : 10.0,
-        ParsecApplication("parsec.blackscholes") : 15.0,
+        ParsecApplication("parsec.dedup") : 0.0,
+        ParsecApplication("parsec.dedup") : 20.0,
+        ParsecApplication("parsec.dedup") : 20.0,
+        ParsecApplication("parsec.dedup") : 35.0,
     }
 
     experiment = Experiment(
         name="Static Scheduler Example",
         applications=list(app_to_launch_time_sec.keys()),
-        mapping_policy=ExplicitMapping([{2}, {4}, {6}, {8}]),
         scheduler=FixedTimeScheduler(app_to_launch_time_sec),
+        mapping_policy=ExplicitMapping([{2}, {4}, {6}, {8}]),
+        dvfs_policy=StaticDVFS({2: 2000, 4: 3000, 6: 3000, 8: 4500}),
         monitoring_mode=MonitoringMode.PERIODIC_ON_TID,
     )
-    
+    experiment.setPostProcessor(
+        SimpleClipPostProcessor(
+            clips=[Clips.APP_EXECUTION_OVERVIEW, Clips.APP_MAPPING, Clips.SYSTEM_CORE_FREQUENCY],
+            verbose=True,
+        )
+    )
     experiment.executeExperiment()
 
 def run_example_with_list_scheduler():
