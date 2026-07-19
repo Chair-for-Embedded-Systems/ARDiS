@@ -4,7 +4,16 @@ import threading
 import time
 from timeit import default_timer as timer
 
-from ardis.benchmarks.application import Application
+from ardis.core.procworker import *
+from ardis.core.mapping import *
+
+from ardis.core.monitoring import Monitor, TrackingConfig, create_monitor
+from ardis.core.postprocessor import *
+from ardis.core.reporter import *
+from ardis.core.dvfs import *
+from ardis.core.scheduler import *
+from ardis.core.migration import *
+from ardis.core.monitoringmode import *
 from ardis.core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
 from ardis.core.buffering.action_buffer import ActionBuffer
 from ardis.core.dvfs import DVFSPolicy
@@ -200,7 +209,7 @@ class Engine:
             self.__monitor = None
             return
         
-        self.__monitor = Monitor(
+        self.__monitor = create_monitor(
             sampling_rate_sec=config.sampling_rate_ms/1000,
             periodic_app_level_events=config.periodic_app_level_events,
             periodic_system_level_events=config.periodic_system_wide_events,
