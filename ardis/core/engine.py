@@ -210,16 +210,17 @@ class Engine:
             return
         
         self.__monitor = create_monitor(
-            sampling_rate_sec=config.sampling_rate_ms/1000,
+            sampling_interval_ms=config.sampling_rate_ms,
             periodic_app_level_events=config.periodic_app_level_events,
-            periodic_system_level_events=config.periodic_system_wide_events,
-            one_shot_system_level_events=config.one_shot_system_wide_events,
+            periodic_system_wide_events=config.periodic_system_wide_events,
+            one_shot_system_wide_events=config.one_shot_system_wide_events,
             reporter=self.reporter,
             event_buffer=self.event_buffer,
-            inital_tracking_config=TrackingConfig(
+            initial_tracking_config=TrackingConfig(
                 monitor_mode=self.__monitoring_mode,
                 app_to_cores=self.__app_to_cores,
-            )
+            ),
+            monitoring_backend=config.monitoring_backend
         )
 
     def __launch_waiting_threads(self, system_state: SystemState) -> None:

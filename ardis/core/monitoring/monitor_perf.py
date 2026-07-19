@@ -22,7 +22,7 @@ class PerfBasedMonitor(Monitor):
     """
     def __init__(
         self,
-        sampling_rate_sec: float,
+        sampling_rate_ms: int,
         periodic_app_level_events: list[str], 
         periodic_system_level_events: list[str],
         one_shot_system_level_events: list[str],
@@ -31,9 +31,9 @@ class PerfBasedMonitor(Monitor):
         initial_tracking_config: TrackingConfig 
     ):
         
-        self.__app_level_poller = PollerAppLevel(sampling_rate_sec, periodic_app_level_events)
-        self.__system_level_poller = PollerSystemLevel(sampling_rate_sec, periodic_system_level_events, one_shot_system_level_events)
-        self.__sampling_rate_sec = sampling_rate_sec
+        self.__sampling_rate_sec = sampling_rate_ms / 1000.0
+        self.__app_level_poller = PollerAppLevel(self.__sampling_rate_sec, periodic_app_level_events)
+        self.__system_level_poller = PollerSystemLevel(self.__sampling_rate_sec, periodic_system_level_events, one_shot_system_level_events)
         self.__tracking_config = initial_tracking_config
         self.__tracking_config_update_queue: Queue[TrackingConfig] = Queue()
         self.reporter = reporter

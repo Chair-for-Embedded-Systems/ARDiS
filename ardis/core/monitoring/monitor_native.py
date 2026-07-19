@@ -35,7 +35,7 @@ class NativeMonitor(Monitor):
     def __init__(
         self,
         perf_daemon_path: str,
-        sampling_rate_sec: float,
+        sampling_rate_ms: int,
         periodic_app_level_events: list[str],
         periodic_system_level_events: list[str],
         one_shot_system_level_events: list[str], # Currently not used in the native monitor
@@ -44,7 +44,7 @@ class NativeMonitor(Monitor):
         initial_tracking_config: TrackingConfig,
     ):
         self.__perf_daemon_path = perf_daemon_path
-        self.__sampling_rate_sec = sampling_rate_sec
+        self.__sampling_rate_ms = sampling_rate_ms
         self._periodic_app_level_events = periodic_app_level_events
         self._periodic_system_level_events = periodic_system_level_events
         self.reporter = reporter
@@ -69,7 +69,7 @@ class NativeMonitor(Monitor):
         if self.__perf_thread is None:
             return
         perf_thread = self.__perf_thread
-        perf_thread.join(timeout=self.__sampling_rate_sec * 5)
+        perf_thread.join(timeout=self.__sampling_rate_ms * 1000 * 5)
         if perf_thread.is_alive():
             print("Failed to stop monitoring thread (still alive)")
 
@@ -125,7 +125,7 @@ class NativeMonitor(Monitor):
         with PerfDaemonMonitor(
             perf_app_events=self._periodic_app_level_events,
             perf_system_events=self._periodic_system_level_events,
-            interval_ms=int(self.__sampling_rate_sec * 1000),
+            interval_ms=self.__sampling_rate_ms,
             perfd_path=self.__perf_daemon_path,
             mode=mode
         ) as perf_monitor:
@@ -139,7 +139,7 @@ class NativeMonitor(Monitor):
 
                 # Prevent busy waiting if nothing is being tracked
                 if not self.__tracked_pids and not self._periodic_system_level_events:
-                    time.sleep(self.__sampling_rate_sec)
+                    time.sleep(self.__sampling_rate_ms / 1000.0)
                     continue
 
                 packet = perf_monitor.read()
@@ -149,7 +149,7 @@ class NativeMonitor(Monitor):
                 elif self.__tracking_config.monitor_mode in (MonitoringMode.PERIODIC_ON_PID, MonitoringMode.PERIODIC_ON_TID):
                     self.__handle_pid_packet(packet)
 
-            reporter_thread.join(timeout=self.__sampling_rate_sec * 5)
+            reporter_thread.join(timeout=self.__sampling_rate_ms / 1000.0 * 5)
 
     def __handle_pid_packet(self, packet: Packet):
 
@@ -256,9 +256,10 @@ class NativeMonitor(Monitor):
             )
 
     def __run_reporter(self):
+        timeout_sec = self.__sampling_rate_ms / 1000.0
         while self.__running:
             try:
-                result = self.__reporting_queue.get(timeout=self.__sampling_rate_sec)
+                result = self.__reporting_queue.get(timeout=timeout_sec)
                 result.report(self.reporter)
             except Empty:
                 continue

@@ -13,17 +13,16 @@ def create_monitor(
     periodic_app_level_events: list[str],
     periodic_system_wide_events: list[str],
     one_shot_system_wide_events: list[str],
-    sampling_interval_ms: int
+    sampling_interval_ms: int,
+    monitoring_backend: str = "perf"
 ) -> Monitor:
     """
     Factory function to create a monitor based on the specified monitoring backend.
     """
-    
-    monitoring_backend: str = "native"
 
     if monitoring_backend == "perf":
         return PerfBasedMonitor(
-            sampling_rate_sec=sampling_interval_ms / 1000,
+            sampling_rate_ms=sampling_interval_ms,
             periodic_app_level_events=periodic_app_level_events,
             periodic_system_level_events=periodic_system_wide_events,
             one_shot_system_level_events=one_shot_system_wide_events,
@@ -43,7 +42,7 @@ def create_monitor(
 
         return NativeMonitor(
             perf_daemon_path=str(BINARY_PATH),
-            sampling_rate_sec=sampling_interval_ms / 1000,
+            sampling_rate_ms=sampling_interval_ms,
             periodic_app_level_events=periodic_app_level_events,
             periodic_system_level_events=periodic_system_wide_events,
             one_shot_system_level_events=one_shot_system_wide_events,
