@@ -22,7 +22,7 @@ class ReportableResult(ABC):
         """
         Returns the provided elapsed time as formatted string
         """
-        return f"[{elapsed_time_sec:.2f}s]"
+        return f"[{elapsed_time_sec:.3f}s]"
 
 @dataclass    
 class PeriodicPIDResult(ReportableResult):
