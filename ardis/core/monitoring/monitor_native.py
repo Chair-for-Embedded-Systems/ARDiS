@@ -14,16 +14,16 @@ from ardis.core.monitoring.reportable_result import ReportableResult, PeriodicPI
 from ardis.core.reporter import Reporter
 from ardis.core.buffering.event_buffer import EventBuffer
 
-from pydaemon.monitor import Monitor as PerfDaemonMonitor, Packet
+from ardis_daemon.monitor import Monitor as PerfDaemonMonitor, Packet, EventReading
 
 
-def _pct_running(reading) -> float:
+def _pct_running(reading: EventReading) -> float:
     if reading.enabled <= 0:
         return 100.0
     return reading.active / reading.enabled * 100
 
 
-def _system_pct_running(system_raw: dict) -> dict[str, float]:
+def _system_pct_running(system_raw: dict[str, EventReading]) -> dict[str, float]:
     return {name: _pct_running(reading) for name, reading in system_raw.items()}
 
 
