@@ -2,9 +2,6 @@ from ardis.core.reporter import Reporter
 from ardis.core.buffering.event_buffer import EventBuffer
 
 from .monitor import Monitor, TrackingConfig
-from .monitor_perf import PerfBasedMonitor
-from .monitor_native import NativeMonitor
-
 
 def create_monitor(
     reporter: Reporter,
@@ -21,6 +18,7 @@ def create_monitor(
     """
 
     if monitoring_backend == "perf":
+        from .monitor_perf import PerfBasedMonitor
         return PerfBasedMonitor(
             sampling_rate_ms=sampling_interval_ms,
             periodic_app_level_events=periodic_app_level_events,
@@ -36,10 +34,15 @@ def create_monitor(
         import importlib.util
         
         if importlib.util.find_spec("pydaemon") is None:
-            raise RuntimeError("Please make sure that the 'pydaemon' package is installed!")
+            raise RuntimeError(
+                "Please make sure that the 'pydaemon' package is installed!\n" \
+                "Alternatively, you can use the 'perf' monitoring backend instead of 'native'," \
+                " by setting 'monitoring_backend=perf' the config file."
+            )
         
         from pydaemon import BINARY_PATH 
 
+        from .monitor_native import NativeMonitor
         return NativeMonitor(
             perf_daemon_path=str(BINARY_PATH),
             sampling_rate_ms=sampling_interval_ms,
