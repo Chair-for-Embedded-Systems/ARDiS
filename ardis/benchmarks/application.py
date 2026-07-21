@@ -15,6 +15,7 @@ class Application(ABC):
         self._pid: int | None = None
         self._start_affinity: set[int] | None = None
         self._instance_id: int = Application.__INSTANCE_COUNTER
+        self._completed: bool = False
         Application.__INSTANCE_COUNTER += 1
 
     def execute(self, cores: set[int] | None):
@@ -28,6 +29,7 @@ class Application(ABC):
             self._execute(cores)
             self._running = False
             self._pid = None
+            self._completed = True
 
     @abstractmethod
     def _execute(self, cores: set[int] | None) -> None:
@@ -59,6 +61,13 @@ class Application(ABC):
         """
         raise NotImplementedError
     
+    @abstractmethod
+    def get_preffered_core_count(self) -> int:
+        """
+        Returns the number of cores that this application prefers to run on.
+        """
+        raise NotImplementedError
+    
     def get_labels(self) -> list[str]:
         """
         Returns the labels that are assigned to this application
@@ -71,6 +80,12 @@ class Application(ABC):
         This is a unique id that is assigned to each instance of an application.
         """
         return self._instance_id
+    
+    def is_completed(self) -> bool:
+        """
+        Returns True if the application has completed its execution, False otherwise.
+        """
+        return self._completed
 
     def __str__(self) -> str:
         return self.get_display_name()

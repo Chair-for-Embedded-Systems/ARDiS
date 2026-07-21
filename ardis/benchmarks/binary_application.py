@@ -44,3 +44,8 @@ class BinaryApplication(Application):
     
     def get_display_name(self) -> str:
         return self._binary_name
+    
+    def get_preffered_core_count(self) -> int:
+        # For now, we assume that each binary application requires only one core.
+        # This can be extended in the future.
+        return 1

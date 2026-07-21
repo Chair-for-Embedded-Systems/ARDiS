@@ -1,13 +1,22 @@
-class Scheduler:
-    def __init__(self):
-        # schedule is a dictionary with the application as key and the time of arrival as value
-        self.schedule = {}
+from abc import ABC, abstractmethod
+from ardis.benchmarks.application import Application
+from ardis.core.system_state import SystemState
+
+class Scheduler(ABC):
+
+    @abstractmethod
+    def register_workload(self, workload: list[Application]):
+        """
+        This method is called by the engine before the workload is executed.
+        It allows the scheduler to prepare for the workload, e.g., by precomputing a schedule or validating its parameters.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    @abstractmethod
+    def is_time_to_launch(self, application: Application, system_state: SystemState) -> bool:
+        """
+        This method is called by the engine to determine if it is time to launch the given application based on the current system state.
+        The scheduler should return True if the application can be launched, and False otherwise.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
     
-    # Create a schedule for the applications
-    def createSchedule(self, applications):
-        # default schedule: all applications arrive at the same time
-        for app in applications:
-            self.schedule[app] = 0
-    # Check if it is time to launch an application
-    def isTimeToLaunch(self, app, current_time):
-        return current_time >= self.schedule[app]

@@ -6,6 +6,7 @@ from ardis.benchmarks.application import Application
 @dataclass
 class SystemState:
     start_time: float
+    elapsed_time_sec: float
     app_to_cores: dict[Application, set[int]]
     app_to_pid: dict[Application, int]
     epoch: int

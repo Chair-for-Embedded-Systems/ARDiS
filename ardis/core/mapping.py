@@ -1,20 +1,34 @@
-from ardis.config import *
+from abc import ABC, abstractmethod
+from ardis.config import system_cores
+from ardis.core.system_state import SystemState
 from ardis.benchmarks.application import Application
 
-class MappingPolicy():
-    def __init__(self):
-        self.__used_cores: set[int] = set()
-        self.mapping: dict[Application, set[int]] = {}
+class MappingException(Exception):
+    """Exception raised when the system is full and a new application cannot be mapped."""
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(self.message)
+
+class MappingPolicy(ABC):
+    def __init__(self, available_cores: set[int] = set(range(system_cores))):
+        self._mapping: dict[Application, set[int]] = {}
+        self._available_cores: set[int] = available_cores
     
-    def executeMapping(self, applications: list[Application]) -> dict[Application, set[int]]:
-        # default mapping: next available core
-        for app in applications:
-            for core in range(system_cores):
-                if core not in self.__used_cores:
-                    self.__used_cores.add(core)
-                    self.mapping[app] = {core}
-                    break
-        return self.mapping
+    @abstractmethod
+    def register_workload(self, workload: list[Application]) -> None:
+        """
+        This method is called by the engine before the workload is executed.
+        It allows the mapping policy to prepare for the workload, e.g., by precomputing a mapping.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    @abstractmethod
+    def get_mapping(self, application: Application, system_state: SystemState) -> set[int]:
+        """
+        Return the set of cores to which the application should be mapped.
+        Raise a MappingException if the system is full and the application cannot be mapped.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
 
 
     ##def getShuffledMapping(self, mapping):

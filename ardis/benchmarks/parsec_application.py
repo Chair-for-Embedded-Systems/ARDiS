@@ -16,7 +16,7 @@ class ParsecApplication(Application):
         NATIVE = 'native'
         TEST = 'test'
 
-    def __init__(self, application_package: str, threads: int = 1, input_size: InputSize = InputSize.NATIVE, labels: list[str] = []) -> None:
+    def __init__(self, application_package: str, threads: int = 1, input_size: InputSize = InputSize.NATIVE, labels: list[str] = [], display_name: str | None = None) -> None:
         """
         Parameters
         ----------
@@ -40,7 +40,7 @@ class ParsecApplication(Application):
         self._package = application_package
         self._benchmark = benchmark
         self._binary_name = application_binary
-        self._display_name = f"{application_package}-{threads}"
+        self._display_name = display_name or f"{application_package}-{threads}"
         self._threads = threads
         self._input_size = input_size
 
@@ -89,4 +89,7 @@ class ParsecApplication(Application):
         
     def get_display_name(self) -> str:
         return self._display_name
+    
+    def get_preffered_core_count(self) -> int:
+        return self._threads
    
