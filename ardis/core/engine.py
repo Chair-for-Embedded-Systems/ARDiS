@@ -154,7 +154,10 @@ class Engine:
         self.__inititalize_monitor()
 
         # Then start the workload execution
-        self.__start_engine()
+        try:
+            self.__start_engine()
+        except Exception as e:
+            raise RuntimeError(f"Failed to start the engine: {e}")
 
         # Control loop
         while self.running:

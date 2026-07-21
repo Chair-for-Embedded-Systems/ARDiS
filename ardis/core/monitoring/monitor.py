@@ -46,7 +46,7 @@ class Monitor(ABC):
     @abstractmethod
     def start(self):
         """
-        Starts the monitoring thread. This call is non blocking.
+        Starts the monitoring thread. This call may block for a short amount of time.
         """
         raise NotImplementedError("The start method must be implemented by subclasses of Monitor.")
 

@@ -43,8 +43,8 @@ def create_monitor(
         from ardis_daemon import find_binary_path
         BINARY_PATH = find_binary_path() 
 
-        from .monitor_native import NativeMonitor
-        return NativeMonitor(
+        from .monitor_daemon import DaemonMonitor
+        return DaemonMonitor(
             perf_daemon_path=str(BINARY_PATH),
             sampling_rate_ms=sampling_interval_ms,
             periodic_app_level_events=periodic_app_level_events,

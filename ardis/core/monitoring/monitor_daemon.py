@@ -27,7 +27,7 @@ def _system_pct_running(system_raw: dict[str, EventReading]) -> dict[str, float]
     return {name: _pct_running(reading) for name, reading in system_raw.items()}
 
 
-class NativeMonitor(Monitor):
+class DaemonMonitor(Monitor):
     """
     Monitor that utilizes a native C backend to collect performance data.
     It allows for more efficient data collection and lower overhead compared to the perf-based monitor.
@@ -56,13 +56,34 @@ class NativeMonitor(Monitor):
         self.__tracked_pids: set[int] = set()
         self.__running = False
         self.__perf_thread: threading.Thread | None = None
-        self.__start_time: float | None = None
+        
+        self.__thread_exception: BaseException | None = None
+        self.__started_event: threading.Event | None = None
 
-    def start(self):
+    def start(self, startup_timeout_sec: float = 5.0):
         self.__running = True
         self.__start_time = timer()
-        self.__perf_thread = threading.Thread(target=self.__run)
+        self.__thread_exception = None
+        self.__started_event = threading.Event()
+
+        self.__perf_thread = threading.Thread(target=self.__run_wrapper)
         self.__perf_thread.start()
+
+        # Wait until the perf thread either signals successful startup
+        # or dies with an exception whichever happens first.
+        signaled = self.__started_event.wait(timeout=startup_timeout_sec)
+
+        if self.__thread_exception is not None:
+            exc, self.__thread_exception = self.__thread_exception, None
+            self.__running = False
+            raise exc
+
+        if not signaled:
+            # Thread hasn't crashed, but hasn't confirmed startup either.
+            self.__running = False
+            raise TimeoutError(
+                f"DaemonMonitor failed to start within {startup_timeout_sec}s"
+            )
 
     def stop(self):
         self.__running = False
@@ -117,6 +138,16 @@ class NativeMonitor(Monitor):
             if removed_pids:
                 monitor.remove(*removed_pids)
 
+    def __run_wrapper(self):
+        try:   
+            self.__run()
+        except BaseException as exc:
+            self.__thread_exception = exc
+            self.__running = False
+        finally:
+            if self.__started_event is not None:
+                self.__started_event.set()
+
     def __run(self):
 
         mode = "tid" if self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_TID else "pid"
@@ -129,6 +160,10 @@ class NativeMonitor(Monitor):
             perfd_path=self.__perf_daemon_path,
             mode=mode
         ) as perf_monitor:
+            
+            assert self.__started_event is not None
+            self.__started_event.set()
+
             reporter_thread = threading.Thread(target=self.__run_reporter)
             reporter_thread.start()
 
