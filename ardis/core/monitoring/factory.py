@@ -28,7 +28,7 @@ def create_monitor(
             event_buffer=event_buffer,
             initial_tracking_config=initial_tracking_config
         )
-    elif monitoring_backend == "native":
+    elif monitoring_backend == "daemon":
         
         # Check if the 'ardis_daemon' package is installed as this is currntly an optional dependency
         import importlib.util
@@ -36,11 +36,12 @@ def create_monitor(
         if importlib.util.find_spec("ardis_daemon") is None:
             raise RuntimeError(
                 "Please make sure that the 'ardis_daemon' package is installed!\n" \
-                "Alternatively, you can use the 'perf' monitoring backend instead of 'native'," \
+                "Alternatively, you can use the 'perf' monitoring backend instead of 'daemon'," \
                 " by setting 'monitoring_backend=perf' the config file."
             )
         
-        from ardis_daemon import BINARY_PATH 
+        from ardis_daemon import find_binary_path
+        BINARY_PATH = find_binary_path() 
 
         from .monitor_native import NativeMonitor
         return NativeMonitor(
