@@ -48,6 +48,7 @@ action_interval_sec: float = ac.action_interval_sec
 # Monitoring parameters
 sampling_rate_ms: int = ac.sampling_interval_ms
 enable_monitoring: bool = True 
+monitoring_backend: str = ac.monitoring_backend
 
 # Perf events to monitor
 periodic_app_level_events = ac.periodic_app_level_events

@@ -26,6 +26,9 @@ Breaking changes can occur in Minor releases.
     - Schedules applications at fixed times, regardless of core availability.
 - Added new example (`schedulers.py`) which showcases the usage of the new scheduling policies
 - `Application` has new properties (`get_preferred_core_count`, `is_completed`)
+- Added support for different monitoring backends
+    - Perf-based : Default, uses the Linux `perf` tool to collect performance metrics
+    - Daemon-based : Uses a custom daemon to collect performance metrics.
 
 ### Changed 
 - `Scheduler` exposes a new method `is_time_to_launch(application, system_state)`, which allows to make scheduling decisions based on the current system state.

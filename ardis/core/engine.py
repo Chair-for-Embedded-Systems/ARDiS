@@ -4,7 +4,16 @@ import threading
 import time
 from timeit import default_timer as timer
 
-from ardis.benchmarks.application import Application
+from ardis.core.procworker import *
+from ardis.core.mapping import *
+
+from ardis.core.monitoring import Monitor, TrackingConfig, create_monitor
+from ardis.core.postprocessor import *
+from ardis.core.reporter import *
+from ardis.core.dvfs import *
+from ardis.core.scheduler import *
+from ardis.core.migration import *
+from ardis.core.monitoringmode import *
 from ardis.core.buffering.deque_based_event_buffer import DequeBasedEventBuffer, EventBuffer
 from ardis.core.buffering.action_buffer import ActionBuffer
 from ardis.core.dvfs import DVFSPolicy
@@ -145,7 +154,10 @@ class Engine:
         self.__inititalize_monitor()
 
         # Then start the workload execution
-        self.__start_engine()
+        try:
+            self.__start_engine()
+        except Exception as e:
+            raise RuntimeError(f"Failed to start the engine: {e}")
 
         # Control loop
         while self.running:
@@ -200,17 +212,18 @@ class Engine:
             self.__monitor = None
             return
         
-        self.__monitor = Monitor(
-            sampling_rate_sec=config.sampling_rate_ms/1000,
+        self.__monitor = create_monitor(
+            sampling_interval_ms=config.sampling_rate_ms,
             periodic_app_level_events=config.periodic_app_level_events,
-            periodic_system_level_events=config.periodic_system_wide_events,
-            one_shot_system_level_events=config.one_shot_system_wide_events,
+            periodic_system_wide_events=config.periodic_system_wide_events,
+            one_shot_system_wide_events=config.one_shot_system_wide_events,
             reporter=self.reporter,
             event_buffer=self.event_buffer,
-            inital_tracking_config=TrackingConfig(
+            initial_tracking_config=TrackingConfig(
                 monitor_mode=self.__monitoring_mode,
                 app_to_cores=self.__app_to_cores,
-            )
+            ),
+            monitoring_backend=config.monitoring_backend
         )
 
     def __launch_waiting_threads(self, system_state: SystemState) -> None:

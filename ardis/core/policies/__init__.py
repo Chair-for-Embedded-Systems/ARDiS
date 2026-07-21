@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     # DVFS policies
     from .dvfs.static_dvfs import StaticDVFS, StaticGovernorDVFS
     # from .dvfs.intel_static_dvfs import IntelStaticDVFSPolicy # (Leftover)
-    # from .dvfs.dvfs_for_training import DVFSForTraining # (Leftover)
+    from .dvfs.dvfs_for_training import DVFSForTraining # (Leftover, still used in examples/policies.py)
 
 __all__ = [
     # Scheduling policies
@@ -42,7 +42,7 @@ __all__ = [
     'StaticDVFS',
     'StaticGovernorDVFS',
     #'IntelStaticDVFSPolicy', # (Leftover)
-    #'DVFSForTraining' # (Leftover)
+    'DVFSForTraining' # (Leftover, still used in examples/policies.py)
 ]
 
 _LAZY_IMPORTS = {
@@ -64,7 +64,7 @@ _LAZY_IMPORTS = {
     'StaticDVFS': '.dvfs.static_dvfs',
     'StaticGovernorDVFS': '.dvfs.static_dvfs',
     #'IntelStaticDVFSPolicy': '.dvfs.intel_static_dvfs', # (Leftover)
-    #'DVFSForTraining': '.dvfs.dvfs_for_training', # (Leftover)
+    'DVFSForTraining': '.dvfs.dvfs_for_training', # (Leftover, still used in examples/policies.py)
 }
 
 def __getattr__(name: str):

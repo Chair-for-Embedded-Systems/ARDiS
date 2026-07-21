@@ -22,7 +22,7 @@ class ReportableResult(ABC):
         """
         Returns the provided elapsed time as formatted string
         """
-        return f"[{elapsed_time_sec:.2f}s]"
+        return f"[{elapsed_time_sec:.3f}s]"
 
 @dataclass    
 class PeriodicPIDResult(ReportableResult):
@@ -42,7 +42,8 @@ class PeriodicPIDResult(ReportableResult):
         
         # Log mapped cores (optional)
         if self.log_mapped_cores:
-            reporter.logPeriodicCounters(f"{timestamp} Current mapped cores: {list(self.core_to_freq.keys())}")
+            occupied_cores = list(set().union(*self.pid_to_affinity.values()))
+            reporter.logPeriodicCounters(f"{timestamp} Current mapped cores: {occupied_cores}")
 
         # Log app multiplexing (optional)
         if self.log_event_multiplexing:
@@ -124,7 +125,7 @@ class PeriodicCoreResult(ReportableResult):
         
         # Log mapped cores (optional)
         if self.log_mapped_cores:
-            reporter.logPeriodicCounters(f"{timestamp} Current mapped cores: {list(self.core_to_freq.keys())}")
+            reporter.logPeriodicCounters(f"{timestamp} Current mapped cores: {list(self.core_to_app.keys())}")
 
         # Log application multiplexing (optional)
         if self.log_event_multiplexing:
