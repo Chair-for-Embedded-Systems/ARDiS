@@ -13,7 +13,7 @@ def run_example_with_random_migration_and_random_dvfs():
         mapping_policy=ExplicitMapping.from_list([2, 16]),
         scheduler=ConsecutiveScheduler(delay_sec=0),
         migration_policy=MigrationForTraining(
-            migrate_within_cluster=True,
+            migrate_within_cluster=False,
             epoch_trigger_intervall=5,
         ),
         dvfs_policy=DVFSForTraining(
