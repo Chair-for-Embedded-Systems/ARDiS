@@ -60,6 +60,20 @@ class DaemonMonitor(Monitor):
         self.__thread_exception: BaseException | None = None
         self.__started_event: threading.Event | None = None
 
+        # Guard for perf aliases of generic events, which are not recognized by the native monitor yet
+        known_aliases : dict[str, str] = {
+            "branches": "branch-instructions",
+            "cycles" : "cpu-cycles", 
+            "cs": "context-switches",
+            "faults": "page-faults",
+            "migrations": "cpu-migrations",
+        }
+        for alias in set(known_aliases.keys()) & (set(periodic_app_level_events) | set(periodic_system_level_events)):
+            print(
+                f"[DaemonMonitor] Warning: The event '{alias}' is an alias for '{known_aliases[alias]}'. "
+                "If the native monitor does not recognize the alias, please use the full event name instead."
+            )
+
     def start(self, startup_timeout_sec: float = 5.0):
         self.__running = True
         self.__start_time = timer()
