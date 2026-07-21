@@ -182,11 +182,13 @@ class DaemonMonitor(Monitor):
                 if self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_CORE:
                     self.__handle_core_packet(packet)
                 elif self.__tracking_config.monitor_mode in (MonitoringMode.PERIODIC_ON_PID, MonitoringMode.PERIODIC_ON_TID):
-                    self.__handle_pid_packet(packet)
+                    self.__handle_pid_packet(packet, log_individual_threads=False)
+                elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_TID:
+                    self.__handle_pid_packet(packet, log_individual_threads=True)
 
             reporter_thread.join(timeout=self.__sampling_rate_ms / 1000.0 * 5)
 
-    def __handle_pid_packet(self, packet: Packet):
+    def __handle_pid_packet(self, packet: Packet, log_individual_threads: bool):
 
         pid_to_app = self.__tracking_config.pid_to_app
         pid_to_app_name = {pid: str(app) for pid, app in pid_to_app.items()}
@@ -229,8 +231,8 @@ class DaemonMonitor(Monitor):
             pid_to_affinity=pid_to_affinity,
             core_to_freq=core_to_freq,
             pid_to_app=pid_to_app,
-            log_individual_threads=True,
-            log_mapped_cores=False
+            log_individual_threads=log_individual_threads,
+            log_mapped_cores=True
         )
         self.__reporting_queue.put_nowait(result)
 
@@ -253,8 +255,6 @@ class DaemonMonitor(Monitor):
             for name, reading in core_result.values.items():
                 events[name] = int(reading.scaled())
                 pct = _pct_running(reading)
-                # min(), not a conditional write -- see the identical
-                # comment in __handle_pid_packet for why this matters.
                 event_to_pct_running[name] = min(event_to_pct_running.get(name, 100.0), pct)
             core_to_events[core_result.core] = events
 
@@ -266,8 +266,6 @@ class DaemonMonitor(Monitor):
         sys_pct_running = _system_pct_running(packet.system_raw)
         sys_events = ResultSystemPolling(dict(packet.system_values), sys_pct_running)
 
-        # Computed once, reused below -- same redundancy fix as
-        # __handle_pid_packet.
         core_to_freq = {i: f / 1000 for i, f in enumerate(packet.core_freqs_khz)}
 
         elapsed_time = packet.timestamp_ms / 1000.0  # Convert milliseconds to seconds
