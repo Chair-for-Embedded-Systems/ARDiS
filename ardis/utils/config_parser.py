@@ -140,6 +140,7 @@ class ARDISConfigParser:
             raise ConfigOptionError(f"Missing '{section}' section in configuration file.")
         
         self.monitoring_backend = config.get(section, "monitoring_backend", fallback="perf")
+        self.monitor_core_temperatures = config.getboolean(section, "monitor_core_temperatures", fallback=False)
         self.action_interval_sec = config.getfloat(section, "action_interval_sec")
         self.sampling_interval_ms = config.getint(section, "sampling_interval_ms")
         
