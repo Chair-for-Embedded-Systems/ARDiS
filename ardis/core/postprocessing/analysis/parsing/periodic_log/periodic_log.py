@@ -1,17 +1,19 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from .application_event import ApplicationEvent
-from .system_event import SystemEvent
+from .system_event import SystemEvent, TemperatureEvent
 
 @dataclass
 class PeriodicLog:
     app_events: list[ApplicationEvent]
     sys_events: list[SystemEvent]
+    temp_events: list[TemperatureEvent]
     
     @classmethod
     def from_log_file(cls, file_path: str) -> PeriodicLog:
         application_events: list[ApplicationEvent] = []
         system_events: list[SystemEvent] = []
+        temp_events: list[TemperatureEvent] = []
         with open(file_path, 'r') as file:
             for line in file:
                 line = line.strip()
@@ -24,6 +26,10 @@ class PeriodicLog:
                         event = SystemEvent.from_log_line(line)
                         system_events.append(event)
                         continue
+                    if "Temperature (°C):" in line:
+                        event = TemperatureEvent.from_log_line(line)
+                        temp_events.append(event)
+                        continue
                     if "Current mapped" in line:
                         continue
                     print(f"Unrecognized line format: {line}")
@@ -31,7 +37,8 @@ class PeriodicLog:
                     print(f"Skipping line due to error: {e}")
         return cls(
             app_events=application_events,
-            sys_events=system_events
+            sys_events=system_events,
+            temp_events=temp_events
         )
     
     @property

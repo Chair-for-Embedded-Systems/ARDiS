@@ -10,6 +10,7 @@ class Clips(Enum):
         THREAD_EXECUTION_OVERVIEW = 5
         SYSTEM_METRICS_ALL = 6
         SYSTEM_CORE_FREQUENCY = 7
+        TEMPERATURE_PLOT = 8
 
 class SimpleClipPostProcessor(ClipPostProcessor):
         
@@ -51,6 +52,9 @@ class SimpleClipPostProcessor(ClipPostProcessor):
 
             elif clip == Clips.SYSTEM_CORE_FREQUENCY:
                 clip_instances.append(SystemFrequencyClip())
+
+            elif clip == Clips.TEMPERATURE_PLOT:
+                clip_instances.append(TemperatureClip())
                             
             else:
                 raise ValueError(f"Unknown clip type: {clip}")
