@@ -28,7 +28,8 @@ class PerfBasedMonitor(Monitor):
         one_shot_system_level_events: list[str],
         reporter: Reporter,
         event_buffer: EventBuffer|None,
-        initial_tracking_config: TrackingConfig 
+        initial_tracking_config: TrackingConfig,
+        monitor_core_temperatures: bool = False
     ):
         
         self.__sampling_rate_sec = sampling_rate_ms / 1000.0
@@ -42,6 +43,7 @@ class PerfBasedMonitor(Monitor):
         self.__perf_thread: threading.Thread | None = None
         self.__event_buffer = event_buffer
         self.__last_sample_timestamp: float | None = None
+        self.__monitor_core_temperatures = monitor_core_temperatures
 
     def update_tracking_config(self, next_config: TrackingConfig):
         self.__tracking_config_update_queue.put(next_config)
@@ -91,7 +93,18 @@ class PerfBasedMonitor(Monitor):
 
         self.__tracking_config = update_queue.get()
 
-    def __poll_freq_and_affinity(self, pids: set[int], affinity_per_thread: bool = False) -> tuple[dict[int, list[int]], dict[int, float]]:
+    def __init_thermal_monitor(self):
+        try:
+            from ardis.core.monitoring.thermal import create_core_temp_monitor
+            self.__temperature_monitor = create_core_temp_monitor()
+        except Exception as e:
+            raise RuntimeError(f"[Monitor] Failed to initialize temperature monitor: {e}")
+
+    def __poll_freq_affinity_temp(
+        self,
+        pids: set[int],
+        affinity_per_thread: bool = False
+    ) -> tuple[dict[int, list[int]], dict[int, float], dict[int, float]]:
         """"
         Returns the affinity for each pid/tid and the frequency of the used cores
         """
@@ -104,11 +117,27 @@ class PerfBasedMonitor(Monitor):
             pid_to_affinity = poll_affinity(pids)
             active_cores = set(core for affinity in pid_to_affinity.values() for core in affinity)
             affinity = pid_to_affinity
+
+        if self.__monitor_core_temperatures and self.__temperature_monitor:
+            core_temps = self.__temperature_monitor.sample_core_temperature()
+        else:
+            core_temps = {}
         
         core_to_freq = poll_frequency(active_cores)
-        return affinity, core_to_freq
+        return affinity, core_to_freq, core_temps
+    
+    def __poll_freq_temp(self, cores: set[int]) -> tuple[dict[int, float], dict[int, float]]:
+        """
+        Returns the frequency and temperature for the given set of cores.
+        """
+        if self.__monitor_core_temperatures and self.__temperature_monitor:
+            core_temps = self.__temperature_monitor.sample_core_temperature()
+        else:
+            core_temps = {}
         
-
+        core_to_freq = poll_frequency(cores)
+        return core_to_freq, core_temps
+        
     def __run(self):
         """
         Creates a thread pool to run multiple tasks in parallel:
@@ -118,12 +147,18 @@ class PerfBasedMonitor(Monitor):
         - reporting [periodic]: Formats and writes the results of the periodic events to the reporter
         """
         with ThreadPool(processes=4) as pool:
+            
+            # Start the thermal monitor if requested
+            if self.__monitor_core_temperatures:
+                self.__init_thermal_monitor()
+
             # Start perf thread for one-shot system events.
             system_one_shot_thread = pool.apply_async(self.__system_level_poller.poll_one_shot)
             reporting_thread = pool.apply_async(
                 func=self.__run_reporter,
                 error_callback=(lambda error: print(f"[thread_reporter] exception: {error}"))
             )
+
             while self.__running:
 
                 # Update tracking configuration
@@ -157,6 +192,10 @@ class PerfBasedMonitor(Monitor):
             system_one_shot_thread.report(self.reporter)
             reporting_thread.wait(timeout=self.__sampling_rate_sec*5)
 
+            # Stop the thermal monitor if it was started
+            if self.__monitor_core_temperatures and self.__temperature_monitor:
+                self.__temperature_monitor.close()
+
     def __monitor_core(self, pool: ThreadPool, sys_level_thread: AsyncResult[ResultSystemPolling]) -> None:
         # Start thread that polls the application level events (via core tracking)
         app_level_thread = pool.apply_async(
@@ -166,13 +205,13 @@ class PerfBasedMonitor(Monitor):
         )
         # Fetch frequency of cpu cores
         procfs_thread = pool.apply_async(
-            func=poll_frequency,
+            func=self.__poll_freq_temp,
             args=([self.__tracking_config.cores_to_track])
         )
         # Wait for all polling threads
         app_events = app_level_thread.get()
         sys_events = sys_level_thread.get()
-        frequency = procfs_thread.get()
+        frequency, temperatures = procfs_thread.get()
 
         relative_sample_duration = self.__get_relative_sample_duration()
 
@@ -182,6 +221,7 @@ class PerfBasedMonitor(Monitor):
             sys_events=sys_events,
             core_to_freq=frequency,
             core_to_app=self.__tracking_config.core_to_app,
+            core_to_temperature=temperatures,
         )
         self.__reporting_queue.put_nowait(result)
         
@@ -191,6 +231,7 @@ class PerfBasedMonitor(Monitor):
                 app_events=app_events.get_events(),
                 system_events=sys_events.events,
                 frequencies=frequency,
+                temperatures=temperatures,
                 relative_sample_duration=relative_sample_duration,
                 core_to_application=self.__tracking_config.core_to_app,
             )
@@ -203,14 +244,14 @@ class PerfBasedMonitor(Monitor):
             error_callback=(lambda error: print(f"[thread_poll_app_level] exception: {error}"))
         )
         procfs_thread = pool.apply_async(
-            func=self.__poll_freq_and_affinity,
+            func=self.__poll_freq_affinity_temp,
             args=([self.__tracking_config.pids_to_track, per_thread_results]),
             error_callback=(lambda error: print(f"[thread_poll_procfs] exception: {error}"))
         )
 
         app_events = app_level_thread.get()
         sys_events = sys_level_thread.get()
-        affinity, frequency = procfs_thread.get()
+        affinity, frequency, temperatures = procfs_thread.get()
         
         relative_sample_duration = self.__get_relative_sample_duration()
 
@@ -220,6 +261,7 @@ class PerfBasedMonitor(Monitor):
             sys_events=sys_events,
             pid_to_affinity=affinity,
             core_to_freq=frequency,
+            core_to_temperature=temperatures,
             pid_to_app=self.__tracking_config.pid_to_app,
             log_individual_threads=per_thread_results
         )
@@ -232,6 +274,7 @@ class PerfBasedMonitor(Monitor):
                 app_events=app_events.get_events(aggregate_by_pid=True),
                 system_events= sys_events.events,
                 frequencies=frequency,
+                temperatures=temperatures,
                 relative_sample_duration=relative_sample_duration,
                 pid_to_application=self.__tracking_config.pid_to_app
             )

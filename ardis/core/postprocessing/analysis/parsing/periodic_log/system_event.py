@@ -29,3 +29,30 @@ class SystemEvent:
             perf_events=events
         )
     
+@dataclass(slots=True)
+class TemperatureEvent:
+    timestamp_sec: float
+    core_temperatures: dict[int, float]
+
+    _head_pattern = re.compile(r"\[(\d+\.\d+)s\] Temperature \(°C\):")
+    _temp_pattern = re.compile(r"Core (\d+)\s*=\s*([\d.]+)")
+
+    @classmethod
+    def from_log_line(cls, log_line: str) -> TemperatureEvent:
+        head_group = cls._head_pattern.search(log_line)
+        assert head_group
+        timestamp_sec : float = float(head_group.group(1))
+
+        temperatures : dict[int, float] = {}
+        temp_group = log_line.replace(head_group.group(0), '', 1).strip()
+        temp_group_matches: list[tuple[str, str]] = cls._temp_pattern.findall(temp_group)
+
+        for (core_str, temp_str) in temp_group_matches:
+            core_id = int(core_str)
+            temperature = float(temp_str)
+            temperatures[core_id] = temperature
+
+        return cls(
+            timestamp_sec=timestamp_sec,
+            core_temperatures=temperatures
+        ) 

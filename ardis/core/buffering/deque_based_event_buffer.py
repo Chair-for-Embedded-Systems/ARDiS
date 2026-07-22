@@ -10,6 +10,7 @@ class DequeBasedEventBuffer(EventBuffer):
         self.__core_event_deque: deque[dict[int, dict[str, int | float]]] = deque(maxlen=capacity)
         self.__sys_event_deque: deque[dict[str, int | float]] = deque(maxlen=capacity)
         self.__core_frequency_deque: deque[dict[int, float]] = deque(maxlen=capacity)
+        self.__core_temperature_deque: deque[dict[int, float]] = deque(maxlen=capacity)
         self.__lock = threading.Lock()
         self.__collect_total_metrics: bool = collect_total_metrics
         self.__total_metrics: dict[Application, dict[str, int]] = {}
@@ -19,6 +20,7 @@ class DequeBasedEventBuffer(EventBuffer):
         app_events: dict[int, dict[str, int | float]],
         system_events: dict[str, int | float],
         frequencies: dict[int, float],
+        temperatures: dict[int, float],
         relative_sample_duration: float,
         core_to_application: dict[int, Application]
     ) -> None:
@@ -26,7 +28,7 @@ class DequeBasedEventBuffer(EventBuffer):
             self.__core_event_deque.append(app_events)
             self.__sys_event_deque.append(system_events)
             self.__core_frequency_deque.append(frequencies)
-
+            self.__core_temperature_deque.append(temperatures)
             if self.__collect_total_metrics:
                 for core, events in app_events.items():
                     if application := core_to_application.get(core, None):
@@ -40,6 +42,7 @@ class DequeBasedEventBuffer(EventBuffer):
         app_events: dict[int, dict[str, int | float]],
         system_events: dict[str, int | float],
         frequencies: dict[int, float],
+        temperatures: dict[int, float],
         relative_sample_duration: float,
         pid_to_application: dict[int, Application]
     ) -> None:
@@ -47,6 +50,7 @@ class DequeBasedEventBuffer(EventBuffer):
             self.__pid_event_deque.append(app_events)
             self.__sys_event_deque.append(system_events)
             self.__core_frequency_deque.append(frequencies)
+            self.__core_temperature_deque.append(temperatures)
 
             if self.__collect_total_metrics:
                 for pid, events in app_events.items():
@@ -127,6 +131,14 @@ class DequeBasedEventBuffer(EventBuffer):
             raise ValueError(f"n({n}) is larger than the buffer size ({self.__capacity})")
         window = min(n, len(self.__core_event_deque))
         return list(self.__core_frequency_deque)[-window:]
+
+    def get_core_temperature_metrics(self, n: int) -> list[dict[int, float]]:
+        if n <= 0:
+            return []
+        if self.__capacity and n > self.__capacity:
+            raise ValueError(f"n({n}) is larger than the buffer size ({self.__capacity})")
+        window = min(n, len(self.__core_temperature_deque))
+        return list(self.__core_temperature_deque)[-window:]
 
     def get_total_events(self, application: Application) -> dict[str, int] | None:
         if self.__collect_total_metrics is False:

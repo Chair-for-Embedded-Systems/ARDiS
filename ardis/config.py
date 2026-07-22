@@ -49,6 +49,7 @@ action_interval_sec: float = ac.action_interval_sec
 sampling_rate_ms: int = ac.sampling_interval_ms
 enable_monitoring: bool = True 
 monitoring_backend: str = ac.monitoring_backend
+monitor_core_temperatures: bool = ac.monitor_core_temperatures
 
 # Perf events to monitor
 periodic_app_level_events = ac.periodic_app_level_events

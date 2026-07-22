@@ -33,6 +33,18 @@ class TraceProvider:
             system_datapoints.append(data_point)
         self.__sys_events = DataFrame(system_datapoints)
 
+        # Init pandas DataFrame for temperature events
+        temperature_datapoints: list[dict[str, Any]] = []
+        for temp_event in pl.temp_events:
+            for core_id, temperature in temp_event.core_temperatures.items():
+                data_point = {
+                    "timestamp": temp_event.timestamp_sec,
+                    "core_id": core_id,
+                    "temperature": temperature
+                }
+                temperature_datapoints.append(data_point)
+        self.__temp_events = DataFrame(temperature_datapoints)
+
         # Store which events are available
         self.available_app_metrics = pl.periodic_application_events_labels
         self.available_sys_metrics = pl.periodic_system_events_labels
@@ -153,6 +165,22 @@ class TraceProvider:
             core_frequency_traces[core_id] = (time_series, freq_series)
 
         return core_frequency_traces
+
+    def get_core_temp_traces(self) -> dict[int, tuple[Series, Series]]:
+        """
+        Returns a dictionary mapping core IDs to their temperature traces (timestamps and temperatures).
+        """
+        # Select core temperature columns
+        temp_events = self.__temp_events
+        core_temp_traces: dict[int, tuple[Series, Series]] = {}
+
+        for core_id, group in temp_events.groupby('core_id'):
+            sorted_group = group.sort_values(by='timestamp').reset_index(drop=True) 
+            time_series: Series[float] = sorted_group['timestamp']
+            temp_series: Series[float] = sorted_group['temperature']
+            core_temp_traces[core_id] = (time_series, temp_series) # type: ignore
+
+        return core_temp_traces
 
     def get_instance_ids(self) -> set[int]:
         """ Returns a set of all application instance IDs."""

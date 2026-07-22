@@ -223,7 +223,8 @@ class Engine:
                 monitor_mode=self.__monitoring_mode,
                 app_to_cores=self.__app_to_cores,
             ),
-            monitoring_backend=config.monitoring_backend
+            monitoring_backend=config.monitoring_backend,
+            monitor_core_temperatures=config.monitor_core_temperatures
         )
 
     def __launch_waiting_threads(self, system_state: SystemState) -> None:

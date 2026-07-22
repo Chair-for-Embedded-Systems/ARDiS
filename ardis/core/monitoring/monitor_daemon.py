@@ -42,6 +42,7 @@ class DaemonMonitor(Monitor):
         reporter: Reporter,
         event_buffer: EventBuffer | None,
         initial_tracking_config: TrackingConfig,
+        monitor_core_temperatures: bool = False
     ):
         self.__perf_daemon_path = perf_daemon_path
         self.__sampling_rate_ms = sampling_rate_ms
@@ -50,6 +51,7 @@ class DaemonMonitor(Monitor):
         self.reporter = reporter
         self.__event_buffer = event_buffer
         self.__tracking_config = initial_tracking_config
+        self.__monitor_core_temperatures = monitor_core_temperatures
 
         self.__tracking_config_update_queue: Queue[TrackingConfig] = Queue()
         self.__reporting_queue: Queue[ReportableResult] = Queue()
@@ -195,7 +197,7 @@ class DaemonMonitor(Monitor):
 
                 if self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_CORE:
                     self.__handle_core_packet(packet)
-                elif self.__tracking_config.monitor_mode in (MonitoringMode.PERIODIC_ON_PID, MonitoringMode.PERIODIC_ON_TID):
+                elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_PID:
                     self.__handle_pid_packet(packet, log_individual_threads=False)
                 elif self.__tracking_config.monitor_mode == MonitoringMode.PERIODIC_ON_TID:
                     self.__handle_pid_packet(packet, log_individual_threads=True)
@@ -236,6 +238,7 @@ class DaemonMonitor(Monitor):
         sys_events = ResultSystemPolling(dict(packet.system_values), sys_pct_running) 
 
         core_to_freq = {i: f / 1000 for i, f in enumerate(packet.core_freqs_khz)}
+        core_to_temperature = {i: float(t) for i, t in enumerate(packet.core_temps_celsius)}
 
         elapsed_time = packet.timestamp_ms / 1000.0  # Convert milliseconds to seconds
         result = PeriodicPIDResult(
@@ -246,7 +249,9 @@ class DaemonMonitor(Monitor):
             core_to_freq=core_to_freq,
             pid_to_app=pid_to_app,
             log_individual_threads=log_individual_threads,
-            log_mapped_cores=True
+            log_mapped_cores=True,
+            log_temperature=self.__monitor_core_temperatures,
+            core_to_temperature=core_to_temperature,
         )
         self.__reporting_queue.put_nowait(result)
 
@@ -255,6 +260,7 @@ class DaemonMonitor(Monitor):
                 app_events=app_events.get_events(aggregate_by_pid=True),
                 system_events=sys_events.events,
                 frequencies=core_to_freq,
+                temperatures=core_to_temperature,
                 relative_sample_duration=1.0,  # Not required for C backend
                 pid_to_application=pid_to_app,
             )
@@ -281,6 +287,11 @@ class DaemonMonitor(Monitor):
         sys_events = ResultSystemPolling(dict(packet.system_values), sys_pct_running)
 
         core_to_freq = {i: f / 1000 for i, f in enumerate(packet.core_freqs_khz)}
+        
+        if self.__monitor_core_temperatures:
+            core_to_temperature = {i: float(t) for i, t in enumerate(packet.core_temps_celsius)}
+        else:
+            core_to_temperature = {}
 
         elapsed_time = packet.timestamp_ms / 1000.0  # Convert milliseconds to seconds
         result = PeriodicCoreResult(
@@ -289,6 +300,8 @@ class DaemonMonitor(Monitor):
             sys_events=sys_events,
             core_to_freq=core_to_freq,
             core_to_app=self.__tracking_config.core_to_app,
+            core_to_temperature=core_to_temperature,
+            log_temperature=self.__monitor_core_temperatures,
         )
         self.__reporting_queue.put_nowait(result)
 
@@ -298,6 +311,7 @@ class DaemonMonitor(Monitor):
                 app_events=app_events.get_events(),
                 system_events=sys_events.events,
                 frequencies=core_to_freq,
+                temperatures=core_to_temperature,
                 relative_sample_duration=1.0,  # Not required for C backend
                 core_to_application=self.__tracking_config.core_to_app,
             )

@@ -10,6 +10,7 @@ class EventBuffer:
         app_events: dict[int, dict[str, int|float]],
         system_events: dict[str, int|float],
         frequencies: dict[int, float],
+        temperatures: dict[int, float],
         relative_sample_duration: float,
         core_to_application: dict[int, Application]
       ) -> None:
@@ -22,6 +23,7 @@ class EventBuffer:
         app_events: dict[int, dict[str, int|float]],
         system_events: dict[str, int|float],
         frequencies: dict[int, float],
+        temperatures: dict[int, float],
         relative_sample_duration: float,
         pid_to_application: dict[int, Application]
     ) -> None:
@@ -149,6 +151,20 @@ class EventBuffer:
           "cycles" : 8_000_000_000
           ...
         }
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_core_temperatures(self, n: int) -> list[dict[int, float]]:
+        """
+        Returns the last `n` temperature measurements as a list of dict,
+        where the **first** element in the list is the **oldest** measurement.
+        Example:
+        >>> get_core_temperatures(n=2)
+        [
+          { 0: 45.0, 1: 47.5, ... },
+          { 0: 46.0, 1: 48.0, ... }
+        ]
         """
         raise NotImplementedError
 
