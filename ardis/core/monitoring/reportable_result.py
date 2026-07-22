@@ -46,6 +46,11 @@ class PeriodicPIDResult(ReportableResult):
         if self.log_mapped_cores:
             occupied_cores = list(set().union(*self.pid_to_affinity.values()))
             reporter.logPeriodicCounters(f"{timestamp} Current mapped cores: {occupied_cores}")
+        
+        # Log temperatures (optional)
+        if self.log_temperature:
+            temp_flat = " | ".join([f"Core {core} = {temp:.2f}" for core, temp in self.core_to_temperature.items()])
+            reporter.logPeriodicCounters(f"{timestamp} Temperature (°C): {temp_flat}")
 
         # Log app multiplexing (optional)
         if self.log_event_multiplexing:
@@ -58,10 +63,6 @@ class PeriodicPIDResult(ReportableResult):
         else:
             self.__log_pid_events(reporter, timestamp)
         
-        # Log temperatures (optional)
-        if self.log_temperature:
-            temp_flat = " | ".join([f"Core {core} = {temp:.2f}" for core, temp in self.core_to_temperature.items()])
-            reporter.logPeriodicCounters(f"{timestamp} Temperature (°C): {temp_flat}")
 
         # Log system event multiplexing (optional)
         if self.log_event_multiplexing:
@@ -135,6 +136,11 @@ class PeriodicCoreResult(ReportableResult):
         # Log mapped cores (optional)
         if self.log_mapped_cores:
             reporter.logPeriodicCounters(f"{timestamp} Current mapped cores: {list(self.core_to_app.keys())}")
+        
+        # Log temperatures (optional)
+        if self.log_temperature:
+            temp_flat = " | ".join([f"Core {core} = {temp:.2f}" for core, temp in self.core_to_temperature.items()])
+            reporter.logPeriodicCounters(f"{timestamp} Temperature (°C): {temp_flat}")
 
         # Log application multiplexing (optional)
         if self.log_event_multiplexing:
@@ -151,11 +157,6 @@ class PeriodicCoreResult(ReportableResult):
 
             periodic_app_event = f"{timestamp} {core_label}: {app_name_label} | {instance_label} | {frequency_label} | {flatt_app_events}"
             reporter.logPeriodicCounters(periodic_app_event)
-        
-        # Log temperatures (optional)
-        if self.log_temperature:
-            temp_flat = " | ".join([f"Core {core} = {temp:.2f}" for core, temp in self.core_to_temperature.items()])
-            reporter.logPeriodicCounters(f"{timestamp} Temperature (°C): {temp_flat}")
 
         # Log system event multiplexing (optional)
         if self.log_event_multiplexing:
