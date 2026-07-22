@@ -31,8 +31,10 @@ class PeriodicPIDResult(ReportableResult):
     sys_events: ResultSystemPolling
     pid_to_affinity: dict[int, list[int]]
     core_to_freq: dict[int, float]
+    core_to_temperature: dict[int, float]
     pid_to_app: dict[int, Application]
     use_name_from_perf: bool = field(default=False)
+    log_temperature: bool = field(default=True)
     log_mapped_cores: bool = field(default=True)
     log_event_multiplexing: bool = field(default=False)
     log_individual_threads: bool = field(default=False)
@@ -56,6 +58,11 @@ class PeriodicPIDResult(ReportableResult):
         else:
             self.__log_pid_events(reporter, timestamp)
         
+        # Log temperatures (optional)
+        if self.log_temperature:
+            temp_flat = " | ".join([f"Core {core} = {temp:.2f}" for core, temp in self.core_to_temperature.items()])
+            reporter.logPeriodicCounters(f"{timestamp} Temperature (°C): {temp_flat}")
+
         # Log system event multiplexing (optional)
         if self.log_event_multiplexing:
             flat_multiplexed_events = " | ".join([f"{event} = {pct/100}" for event, pct in self.sys_events.pct_running.items()])
@@ -115,7 +122,9 @@ class PeriodicCoreResult(ReportableResult):
     app_events: ResultCorePolling
     sys_events: ResultSystemPolling
     core_to_freq: dict[int, float]
+    core_to_temperature: dict[int, float]
     core_to_app: dict[int, Application]
+    log_temperature: bool = field(default=True)
     log_mapped_cores: bool = field(default=True)
     log_event_multiplexing: bool = field(default=False)
 
@@ -143,6 +152,11 @@ class PeriodicCoreResult(ReportableResult):
             periodic_app_event = f"{timestamp} {core_label}: {app_name_label} | {instance_label} | {frequency_label} | {flatt_app_events}"
             reporter.logPeriodicCounters(periodic_app_event)
         
+        # Log temperatures (optional)
+        if self.log_temperature:
+            temp_flat = " | ".join([f"Core {core} = {temp:.2f}" for core, temp in self.core_to_temperature.items()])
+            reporter.logPeriodicCounters(f"{timestamp} Temperature (°C): {temp_flat}")
+
         # Log system event multiplexing (optional)
         if self.log_event_multiplexing:
             flat_multiplexed_events = " | ".join([f"{event} = {pct/100} " for event, pct in self.sys_events.pct_running.items()])
