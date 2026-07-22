@@ -192,6 +192,10 @@ class PerfBasedMonitor(Monitor):
             system_one_shot_thread.report(self.reporter)
             reporting_thread.wait(timeout=self.__sampling_rate_sec*5)
 
+            # Stop the thermal monitor if it was started
+            if self.__monitor_core_temperatures and self.__temperature_monitor:
+                self.__temperature_monitor.close()
+
     def __monitor_core(self, pool: ThreadPool, sys_level_thread: AsyncResult[ResultSystemPolling]) -> None:
         # Start thread that polls the application level events (via core tracking)
         app_level_thread = pool.apply_async(

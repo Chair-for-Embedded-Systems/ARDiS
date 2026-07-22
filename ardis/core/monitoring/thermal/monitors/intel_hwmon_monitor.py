@@ -1,5 +1,6 @@
 import os
 import io
+from time import sleep
 
 from ..thermal_monitor import CoreTemperatureMonitor
 
@@ -7,7 +8,7 @@ class IntelHWMonMonitor(CoreTemperatureMonitor):
 
     def __init__(self, hwmon_path: str | None = None) -> None:
         self._sensor_path = hwmon_path or self._find_coretemp_hwmon_path()
-        self._logical_to_handle: dict[int, io.TextIOWrapper] = {}
+        self._logical_to_fd: dict[int, int] = {}
 
         label_to_input_path = self._discover_core_sensor_inputs(self._sensor_path)
         self._core_to_physical_map = self._get_logical_to_physical_mapping()
@@ -79,7 +80,8 @@ class IntelHWMonMonitor(CoreTemperatureMonitor):
             for logical_id, physical_id in self._core_to_physical_map.items():
                 core_label = f"Core {physical_id}"
                 if core_label in label_map:
-                    self._logical_to_handle[logical_id] = open(label_map[core_label], "r")
+                    fd = os.open(label_map[core_label], os.O_RDONLY)
+                    self._logical_to_fd[logical_id] = fd
 
         except Exception as e:
             self.close()
@@ -89,9 +91,9 @@ class IntelHWMonMonitor(CoreTemperatureMonitor):
         """Samples core temperatures from persistent sysfs file descriptors."""
         core_temps: dict[int, float] = {}
 
-        for logical_id, handle in self._logical_to_handle.items():
-            handle.seek(0)
-            val = handle.read().strip()
+        for logical_id, fd in self._logical_to_fd.items():
+            raw = os.pread(fd, 64, 0)
+            val = raw.decode().strip()
             if val:
                 core_temps[logical_id] = int(val) / 1000.0
 
@@ -99,12 +101,12 @@ class IntelHWMonMonitor(CoreTemperatureMonitor):
 
     def close(self) -> None:
         """Closes all open sysfs file descriptors."""
-        for handle in self._logical_to_handle.values():
+        for fd in self._logical_to_fd.values():
             try:
-                handle.close()
+                os.close(fd)
             except Exception:
                 pass
-        self._logical_to_handle.clear()
+        self._logical_to_fd.clear()
 
     def __enter__(self):
         return self
@@ -115,6 +117,9 @@ class IntelHWMonMonitor(CoreTemperatureMonitor):
 # python3 -m ardis.core.monitoring.thermal.monitors.intel_hwmon_monitor
 if __name__ == "__main__":
     with IntelHWMonMonitor() as monitor:
-        temps = monitor.sample_core_temperature()
-        for core_id, temp in sorted(temps.items()):
-            print(f"Core {core_id:>2}: {temp:.1f}°C")
+        for i in range(5):
+            temps = monitor.sample_core_temperature()
+            for  core_id, temp in sorted(temps.items())[:4]:
+                print(f"Core {core_id:>2}: {temp:.1f}°C")
+                
+            sleep(1)

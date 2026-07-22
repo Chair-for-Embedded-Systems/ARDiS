@@ -1,10 +1,9 @@
 import os
-import io
 
 from ..thermal_monitor import CoreTemperatureMonitor
 
 class IntelMSRMonitor(CoreTemperatureMonitor):
-    __slots__ = ("_tjmax_values", "_msr_files")
+    __slots__ = ("_tjmax_values", "_msr_fds")
 
     IA32_THERM_STATUS_REGISTER: int = 0x19C
     MSR_TEMPERATURE_TARGET_REGISTER: int = 0x1A2
@@ -16,14 +15,14 @@ class IntelMSRMonitor(CoreTemperatureMonitor):
             raise RuntimeError("Unable to determine CPU core topology.")
 
         self._tjmax_values: dict[int, float] = {}
-        self._msr_files: dict[int, io.BufferedReader] = {}
+        self._msr_fds: dict[int, int] = {}
 
         for core in cores:
             msr_path = f"/dev/cpu/{core}/msr"
             try:
-                handle = open(msr_path, "rb")
-                self._msr_files[core] = handle
-                self._tjmax_values[core] = self._read_tjmax(handle)
+                fd = os.open(msr_path, os.O_RDONLY)
+                self._msr_fds[core] = fd
+                self._tjmax_values[core] = self._read_tjmax(fd)
             except FileNotFoundError as e:
                 self.close()
                 raise RuntimeError(
@@ -33,10 +32,10 @@ class IntelMSRMonitor(CoreTemperatureMonitor):
                 self.close()
                 raise RuntimeError(f"Permission denied for {msr_path}. Must run as root/sudo.") from e
 
-    def _read_tjmax(self, handle) -> float:
+    def _read_tjmax(self, fd: int) -> float:
         try:
-            handle.seek(self.MSR_TEMPERATURE_TARGET_REGISTER)
-            val = int.from_bytes(handle.read(8), byteorder="little")
+            raw = os.pread(fd, 8, self.MSR_TEMPERATURE_TARGET_REGISTER)
+            val = int.from_bytes(raw, byteorder="little")
             tjmax = (val >> 16) & 0xFF
             return float(tjmax) if tjmax > 0 else self.DEFAULT_TJMAX
         except Exception:
@@ -45,9 +44,9 @@ class IntelMSRMonitor(CoreTemperatureMonitor):
     def sample_core_temperature(self) -> dict[int, float]:
         core_temps: dict[int, float] = {}
 
-        for core, handle in self._msr_files.items():
-            handle.seek(self.IA32_THERM_STATUS_REGISTER)
-            val = int.from_bytes(handle.read(8), byteorder="little")
+        for core, fd in self._msr_fds.items():
+            raw = os.pread(fd, 8, self.IA32_THERM_STATUS_REGISTER)
+            val = int.from_bytes(raw, byteorder="little")
             # Bit 31: Valid flag | Bits 22:16: DTS Delta
             is_valid = bool((val >> 31) & 0x1)
             if is_valid:
@@ -58,23 +57,15 @@ class IntelMSRMonitor(CoreTemperatureMonitor):
         return core_temps
 
     def close(self) -> None:
-        for handle in self._msr_files.values():
+        for fd in self._msr_fds.values():
             try:
-                handle.close()
+                os.close(fd)
             except Exception:
                 pass
-        self._msr_files.clear()
+        self._msr_fds.clear()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
-# python3 -m ardis.core.monitoring.thermal.monitors.intel_msr_monitor
-if __name__ == "__main__":
-    with IntelMSRMonitor() as monitor:
-        temps = monitor.sample_core_temperature()
-        for core, temp in temps.items():
-            print(f"Core {core:>2}: {temp:.2f} °C")
-        
