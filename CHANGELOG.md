@@ -39,6 +39,7 @@ Breaking changes can occur in Minor releases.
 - `MappingPoliciy` can throw an `MappingException` which indicates that the system is full and an just arrived application cannot be mapped to a free core.
 - Engine will delay the execution of an application until enough cores are available
 - `Experiment` now uses `GreedyScheduler` as the default scheduler and `NextAvailableCoreMapping` as the default mapping policy
+- `MigrationPolicy` applies affinity updates faster (up to 20x, 1ms -> 0.05ms)
 
 
 ### Fixed
