@@ -45,6 +45,7 @@ Breaking changes can occur in Minor releases.
 - Exceptions within `DVFSPolicy` and `MigrationPolicy` no longer cause the experiment to get stuck
 - Lazy load policies in the `core.policies` package to prevent unnecessary imports
 - Race condition which could stop the engine prematurely
+- Race condition during PID resoultion of multi-threaded PARSEC apps, leading to experiment crashes
 
 
 ## 1.0.0 - 2026-01-26

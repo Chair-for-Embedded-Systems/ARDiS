@@ -1,10 +1,12 @@
 from enum import Enum
 import os
 import subprocess
+import signal
 import tempfile
+
 from ardis.benchmarks.application import Application
 from ardis.config import parsec_apps, system_cores, PARSECBASE, RUNTIME_TEMP_DIR, parsec_installed
-from ardis.core.procworker import get_pid_of_app
+from ardis.core.procworker import find_binary_in_exec_tree_recursively
 
 class ParsecApplication(Application):
     
@@ -43,6 +45,8 @@ class ParsecApplication(Application):
         self._display_name = display_name or f"{application_package}-{threads}"
         self._threads = threads
         self._input_size = input_size
+        self._process: subprocess.Popen[bytes] | None = None
+        self._shell_pid: int | None = None
 
     @staticmethod
     def _set_environment():
@@ -72,20 +76,32 @@ class ParsecApplication(Application):
         
         command = f"taskset -c {cs_cores} nice -n 0 parsecmgmt -a run -i {self._input_size.value} -d {run_dir} -n {self._threads} -p {self._package} > {log_file}"
         
-        subprocess.run(command, shell=True, executable="/bin/bash")
+        self._process = subprocess.Popen(command, shell=True, env=os.environ)
+        self._shell_pid = self._process.pid
+        self._process.wait()
     
     def terminate(self) -> None:
-        # Terminates properly when ARDiS is interrupted, no need for extra handling
-        pass
+        # Ensures that the application is terminated.
+        # Based on past observations, this is typically done automatically when the main ARDiS process is terminated.
+        # Therefore, this is a precautionary measure to ensure that the application is terminated.
+        try:
+            if pid := self._pid:
+                pgpid = os.getpgid(pid)
+                os.killpg(pgpid, signal.SIGTERM)
+        except Exception as e:
+            print(f"An error occurred while trying to terminate the process group: {e}")
+
 
     def get_pid(self) -> int | None:
         # Return cached pid if available
-        if self._pid:
+        if self._pid and os.path.exists(f"/proc/{self._pid}"):
             return self._pid
-        
-        if pid := get_pid_of_app(self._binary_name, self._start_affinity):
-            self._pid = pid
-            return pid
+        # Try to find the PID in the process child tree of the shell process
+        if self._shell_pid is None:
+            return None
+        else:
+            self._pid = find_binary_in_exec_tree_recursively(self._binary_name, self._shell_pid)
+            return self._pid
         
     def get_display_name(self) -> str:
         return self._display_name
