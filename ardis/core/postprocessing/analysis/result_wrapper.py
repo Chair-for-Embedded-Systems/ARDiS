@@ -30,18 +30,28 @@ class ExperimentResultWrapper:
         #execution_log = ExecutionLog(execution_log_file)
 
     def get_periodic_log(self) -> PeriodicLog:
+        """
+        Returns an abstract representation of the periodic log data.
+        """
         return self.__periodic_counter_log
     
-    def get_trace_provider(self, verbose: bool = False) -> TraceProvider:
-        # Cache the trace provider to avoid redundant computations
-        if hasattr(self, "__trace_provider"):
-            return self.__trace_provider
-        self.__trace_provider = TraceProvider(self.get_periodic_log(), verbose=verbose)
-        return self.__trace_provider
-
     def get_df_provider(self) -> DataFrameProvider:
         """
         Returns a DataFrameProvider instance for this experiment,
         which can be used to obtain pandas DataFrames of the periodic log data for analysis.
         """
         return DataFrameProvider(self.get_periodic_log())
+    
+    def get_trace_provider(self, verbose: bool = False) -> TraceProvider:
+        """
+        @Deprecated: Use get_df_provider() instead for DataFrame-based analysis.
+        
+        Returns a TraceProvider instance for this experiment,
+        which provides certain fixed queries on the periodic log data for analysis.
+        """
+        # Cache the trace provider to avoid redundant computations
+        if hasattr(self, "__trace_provider"):
+            return self.__trace_provider
+        self.__trace_provider = TraceProvider(self.get_periodic_log(), verbose=verbose)
+        return self.__trace_provider
+
