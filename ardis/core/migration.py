@@ -1,4 +1,4 @@
-import subprocess
+import os
 
 from abc import ABC, abstractmethod
 
@@ -30,23 +30,29 @@ class MigrationPolicy(ABC):
                 app_to_cores[action.app] = action.destination
             else:
                 print("[Migration Policy] Migration failed. Maybe the application has not started yet.")
-    
+
     @staticmethod
     def _setAffinity(pid: int, cores: set[int]) -> bool:
         """
         Applies the given affinity to the given pid.
         Returns true if successfull otherwise false
         """
-        affinity = ",".join([str(c) for c in cores])
-        cmd_str = f"taskset -cpa {affinity} {pid}"
-        command = cmd_str.split(" ")
-        #print ("Executing: ", cmd_str)    
         try:
-            p = subprocess.Popen(command,  stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-            if p.stderr and p.stderr.readlines():
-                return False
-            else:
-                p.wait()
-                return True
-        except:
+            tids : list[int] = [int(f) for f in os.listdir(f"/proc/{pid}/task")]
+        except OSError:
+            # Target PID is no longer running, so we cannot set the affinity
             return False
+        
+        for tid in tids:
+            try:
+                os.sched_setaffinity(int(tid), cores)
+            except (OSError, ValueError):
+                # Ignore errors for child threads, as they may have already exited.
+                # Only the main thread's affinity is critical.
+                if tid == pid:
+                    return False
+    
+        # Note for "Thread Monitoring": 
+        # In a master/slave thread workload, an affinity change on the master thread may not appear immediately in the 'periodic_counters.log'
+        # This is expected: ARDiS logs a thread's last_sched_cpu, which only updates when the thread is actually rescheduled
+        return True
