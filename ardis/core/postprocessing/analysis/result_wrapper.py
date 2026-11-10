@@ -1,6 +1,4 @@
-import os
-
-from pandas import DataFrame
+from pathlib import Path
 
 from ardis.core.postprocessing.analysis.dataframe_provider import DataFrameProvider
 from ardis.core.postprocessing.analysis.parsing.periodic_log.periodic_log import PeriodicLog
@@ -10,21 +8,25 @@ class ExperimentResultWrapper:
     PERIODIC_COUNTERS_LOG_FILE = "periodic_counters.log"
     EXECUTION_LOG_FILE = "execution.log"
     
-    def __init__(self, experiment_folder: str):
-        if not os.path.isdir(experiment_folder):
+    def __init__(self, experiment_folder: str | Path) -> None:
+
+        # Convert to Path if a string is provided
+        if isinstance(experiment_folder, str):
+            experiment_folder = Path(experiment_folder)
+
+        if not (experiment_folder.exists() and experiment_folder.is_dir()):
             raise FileNotFoundError(f"Could not find {experiment_folder}")
 
-        execution_log_file = os.path.join(experiment_folder, self.EXECUTION_LOG_FILE)
-        periodic_counter_log_file = os.path.join(experiment_folder, self.PERIODIC_COUNTERS_LOG_FILE)
+        execution_log_file = experiment_folder / self.EXECUTION_LOG_FILE
+        periodic_counter_log_file = experiment_folder / self.PERIODIC_COUNTERS_LOG_FILE
 
-        if not os.path.exists(execution_log_file):
+        if not execution_log_file.exists():
             raise FileNotFoundError(f"Could not find {execution_log_file}")
 
-        if not os.path.exists(periodic_counter_log_file):
+        if not periodic_counter_log_file.exists():
             raise FileNotFoundError(f"Could not find {periodic_counter_log_file}")
 
-        self.__experiment_folder = experiment_folder
-        self.__periodic_counter_log = PeriodicLog.from_log_file(periodic_counter_log_file)
+        self.__periodic_counter_log = PeriodicLog.from_log_file(str(periodic_counter_log_file))
         #execution_log = ExecutionLog(execution_log_file)
 
     def get_periodic_log(self) -> PeriodicLog:
