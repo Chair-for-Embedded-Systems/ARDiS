@@ -84,7 +84,7 @@ class ParsecApplication(Application):
 
     def get_pid(self) -> int | None:
         # Return cached pid if available
-        if self._pid:
+        if self._pid and os.path.exists(f"/proc/{self._pid}"):
             return self._pid
         # Try to find the PID in the process child tree of the shell process
         if self._shell_pid is None:
