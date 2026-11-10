@@ -29,8 +29,13 @@ class PerfBasedMonitor(Monitor):
         reporter: Reporter,
         event_buffer: EventBuffer|None,
         initial_tracking_config: TrackingConfig,
-        monitor_core_temperatures: bool = False
+        monitor_core_temperatures: bool = False,
+        validate_events: bool = True
     ):
+
+        if validate_events:
+            all_events = periodic_app_level_events + periodic_system_level_events + one_shot_system_level_events
+            self._validate_events(all_events)
         
         self.__sampling_rate_sec = sampling_rate_ms / 1000.0
         self.__app_level_poller = PollerAppLevel(self.__sampling_rate_sec, periodic_app_level_events)
@@ -302,3 +307,35 @@ class PerfBasedMonitor(Monitor):
                 result.report(self.reporter)
             except Empty:
                 continue
+
+    @staticmethod
+    def _validate_events(events: list[str]) -> None:
+        import subprocess
+        import json
+        
+        # Obtain list of valid perf events (run `perf list -j` command)
+        process = subprocess.Popen(['perf', 'list', '-j'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        stdout, stderr = process.communicate()
+        if process.returncode != 0:
+            raise Exception(f"Failed to retrieve perf events: {stderr.strip()}")
+                
+        # Convert output to json and extract event names
+        valid_events: set[str] = set()
+        try:
+            json_data = json.loads(stdout)
+            for event in json_data:
+                if event.get('EventName'):
+                    valid_events.add(event['EventName'])
+                if event.get('EventAlias'):
+                    valid_events.add(event['EventAlias'])
+        except json.JSONDecodeError:
+            raise Exception("Failed to parse perf list output as JSON.")
+
+        # Check if provided events are valid
+        invalid_events : set[str] = {event for event in events if event not in valid_events}
+        if invalid_events:
+            raise RuntimeError(
+                f"The following perf events are invalid or not supported on this system: {invalid_events}\n"
+                "Some events may not be available because they require root privileges\n"
+                "Please check 'perf list' output for valid events and update the configuration file accordingly."
+            )

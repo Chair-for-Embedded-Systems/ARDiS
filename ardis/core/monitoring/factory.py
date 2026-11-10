@@ -12,7 +12,8 @@ def create_monitor(
     one_shot_system_wide_events: list[str],
     sampling_interval_ms: int,
     monitoring_backend: str = "perf",
-    monitor_core_temperatures: bool = False
+    monitor_core_temperatures: bool = False,
+    validate_events: bool = True
 ) -> Monitor:
     """
     Factory function to create a monitor based on the specified monitoring backend.
@@ -28,7 +29,8 @@ def create_monitor(
             reporter=reporter,
             event_buffer=event_buffer,
             initial_tracking_config=initial_tracking_config,
-            monitor_core_temperatures=monitor_core_temperatures
+            monitor_core_temperatures=monitor_core_temperatures,
+            validate_events=validate_events
         )
     elif monitoring_backend == "daemon":
         
