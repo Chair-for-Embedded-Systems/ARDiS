@@ -1,4 +1,8 @@
 import os
+
+from pandas import DataFrame
+
+from ardis.core.postprocessing.analysis.dataframe_provider import DataFrameProvider
 from ardis.core.postprocessing.analysis.parsing.periodic_log.periodic_log import PeriodicLog
 from ardis.core.postprocessing.analysis.trace_provider import TraceProvider
 
@@ -32,4 +36,10 @@ class ExperimentResultWrapper:
             return self.__trace_provider
         self.__trace_provider = TraceProvider(self.get_periodic_log(), verbose=verbose)
         return self.__trace_provider
-    
+
+    def get_df_provider(self) -> DataFrameProvider:
+        """
+        Returns a DataFrameProvider instance for this experiment,
+        which can be used to obtain pandas DataFrames of the periodic log data for analysis.
+        """
+        return DataFrameProvider(self.get_periodic_log())
