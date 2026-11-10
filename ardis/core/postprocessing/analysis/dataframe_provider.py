@@ -23,23 +23,26 @@ class DataFrameProvider:
         - `iid` (int): Instance ID.
         - `pid` (int | None): Process ID, if available.
         - `tid` (int | None): Thread ID, if available.
-        - `affinity` (set[int]): Core affinity as a set of core IDs.
+        - `affinity` (frozenset[int]): Core affinity as a frozenset of core IDs.
         - `frequency_mhz` (float | None): CPU frequency in MHz, if available.
 
         In addition, there is one float column per available application-level metric,
         named after the metric.
         """
+        if not self._periodic_log.app_events:
+            raise ValueError("No application-level events found in the periodic log.")
+        
         data_rows: list[dict[str, Any]] = []
         
         for app_event in self._periodic_log.app_events:
             data: dict[str, Any] = {
-                "timestamp_sec" : app_event.timestamp_sec,
-                "app" : app_event.application_name,
-                "iid" : app_event.instance_id,
-                "pid" : app_event.pid,
-                "tid" : app_event.tid,
-                "affinity" : app_event.affinity,
-                "frequency_mhz" : app_event.frequency_mhz,
+                "timestamp_sec": app_event.timestamp_sec,
+                "app": app_event.application_name,
+                "iid": app_event.instance_id,
+                "pid": app_event.pid,
+                "tid": app_event.tid,
+                "affinity": frozenset(app_event.affinity),
+                "frequency_mhz": app_event.frequency_mhz,
             }
             for metric, value in app_event.perf_events.items():
                 data[metric] = value
@@ -77,10 +80,7 @@ class DataFrameProvider:
         system_df = pd.DataFrame(data_rows)
 
         # Determine the epoch based on the unique timestamps in the system-level DataFrame
-        timestamp_to_epoch: dict[float, int] = {
-            timestamp: epoch
-            for epoch, timestamp in enumerate(sorted(system_df["timestamp_sec"].unique()))
-        }
+        timestamp_to_epoch = self._timestamp_to_epoch_map(system_df)
         epoch_series: pd.Series = system_df["timestamp_sec"].map(timestamp_to_epoch)
         # Add 'epoch' column, after timestamp column (index 1)
         system_df.insert(1, "epoch", epoch_series)
@@ -115,8 +115,8 @@ class DataFrameProvider:
         
         return temp_df
 
-    @staticmethod
-    def add_epoch_column(system_level_df: pd.DataFrame, target_df: pd.DataFrame) -> pd.DataFrame:
+    @classmethod
+    def add_epoch_column(cls,system_level_df: pd.DataFrame, target_df: pd.DataFrame) -> pd.DataFrame:
         """
         Returns a copy of the `target_df` DataFrame with an additional 'epoch' column,
         by mapping the timestamps in `target_df` to the corresponding epochs in `system_level_df`.
@@ -131,10 +131,7 @@ class DataFrameProvider:
         if target_df.empty or 'timestamp_sec' not in target_df.columns:
             raise ValueError("The target DataFrame is empty or does not contain a 'timestamp_sec' column.")
 
-        timestamp_to_epoch: dict[float, int] = {
-            timestamp: epoch
-            for epoch, timestamp in enumerate(sorted(system_level_df["timestamp_sec"].unique()))
-        }
+        timestamp_to_epoch = cls._timestamp_to_epoch_map(system_level_df)
 
         target_out = target_df.copy()
 
@@ -146,3 +143,11 @@ class DataFrameProvider:
         target_out.insert(1, "epoch", target_epochs.astype(int))
 
         return target_out
+
+    @staticmethod
+    def _timestamp_to_epoch_map(df: pd.DataFrame) -> dict[float, int]:
+        """Create a mapping from timestamps to epochs."""
+        return {
+            timestamp: epoch
+            for epoch, timestamp in enumerate(sorted(df["timestamp_sec"].unique()))
+        }
