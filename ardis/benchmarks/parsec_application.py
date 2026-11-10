@@ -1,7 +1,9 @@
 from enum import Enum
 import os
 import subprocess
+import signal
 import tempfile
+
 from ardis.benchmarks.application import Application
 from ardis.config import parsec_apps, system_cores, PARSECBASE, RUNTIME_TEMP_DIR, parsec_installed
 from ardis.core.procworker import find_binary_in_exec_tree_recursively
@@ -79,8 +81,16 @@ class ParsecApplication(Application):
         self._process.wait()
     
     def terminate(self) -> None:
-        # Terminates properly when ARDiS is interrupted, no need for extra handling
-        pass
+        # Ensures that the application is terminated.
+        # Based on past observations, this is typically done automatically when the main ARDiS process is terminated.
+        # Therefore, this is a precautionary measure to ensure that the application is terminated.
+        try:
+            if pid := self._pid:
+                pgpid = os.getpgid(pid)
+                os.killpg(pgpid, signal.SIGTERM)
+        except Exception as e:
+            print(f"An error occurred while trying to terminate the process group: {e}")
+
 
     def get_pid(self) -> int | None:
         # Return cached pid if available
