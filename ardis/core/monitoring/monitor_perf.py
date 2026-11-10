@@ -302,36 +302,3 @@ class PerfBasedMonitor(Monitor):
                 result.report(self.reporter)
             except Empty:
                 continue
-
-    # Legacy
-    # This methods are primarly here to ensure backwards compatibility.
-    # They will be removed in the future.
-    def getMetricAtCore(self, core: int, event: str) -> float|int|None:
-        """@deprecated Get event buffer directly from the engine"""
-        if buffer := self.__event_buffer:
-            last_events_for_core = buffer.get_metrics_for_core(core, 1)[-1]
-            if event_value := last_events_for_core.get(event):
-                return event_value
-        return None
-
-    def getMetricForPID(self, pid: int, event: str) -> float|int|None:
-        """@deprecated Get event buffer directly from the engine"""
-        if buffer := self.__event_buffer:
-            last_events_for_core = buffer.get_metrics_for_pid(pid, 1)[-1]
-            if event_value := last_events_for_core.get(event):
-                return event_value
-        return None
-    
-    def getSystemWideMetric(self, event: str) -> float|int|None:
-        """@deprecated Get event buffer directly from the engine"""
-        if buffer := self.__event_buffer:
-            last_sys_events = buffer.get_system_metrics(1)[-1]
-            if event_value := last_sys_events.get(event):
-                return event_value
-        return None
-
-    def getElapsedTime(self) -> float:
-        return timer() - self.__start_time
-
-    def recordPeriodicEntry(self, entry: str) -> None:
-        self.reporter.logPeriodicCounters(f"[{str(round(self.getElapsedTime(), 2))}s] {entry}")
