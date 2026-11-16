@@ -68,9 +68,6 @@ class Engine:
         self.__epoch: int = 0
         self.__monitor: Monitor | None = None
 
-        #self.__debug = engine_config.debug
-
-        self.__clear_runtime_data()
 
     def __start_engine(self) -> None:
         self.running = True
@@ -149,6 +146,8 @@ class Engine:
 
     def executeWorkload(self, applications: list[Application]) -> None:
         
+        self.__clear_runtime_data()
+
         self.__waiting_threads = list(applications)
         
         self._cfg.scheduler.register_workload(applications)
