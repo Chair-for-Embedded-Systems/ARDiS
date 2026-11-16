@@ -32,6 +32,7 @@ Breaking changes can occur in Minor releases.
 - Added support for thermal monitoring of cores on Intel CPUs (using either `coretemp` or accessing the msr directly)
     - Updated postprocessing library to parse core temperatures from the periodic log
     - Added new clip which visualizes the core temperatures over time
+- Added `CustomExperiment` which enables users to control more aspects of the experiment (i.e. monitoring parameters like sampling rate, backend and events).
 
 ### Changed 
 - `Scheduler` exposes a new method `is_time_to_launch(application, system_state)`, which allows to make scheduling decisions based on the current system state.
