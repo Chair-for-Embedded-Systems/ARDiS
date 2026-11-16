@@ -132,9 +132,9 @@ class Experiment(CustomExperiment):
             monitoring_interval_ms=config.sampling_rate_ms,
             monitoring_mode=monitoring_mode,
             monitoring_backend=config.monitoring_backend,
-            periodic_app_level_events=config.periodic_app_level_events,
-            periodic_system_wide_events=config.periodic_system_wide_events,
-            periodic_system_wide_events_one_shot=config.one_shot_system_wide_events,
+            periodic_app_level_events=tuple(config.periodic_app_level_events),
+            periodic_system_wide_events=tuple(config.periodic_system_wide_events),
+            periodic_system_wide_events_one_shot=tuple(config.one_shot_system_wide_events),
             monitor_core_temperatures=config.monitor_core_temperatures,
             runtime_temp_dir=config.RUNTIME_TEMP_DIR,
             debug=False

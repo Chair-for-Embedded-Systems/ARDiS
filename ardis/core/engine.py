@@ -37,9 +37,9 @@ class EngineConfig:
     # Monitoring / Sampling
     monitoring_interval_ms: int
     monitoring_mode: MonitoringMode
-    periodic_app_level_events: list[str]
-    periodic_system_wide_events: list[str]
-    periodic_system_wide_events_one_shot: list[str]
+    periodic_app_level_events: tuple[str, ...]
+    periodic_system_wide_events: tuple[str, ...]
+    periodic_system_wide_events_one_shot: tuple[str, ...]
     monitoring_backend: str
     monitor_core_temperatures: bool
 
@@ -221,9 +221,9 @@ class Engine:
         
         self.__monitor = create_monitor(
             sampling_interval_ms=self._cfg.monitoring_interval_ms,
-            periodic_app_level_events=self._cfg.periodic_app_level_events,
-            periodic_system_wide_events=self._cfg.periodic_system_wide_events,
-            one_shot_system_wide_events=self._cfg.periodic_system_wide_events_one_shot,
+            periodic_app_level_events=list(self._cfg.periodic_app_level_events),
+            periodic_system_wide_events=list(self._cfg.periodic_system_wide_events),
+            one_shot_system_wide_events=list(self._cfg.periodic_system_wide_events_one_shot),
             reporter=self.reporter,
             event_buffer=self.event_buffer,
             initial_tracking_config=TrackingConfig(
