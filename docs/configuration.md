@@ -7,7 +7,7 @@ A new configuration file can be created using one of the following methods:
 
 - Manual: Copy and adjust the `ardis-config-example.ini` file, which can be found in the `configs` folder in the root directory.
 
-- Automated: Use the Autoconfig generator script (`python3 -m ardis.utils.autoconfig.run`), which is a guided generation script that assists in creating a valid configuration.
+- Automated: Run `ardis-config` (available once the virtual environment is activated) to start the Autoconfig generator, a guided script that assists in creating a valid configuration.
   - Tip: Load the environments of the PARSEC/SPEC2006 benchmark for a quicker setup. The generator will look for the env variables `xxPARSECDIRxx` an `SPEC`.
 
 ## Selecting a Configuration File
