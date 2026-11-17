@@ -2,27 +2,32 @@
 
 ## 1. Installing ARDiS
 
-### Prerequisites
-* Python >= 3.10
-* Make sure you have installed **pip3** and **python3-venv**.
-* No root privileges are required.
+### Setting Up the Virtual Environment
+Choose one of the following options.
 
-### Installation
-Run the setup script.
-It creates a new virtual environment, installs the `ardis` package and all required dependencies. The `ardis` package will be installed as **editable**, allowing for adjustments to the source code.
+#### Option A: uv (Recommended)
+Requires [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync
+```
+
+#### Option B: Setup script
+Requires Python $\ge$ 3.10, **pip3** and **python3-venv**.
 
 ```bash
 ./setup.sh
 ```
 
-### Post-Installation
-After the installation was sucessful, you can load the virtual environment by sourcing the `env.sh` in the root folder of the directory:
+### Activating the Virtual Environment
+After the installation was successful, you can load the virtual environment by sourcing the `env.sh` in the root folder of the repository:
+
 ```bash
 source env.sh
-``` 
+```
 
 > [!IMPORTANT]
-> While the installation of ARDiS may not require root privileges, running ARDiS certainly does. Be aware that environment variables are generally not passed when calling `sudo`.
+> While the installation of ARDiS does not require root privileges, running ARDiS certainly does. Be aware that environment variables are generally not passed when calling `sudo`.
 
 ## 2. Installing Benchmark Suites
 This step is optional but highly recommended. You are not required to install all benchmark suits.
